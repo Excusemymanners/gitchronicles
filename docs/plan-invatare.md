@@ -10,15 +10,31 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 
 ---
 
-## Faza 0 — Git și rularea locală
+## Faza 0 — Git și rularea locală ✅
 - **Învăț:** git (init, commit, log), cum pornește o aplicație Laravel și ce face Vite.
 - **Fac:** `git init` și primul commit, apoi pornesc aplicația cu `php artisan serve` + `npm run dev`.
 - **Gata când:** văd pagina Laravel în browser și `git log` arată primul commit.
 
-## Faza 1 — Inertia + React
+## Faza 1 — Inertia + React 🔄
 - **Învăț:** cum trimite Laravel date către React fără un API separat (rute → controller → pagină React cu props).
 - **Fac:** instalez Inertia și React și fac o pagină de start în React.
 - **Gata când:** ruta `/` afișează o pagină React și am un test care verifică asta.
+
+**Progres:**
+- [x] 1.1 a) pachetul `inertiajs/inertia-laravel`
+- [x] 1.1 b) middleware-ul `HandleInertiaRequests`
+- [x] 1.1 c) middleware-ul înregistrat în `bootstrap/app.php`
+- [x] 1.1 d) rama HTML `resources/views/app.blade.php`
+- [x] 1.2 a) pachetele React + TypeScript
+- [ ] 1.2 b) `vite.config.js`: `react()` în lista `plugins`, `input` → `app.tsx`
+- [x] 1.2 c) `tsconfig.json`
+- [x] 1.2 d) `resources/js/app.tsx`
+- [ ] 1.2 e) verificare: `npx tsc --noEmit` ✅, `npm run build` ❌
+- [ ] 1.3 prima pagină React: `pages/home.tsx` + `Inertia::render`
+- [ ] 1.4 testul pentru pagina home
+
+**Jurnal:**
+- 2026-10-28 — Inertia configurat pe server (middleware în grupul `web`, rama `app.blade.php`). React 19 + TypeScript 7 instalate.
 
 ## Faza 2 — Utilizatori și repository-uri
 - **Învăț:** migrații, modele Eloquent, validare, formulare Inertia, autentificare.
