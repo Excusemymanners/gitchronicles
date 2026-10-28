@@ -19,7 +19,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 1 — Inertia + React (în lucru).
+**Faza curentă:** Faza 1 — Inertia + React, pasul 1.2 din 4. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 ## Tehnologii
 
@@ -36,7 +36,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | npm + Vite | Pachetele JavaScript; compilarea CSS/JS și reîncărcarea paginii | 0 | ✅ |
 | Tailwind CSS | Stilul interfeței | 0 | ✅ |
 | Inertia | Leagă Laravel de React fără un API separat | 1 | 🔄 |
-| React + TypeScript | Interfața: pagini, formulare, chat, documentație | 1 | ⏳ |
+| React + TypeScript | Interfața: pagini, formulare, chat, documentație | 1 | 🔄 |
 | PHPUnit | Teste pentru fiecare funcționalitate | 1+ | ⏳ |
 | SQLite | Baza de date locală la început | 2 | ⏳ |
 | Eloquent + migrații | Tabelele `users`, `repositories` și accesul la ele | 2 | ⏳ |
