@@ -41,10 +41,10 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | SQLite | Baza de date locală la început | 2 | ⏳ |
 | Eloquent + migrații | Tabelele `users`, `repositories` și accesul la ele | 2 | ⏳ |
 | Cozi Laravel + Process | Joburile care rulează `git clone` / `git diff` în fundal | 3 | ⏳ |
-| Podman | Imaginea de container a aplicației | 4 | ⏳ |
+| Podman | Containere pentru Postgres și Redis; mai târziu imaginea aplicației | 3, 4 | ⏳ |
+| PostgreSQL | Baza de date principală | 3 | ⏳ |
+| Redis + Horizon | Coada de joburi și monitorizarea workerilor | 3 | ⏳ |
 | Kubernetes + kind + Kustomize | Rularea aplicației, a bazei de date și a workerilor ca în producție | 4 | ⏳ |
-| PostgreSQL | Baza de date principală | 4 | ⏳ |
-| Redis + Horizon | Coada de joburi și monitorizarea workerilor | 4 | ⏳ |
 | Python + tree-sitter | Analiza codului: clase, funcții, importuri → graful de dependențe | 5 | ⏳ |
 | Laravel AI SDK + Claude API | Generarea documentației, a rapoartelor și a răspunsurilor din chat | 6, 8 | ⏳ |
 | react-markdown | Afișarea documentației generate | 6 | ⏳ |
@@ -52,26 +52,29 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | pgvector + Voyage AI | Embedding-uri și căutare semantică pentru asistent | 8 | ⏳ |
 | GitHub webhooks | Pornesc actualizarea incrementală la fiecare push | 9 | ⏳ |
 | Semgrep, OSV-Scanner, scc | Consultanța: bug-uri, vulnerabilități, statistici despre cod | bonus | ⏳ |
-| Marp | Prezentarea repository-ului ca slide-uri | bonus | ⏳ |
+| Marp | Prezentarea repository-ului ca slide-uri | 7 | ⏳ |
 | HyperFrames + FFmpeg | Video-urile scurte despre repository | bonus | ⏳ |
 | k3s + KEDA | Deploy pe VPS; workerii se scalează după lungimea cozii | 10 | ⏳ |
 
 ## Plan de dezvoltare
 
-Calendar orientativ.
+**Ținta: aplicația completă până în ianuarie 2027.** Din ianuarie: doar ajustări, măsurători și scrierea lucrării.
 
-| Perioadă | Faza | Rezultat | Stare |
+Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; până atunci Postgres și Redis rulează în containere Podman simple.
+
+| Săptămâna | Faza | Rezultat | Stare |
 |---|---|---|---|
 | 28 oct – 3 nov 2026 | 1. Inertia + React + TypeScript | Pagina de start în React, cu test | 🔄 |
-| 4 – 17 nov | 2. Utilizatori și repository-uri | Login; adaug un URL de GitHub și îl văd în listă | ⏳ |
-| 18 – 30 nov | 3. Jobul de clonare | 🏁 Aplicația clonează un repo și afișează SHA-ul | ⏳ |
-| Decembrie | 4. Containere și Kubernetes | Tot ce există, rulând în cluster | ⏳ |
-| Ianuarie | 5. Analiza codului (tree-sitter) | Modulele și dependențele unui repo | ⏳ |
-| Februarie | 6–7. Documentație AI + diagrame C4 | 🏁 Documentație completă pentru un repo mic | ⏳ |
-| Martie | 8. Asistentul pe cod (RAG) | Răspunsuri cu fișierul și liniile citate | ⏳ |
-| Aprilie | 9. Actualizarea incrementală | 🏁 Miezul lucrării funcționează | ⏳ |
-| Mai | 10. Experimente, bonusuri, deploy | Rezultate măsurate; aplicația online | ⏳ |
-| Iunie 2027 | Lucrarea scrisă | Lucrarea predată | ⏳ |
+| 4 – 10 nov | 2. Utilizatori și repository-uri | Login; adaug un URL de GitHub și îl văd în listă | ⏳ |
+| 11 – 17 nov | 3. Joburi + Postgres, Redis, Horizon | 🏁 Aplicația clonează un repo și afișează SHA-ul | ⏳ |
+| 18 – 24 nov | 5. Analiza codului (tree-sitter) | Modulele și dependențele unui repo | ⏳ |
+| 25 nov – 1 dec | 6. Documentația generată cu AI | 🏁 Documentație completă pentru un repo mic | ⏳ |
+| 2 – 8 dec | 7. Diagrame C4 + prezentare (Marp) | Diagrame și slide-uri pentru repo | ⏳ |
+| 9 – 15 dec | 8. Asistentul pe cod (RAG) | Răspunsuri cu fișierul și liniile citate | ⏳ |
+| 16 – 22 dec | 9. Actualizarea incrementală + webhook | 🏁 Miezul lucrării funcționează | ⏳ |
+| 23 dec – 5 ian | 4. Kubernetes + deploy k3s | Aplicația online | ⏳ |
+| Ianuarie | Ajustări + experimente | Rezultate măsurate pentru lucrare; consultanță și video dacă rămâne timp | ⏳ |
+| Februarie – iunie 2027 | Lucrarea scrisă | Lucrarea predată | ⏳ |
 
 ## Mod de lucru
 
