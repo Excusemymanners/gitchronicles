@@ -2,7 +2,9 @@
 
 Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas cu pas prin care construiesc aplicația singur.
 
-**Regulă:** întâi aplicația merge pe laptop (SQLite, `php artisan serve`), abia apoi o mut în Kubernetes (Faza 4).
+**Ținta:** aplicația completă până în ianuarie 2027, cu o fază pe săptămână. Calendarul e în [README](../README.md#plan-de-dezvoltare).
+
+**Regulă:** întâi aplicația merge pe laptop (`php artisan serve`, Postgres și Redis în containere Podman). Kubernetes (Faza 4) vine la final, ca pas de deploy.
 
 **La fiecare fază:** notez ce am ales și de ce, pentru lucrare.
 
@@ -24,11 +26,11 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Gata când:** mă loghez, adaug un URL de GitHub și îl văd în listă.
 
 ## Faza 3 — Joburi: clonarea
-- **Învăț:** cozi și joburi în Laravel, rularea comenzilor git din PHP, testarea joburilor.
-- **Fac:** un job care face `git clone`, salvează SHA-ul ultimului commit și schimbă statusul (în așteptare → clonat / eroare).
+- **Învăț:** cozi și joburi în Laravel, rularea comenzilor git din PHP, testarea joburilor, containere Podman.
+- **Fac:** pornesc Postgres (cu pgvector) și Redis în containere Podman și instalez Horizon. Apoi un job care face `git clone`, salvează SHA-ul ultimului commit și schimbă statusul (în așteptare → clonat / eroare).
 - **Gata când:** adaug un repository, jobul îl clonează și pe pagină văd SHA-ul.
 
-## Faza 4 — Containere și Kubernetes
+## Faza 4 — Kubernetes (se face la final, după Faza 9)
 - **Învăț:** imagini de container (Podman), Pods, Deployments, Services, StatefulSets, Kustomize.
 - **Fac:** imaginea aplicației, un cluster `kind`, Postgres + pgvector, Redis, aplicația și workerii Horizon, toate în cluster.
 - **Gata când:** tot ce aveam în Faza 3 merge la fel, dar în Kubernetes.
@@ -43,9 +45,9 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Fac:** o pagină Markdown pentru fiecare modul, plus o pagină de ansamblu, afișate cu meniu lateral și căutare (stil Docsify).
 - **Gata când:** pentru un repo mic am o documentație completă pe care o pot naviga.
 
-## Faza 7 — Diagrame C4
-- **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare.
-- **Gata când:** pagina repository-ului arată diagramele Container și Component.
+## Faza 7 — Diagrame C4 + prezentare
+- **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.
+- **Gata când:** pagina repository-ului arată diagramele Container și Component și pot descărca prezentarea.
 
 ## Faza 8 — Chat-ul despre cod (RAG)
 - **Învăț:** embedding-uri, pgvector, căutare semantică.
