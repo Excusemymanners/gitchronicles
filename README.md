@@ -22,7 +22,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 1 — Inertia + React, pasul 1.4 din 4. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 2 — Utilizatori și repository-uri, pasul 2.1 din 4. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 ## Tehnologii
 
@@ -38,11 +38,11 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | Blade | Șablonul HTML de bază în care se montează React | 0 | ✅ |
 | npm + Vite | Pachetele JavaScript; compilarea CSS/JS și reîncărcarea paginii | 0 | ✅ |
 | Tailwind CSS | Stilul interfeței | 0 | ✅ |
-| Inertia | Leagă Laravel de React fără un API separat | 1 | 🔄 |
-| React + TypeScript | Interfața: pagini, formulare, chat, documentație | 1 | 🔄 |
-| PHPUnit | Teste pentru fiecare funcționalitate | 1+ | ⏳ |
-| SQLite | Baza de date locală la început | 2 | ⏳ |
-| Eloquent + migrații | Tabelele `users`, `repositories` și accesul la ele | 2 | ⏳ |
+| Inertia | Leagă Laravel de React fără un API separat | 1 | ✅ |
+| React + TypeScript | Interfața: pagini, formulare, chat, documentație | 1 | ✅ |
+| PHPUnit | Teste pentru fiecare funcționalitate | 1+ | ✅ |
+| SQLite | Baza de date locală la început | 2 | 🔄 |
+| Eloquent + migrații | Tabelele `users`, `repositories` și accesul la ele | 2 | 🔄 |
 | Cozi Laravel + Process | Joburile care rulează `git clone` / `git diff` în fundal | 3 | ⏳ |
 | Podman | Containere pentru Postgres și Redis; mai târziu imaginea aplicației | 3, 4 | ⏳ |
 | PostgreSQL | Baza de date principală | 3 | ⏳ |
@@ -69,8 +69,8 @@ Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; pân
 
 | Săptămâna | Faza | Rezultat | Stare |
 |---|---|---|---|
-| 28 oct – 3 nov 2026 | 1. Inertia + React + TypeScript | Pagina de start în React, cu test | 🔄 |
-| 4 – 10 nov | 2. Utilizatori și repository-uri | Login; adaug un URL de GitHub și îl văd în listă | ⏳ |
+| 28 oct – 3 nov 2026 | 1. Inertia + React + TypeScript | Pagina de start în React, cu test | ✅ |
+| 4 – 10 nov | 2. Utilizatori și repository-uri | Login; adaug un URL de GitHub și îl văd în listă | 🔄 |
 | 11 – 17 nov | 3. Joburi + Postgres, Redis, Horizon | 🏁 Aplicația clonează un repo și afișează SHA-ul | ⏳ |
 | 18 – 24 nov | 5. Analiza codului (tree-sitter) | Modulele și dependențele unui repo | ⏳ |
 | 25 nov – 1 dec | 6. Documentația generată cu AI | 🏁 Documentație completă pentru un repo mic | ⏳ |
