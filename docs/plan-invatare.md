@@ -26,15 +26,17 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - [x] 1.1 c) middleware-ul înregistrat în `bootstrap/app.php`
 - [x] 1.1 d) rama HTML `resources/views/app.blade.php`
 - [x] 1.2 a) pachetele React + TypeScript
-- [ ] 1.2 b) `vite.config.js`: `react()` în lista `plugins`, `input` → `app.tsx`
+- [x] 1.2 b) `vite.config.js`: `react()` în lista `plugins`, `input` → `app.tsx`
 - [x] 1.2 c) `tsconfig.json`
 - [x] 1.2 d) `resources/js/app.tsx`
-- [ ] 1.2 e) verificare: `npx tsc --noEmit` ✅, `npm run build` ❌
+- [x] 1.2 e) verificare: `npx tsc --noEmit` ✅, `npm run build` ✅
 - [ ] 1.3 prima pagină React: `pages/home.tsx` + `Inertia::render`
 - [ ] 1.4 testul pentru pagina home
 
 **Jurnal:**
 - 2026-10-28 — Inertia configurat pe server (middleware în grupul `web`, rama `app.blade.php`). React 19 + TypeScript 7 instalate.
+- 2026-10-28 — Idei noi în plan: time travel pe commit-uri (în Faza 9); leaderboard, video și postări pe Instagram (bonusuri, ianuarie).
+- 2026-10-28 — Vite configurat pentru React: `tsc` și `npm run build` trec. Lecții: `react()` e un plugin Vite (stă în `plugins`, nu în `fonts`); un fișier nesalvat în editor nu ajunge pe disc, deci am pornit Auto Save.
 
 ## Faza 2 — Utilizatori și repository-uri
 - **Învăț:** migrații, modele Eloquent, validare, formulare Inertia, autentificare.
@@ -72,12 +74,37 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 
 ## Faza 9 — Actualizarea incrementală (miezul licenței)
 - **Fac:** `git diff` față de ultimul SHA, reprocesez doar ce s-a schimbat, propag schimbarea prin graf, apoi adaug webhook-ul GitHub și detectarea documentației învechite.
-- **Gata când:** după un push se regenerează doar paginile afectate și pot măsura timpul și tokenii economisiți.
+- **Time travel:** nu mai suprascriu documentația și diagramele, ci le păstrez pe fiecare cu SHA-ul commit-ului lor. În interfață, un slider prin commit-uri arată cum arăta proiectul atunci și ce componente au apărut sau au dispărut.
+- **Gata când:** după un push se regenerează doar paginile afectate, pot măsura timpul și tokenii economisiți și pot „călători” înapoi la un commit vechi.
 
 ## Faza 10 — Experimente, deploy, lucrarea
 - Compar actualizarea incrementală cu reindexarea completă pe 3–5 proiecte open-source.
 - Fac deploy pe un VPS cu k3s.
 - Scriu lucrarea, pornind de la notițele din fiecare fază.
+
+## Bonusuri — ianuarie, doar dacă rămâne timp
+În ordinea asta, pentru că fiecare îl folosește pe cel dinainte.
+
+### Discover / leaderboard
+- **Învăț:** GitHub Search API, Laravel Scheduler (joburi care rulează singure la oră fixă).
+- **Fac:** un job zilnic notează stelele repo-urilor urmărite. Din „pozele” zilnice calculez cine a câștigat cele mai multe stele (GitHub nu are API oficial pentru Trending). Pagina „Descoperă” are secțiunile: în trend, în creștere, comori ascunse, pe limbaje.
+- **Gata când:** pagina arată un clasament care se actualizează singur în fiecare zi.
+
+### Video scurt
+- **Învăț:** HyperFrames (HTML/CSS/animații → MP4), FFmpeg.
+- **Fac:** dintr-un șablon HTML și documentația generată fac un video vertical (9:16) despre un repo.
+- **Gata când:** pentru orice repo documentat pot genera un MP4.
+
+### Postări automate pe Instagram
+- **Învăț:** Instagram Graph API (container media → publicare), aplicații Meta.
+- **Fac:** zilnic aleg „repo-ul zilei” din leaderboard, generez video-ul și îl postez ca Reel.
+- **Pregătire din timp:** cont Instagram profesional + pagină de Facebook legată + aplicație Meta. Video-ul trebuie să fie la un link public, deci merge doar după deploy.
+- **Gata când:** în fiecare zi apare singur un Reel nou pe cont.
+
+### Consultanță
+- **Învăț:** Semgrep, OSV-Scanner, scc, `git log` pentru hotspots.
+- **Fac:** rulez uneltele pe repo, apoi LLM-ul strânge rezultatele într-un raport cu recomandări.
+- **Gata când:** pentru un repo pot descărca un raport de consultanță.
 
 ---
 

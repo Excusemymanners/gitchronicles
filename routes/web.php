@@ -1,7 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', function () {
-    return view('home');
+    return Inertia::render('home', [
+        'mesaj' => 'Documentație vie pentru repository-urile tale',
+    ]);
 });
