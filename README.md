@@ -13,13 +13,16 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 - **Diagrame de arhitectură C4** (Context, Container, Component), generate din codul proiectului.
 - **Asistent pe cod**: răspunde la întrebări despre repository și citează fișierul și liniile exacte.
 - **Actualizare incrementală**: la fiecare push se regenerează doar paginile afectate.
-- **Consultanță**: raport cu bug-uri, vulnerabilități și zonele de cod schimbate cel mai des.
+- **Time travel**: un slider prin istoria commit-urilor arată cum arătau documentația și arhitectura la orice moment.
 - **Prezentare**: slide-uri despre repository (PDF/PPTX).
-- **Video scurt** generat la fiecare release.
+- **Discover / leaderboard** *(bonus)*: repository-uri interesante, clasate după cât de repede câștigă stele.
+- **Video scurt** *(bonus)* generat pentru un repository.
+- **Postări automate pe Instagram** *(bonus)*: zilnic, un Reel cu „repo-ul zilei” din leaderboard.
+- **Consultanță** *(bonus)*: raport cu bug-uri, vulnerabilități și zonele de cod schimbate cel mai des.
 
 ## Stare
 
-**Faza curentă:** Faza 1 — Inertia + React, pasul 1.2 din 4. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 1 — Inertia + React, pasul 1.3 din 4. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 ## Tehnologii
 
@@ -54,6 +57,8 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | Semgrep, OSV-Scanner, scc | Consultanța: bug-uri, vulnerabilități, statistici despre cod | bonus | ⏳ |
 | Marp | Prezentarea repository-ului ca slide-uri | 7 | ⏳ |
 | HyperFrames + FFmpeg | Video-urile scurte despre repository | bonus | ⏳ |
+| GitHub Search API + Laravel Scheduler | Leaderboard: notează zilnic stelele repo-urilor și calculează cine crește cel mai repede | bonus | ⏳ |
+| Instagram Graph API | Postarea automată a Reel-ului „repo-ul zilei” | bonus | ⏳ |
 | k3s + KEDA | Deploy pe VPS; workerii se scalează după lungimea cozii | 10 | ⏳ |
 
 ## Plan de dezvoltare
@@ -71,9 +76,9 @@ Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; pân
 | 25 nov – 1 dec | 6. Documentația generată cu AI | 🏁 Documentație completă pentru un repo mic | ⏳ |
 | 2 – 8 dec | 7. Diagrame C4 + prezentare (Marp) | Diagrame și slide-uri pentru repo | ⏳ |
 | 9 – 15 dec | 8. Asistentul pe cod (RAG) | Răspunsuri cu fișierul și liniile citate | ⏳ |
-| 16 – 22 dec | 9. Actualizarea incrementală + webhook | 🏁 Miezul lucrării funcționează | ⏳ |
+| 16 – 22 dec | 9. Actualizarea incrementală + webhook + time travel | 🏁 Miezul lucrării funcționează; istoria arhitecturii pe commit-uri | ⏳ |
 | 23 dec – 5 ian | 4. Kubernetes + deploy k3s | Aplicația online | ⏳ |
-| Ianuarie | Ajustări + experimente | Rezultate măsurate pentru lucrare; consultanță și video dacă rămâne timp | ⏳ |
+| Ianuarie | Ajustări + experimente + bonusuri | Rezultate măsurate pentru lucrare. Dacă rămâne timp: leaderboard → video → Instagram, apoi consultanța | ⏳ |
 | Februarie – iunie 2027 | Lucrarea scrisă | Lucrarea predată | ⏳ |
 
 ## Mod de lucru
@@ -81,7 +86,7 @@ Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; pân
 1. Un pas mic = un commit; push la sfârșitul fiecărei zile de lucru.
 2. O fază e gata doar când rezultatul ei funcționează și are un test.
 3. Pentru fiecare fază se notează deciziile și motivele lor, pentru lucrare.
-4. Miezul (fazele 1–9) înaintea bonusurilor (consultanță, prezentare, video).
+4. Miezul (fazele 1–9) înaintea bonusurilor (leaderboard, video, Instagram, consultanță).
 
 ## Rulare locală
 
