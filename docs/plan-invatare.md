@@ -30,13 +30,14 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - [x] 1.2 c) `tsconfig.json`
 - [x] 1.2 d) `resources/js/app.tsx`
 - [x] 1.2 e) verificare: `npx tsc --noEmit` ✅, `npm run build` ✅
-- [ ] 1.3 prima pagină React: `pages/home.tsx` + `Inertia::render`
+- [x] 1.3 prima pagină React: `pages/home.tsx` + `Inertia::render` (de șters: `home.blade.php`, `welcome.blade.php`)
 - [ ] 1.4 testul pentru pagina home
 
 **Jurnal:**
 - 2026-10-28 — Inertia configurat pe server (middleware în grupul `web`, rama `app.blade.php`). React 19 + TypeScript 7 instalate.
 - 2026-10-28 — Idei noi în plan: time travel pe commit-uri (în Faza 9); leaderboard, video și postări pe Instagram (bonusuri, ianuarie).
 - 2026-10-28 — Vite configurat pentru React: `tsc` și `npm run build` trec. Lecții: `react()` e un plugin Vite (stă în `plugins`, nu în `fonts`); un fișier nesalvat în editor nu ajunge pe disc, deci am pornit Auto Save.
+- 2026-10-28 — Prima pagină React: ruta `/` trimite `mesaj` din PHP în `pages/home.tsx` prin `Inertia::render`. Lecții: `use Inertia\Inertia;` „prezintă” clasa înainte s-o folosești; dacă o rută apare de două ori, o câștigă ultima; în stack trace contează prima linie din codul meu (`routes/web.php:11`).
 
 ## Faza 2 — Utilizatori și repository-uri
 - **Învăț:** migrații, modele Eloquent, validare, formulare Inertia, autentificare.

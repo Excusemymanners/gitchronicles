@@ -22,7 +22,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 1 — Inertia + React, pasul 1.3 din 4. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 1 — Inertia + React, pasul 1.4 din 4. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 ## Tehnologii
 
