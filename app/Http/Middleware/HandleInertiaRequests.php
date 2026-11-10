@@ -29,6 +29,9 @@ class HandleInertiaRequests extends Middleware
     /**
      * Define the props that are shared by default.
      *
+     * "auth.user" is sent to every page, so it holds only id, name and email
+     * (never the password hash or the remember token).
+     *
      * @see https://inertiajs.com/shared-data
      *
      * @return array<string, mixed>
@@ -37,7 +40,9 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            //
+            'auth' => [
+                'user' => fn () => $request->user()?->only(['id', 'name', 'email']),
+            ],
         ];
     }
 }

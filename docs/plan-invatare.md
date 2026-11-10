@@ -63,6 +63,19 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Fac:** imaginea aplicației, un cluster `kind`, Postgres + pgvector, Redis, aplicația și workerii Horizon, toate în cluster.
 - **Gata când:** tot ce aveam în Faza 3 merge la fel, dar în Kubernetes.
 
+**Securitate înainte de a deschide aplicația spre internet:**
+- [ ] Fără port forwarding de pe laptopul personal. Pentru acces privat: Tailscale; pentru public de acasă: Cloudflare Tunnel (zero porturi deschise).
+- [ ] Pe VPS, spre internet sunt deschise doar porturile 80/443; firewall pe tot restul. SSH doar cu cheie, fără parolă.
+- [ ] HTTPS automat: Traefik din k3s + Let's Encrypt.
+- [ ] Postgres, Redis și API-ul Kubernetes nu se văd din afara clusterului (Services de tip `ClusterIP`).
+- [ ] `APP_ENV=production`, `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`; secretele în Kubernetes Secrets, nu în git.
+- [ ] Imaginea folosește PHP fixat, minim 8.5.12, și se reconstruiește la fiecare actualizare de securitate.
+- [ ] Limite: rate limiting la login și la „adaugă repository”; timp și mărime maximă la `git clone`; buget de tokeni AI pe utilizator.
+- [ ] Workerii care clonează cod străin rulează în containere separate, cu resurse limitate.
+- [ ] Backup zilnic al bazei de date.
+- [ ] `composer audit` și `npm audit` rulate automat (GitHub Actions + Dependabot).
+- [ ] Niciodată `php artisan serve` sau `npm run dev` spre internet: sunt doar pentru laptop.
+
 ## Faza 5 — Analiza codului
 - **Învăț:** tree-sitter (parsarea codului) și grafuri de dependențe.
 - **Fac:** un serviciu mic în Python care extrage din cod fișierele, clasele, funcțiile și importurile. Laravel le salvează în baza de date și construiește graful de dependențe.
