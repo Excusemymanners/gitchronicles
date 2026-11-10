@@ -25,3 +25,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Fișierele locale ale uneltelor de dezvoltare (rămân doar pe calculatorul meu)
+/CLAUDE.md
+/.claude/
+/.mcp.json
+/boost.json
