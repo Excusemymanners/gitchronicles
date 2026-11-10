@@ -2,7 +2,9 @@
 
 namespace App\Actions;
 
+use App\Enums\ProcessingTrigger;
 use App\Enums\RepositoryStatus;
+use App\Jobs\ProcessRepository;
 use App\Models\Repository;
 use App\Models\User;
 use App\Support\GitHubUrl;
@@ -11,7 +13,7 @@ use Inertia\Inertia;
 
 /**
  * Adds a GitHub repository to the public catalog. It is the only place that creates
- * a repository, so the clone job (Faza 3) will be started here, in handle().
+ * a repository, so it is also the only place that starts its first processing (ProcessRepository).
  */
 final class AddRepository
 {
@@ -25,6 +27,9 @@ final class AddRepository
      *
      * The URL must already be canonical (StoreRepositoryRequest normalizes and validates it).
      * The caller tells the two cases apart with $repository->wasRecentlyCreated.
+     *
+     * Only a new repository is sent to the queue for processing (clone, ...): an existing one
+     * already has its own pipeline.
      */
     public function handle(User $user, string $url): Repository
     {
@@ -36,12 +41,16 @@ final class AddRepository
 
         $parts = GitHubUrl::parse($url);
 
-        return $user->repositories()->create([
+        $repository = $user->repositories()->create([
             'url' => $url,
             'owner' => $parts['owner'],
             'name' => $parts['name'],
             'status' => RepositoryStatus::Pending,
         ]);
+
+        ProcessRepository::dispatch($repository, ProcessingTrigger::Add);
+
+        return $repository;
     }
 
     /**

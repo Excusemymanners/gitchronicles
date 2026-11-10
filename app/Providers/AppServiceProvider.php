@@ -26,9 +26,10 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * "repositories": at most 10 add requests per minute for each user, or for each
+     * "repositories": at most 10 requests per minute for each user, or for each
      * IP address when the visitor is a guest (guests may submit the form too),
-     * because every new repository will start a clone job (Faza 3).
+     * because every new repository and every „Reîncearcă” starts a clone job.
+     * Adding and retrying share the same 10 requests (same limiter, same key).
      */
     private function configureRateLimiting(): void
     {

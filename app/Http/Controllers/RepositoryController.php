@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\AddRepository;
+use App\Actions\ReprocessRepository;
 use App\Http\Requests\StoreRepositoryRequest;
 use App\Http\Resources\RepositoryResource;
 use App\Models\Repository;
@@ -73,18 +74,39 @@ class RepositoryController extends Controller
     }
 
     /**
-     * Show one repository to anyone. Only the user who added it sees the delete button.
+     * Show one repository to anyone. Only the user who added it sees the delete button;
+     * any logged-in user sees „Reîncearcă” when the processing failed.
+     *
+     * While the repository is processed, the page asks again every 2 seconds for
+     * "repository" and "can_retry" only (Inertia polling with a partial reload).
      */
     public function show(Request $request, Repository $repository): Response
     {
         return Inertia::render('repositories/show', [
             'repository' => RepositoryResource::make($repository)->resolve(),
             'can_delete' => $request->user()?->can('delete', $repository) ?? false,
+            'can_retry' => $request->user()?->can('retry', $repository) ?? false,
         ]);
     }
 
     /**
+     * Start the processing again after a failure (RepositoryPolicy::retry) and stay on its page,
+     * which then follows the new run.
+     */
+    public function retry(Repository $repository, ReprocessRepository $reprocessRepository): RedirectResponse
+    {
+        Gate::authorize('retry', $repository);
+
+        $reprocessRepository->handle($repository);
+
+        Inertia::flash('success', 'Am pornit din nou procesarea.');
+
+        return redirect()->route('repositories.show', $repository);
+    }
+
+    /**
      * Delete a repository: only the user who added it may do this (RepositoryPolicy).
+     * Its clone folder is deleted with it (see Repository::booted()).
      */
     public function destroy(Repository $repository): RedirectResponse
     {

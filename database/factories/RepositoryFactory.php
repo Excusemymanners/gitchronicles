@@ -37,23 +37,26 @@ class RepositoryFactory extends Factory
     }
 
     /**
-     * Indicate that the repository was cloned at a known commit.
+     * Indicate that the pipeline finished: the repository was cloned at a known commit.
      */
-    public function cloned(): static
+    public function ready(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => RepositoryStatus::Cloned,
+            'status' => RepositoryStatus::Ready,
+            'default_branch' => 'main',
             'last_sha' => fake()->sha1(),
+            'cloned_at' => now(),
         ]);
     }
 
     /**
-     * Indicate that cloning the repository failed.
+     * Indicate that the pipeline stopped with an error.
      */
     public function failed(): static
     {
         return $this->state(fn (array $attributes) => [
             'status' => RepositoryStatus::Failed,
+            'error' => 'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.',
         ]);
     }
 }

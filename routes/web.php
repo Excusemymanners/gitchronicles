@@ -14,6 +14,11 @@ Route::resource('repositories', RepositoryController::class)
     ->middlewareFor('store', 'throttle:repositories')
     ->middlewareFor('destroy', 'auth');
 
+// „Reîncearcă” after a failed processing: it starts a new clone, so it shares the add limit.
+Route::post('/repositories/{repository}/retry', [RepositoryController::class, 'retry'])
+    ->middleware(['auth', 'throttle:repositories'])
+    ->name('repositories.retry');
+
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'create'])->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->middleware('throttle:6,1');
