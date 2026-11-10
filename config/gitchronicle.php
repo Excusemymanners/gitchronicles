@@ -50,13 +50,14 @@ return [
     |
     | module_context_characters: how much code (in characters) one module page may send
     | to the writer; the most important files go first and the omitted ones are listed.
-    | max_module_pages: at most this many module pages per repository (the biggest modules).
+    | max_module_pages: at most this many module pages per repository (the biggest modules);
+    | DOCS_MAX_MODULE_PAGES lowers it locally, where each page is one Claude call on the subscription.
     |
     */
 
     'docs' => [
         'module_context_characters' => 60000,
-        'max_module_pages' => 40,
+        'max_module_pages' => (int) env('DOCS_MAX_MODULE_PAGES', 40),
     ],
 
 ];
