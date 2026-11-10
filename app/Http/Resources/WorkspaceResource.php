@@ -20,9 +20,9 @@ use Illuminate\Support\Facades\Schema;
  * - "elements": the cards of the „Elemente” panel on the right; each one is null until its data exists.
  * - "assistant": whether the code is indexed for questions, and up to three starter questions about real modules.
  *
- * The diagrams and code_chunks tables come with later phases, so every query on them first
- * checks that the table exists. The git history is counted by HistoryStatistics, the same service as the
- * „Istoric” tab, so the panel and the tab always show the same numbers (lock files and libraries left out).
+ * The code_chunks table comes with Faza 8, so the query on it first checks that the table exists.
+ * The git history is counted by HistoryStatistics, the same service as the „Istoric” tab, so the
+ * panel and the tab always show the same numbers (lock files and libraries left out).
  * The number of queries is fixed, whatever the size of the repository: nothing is queried once per module.
  *
  * @mixin Repository
@@ -30,16 +30,29 @@ use Illuminate\Support\Facades\Schema;
 class WorkspaceResource extends JsonResource
 {
     /**
-     * The chapters of the „Arhitectură” group: one per diagram type, in reading order (Faza 7).
+     * The chapters of the „Arhitectură” group: one per diagram type, in the order of the „Diagrame” page (Faza 7).
      *
      * @var array<string, string>
      */
     public const DIAGRAM_CHAPTERS = [
         'flow' => 'Cum funcționează',
         'layers' => 'Straturi',
-        'context' => 'Context (C4)',
         'container' => 'Containere (C4)',
         'component' => 'Componente (C4)',
+        'context' => 'Context (C4)',
+    ];
+
+    /**
+     * The id of each diagram type's section on the „Diagrame” page (DiagramsContent in React), for the links.
+     *
+     * @var array<string, string>
+     */
+    public const DIAGRAM_SECTIONS = [
+        'flow' => 'cum-functioneaza',
+        'layers' => 'straturi',
+        'container' => 'containere',
+        'component' => 'componente',
+        'context' => 'context',
     ];
 
     /**
@@ -129,7 +142,7 @@ class WorkspaceResource extends JsonResource
 
     /**
      * The address of a page of this repository, relative to the site (so it works on any host),
-     * optionally with the anchor of a section, for example /repositories/1/diagrams#layers.
+     * optionally with the anchor of a section, for example /repositories/1/diagrams#straturi.
      */
     private function pageUrl(string $routeName, ?string $section = null): string
     {
@@ -183,7 +196,7 @@ class WorkspaceResource extends JsonResource
             $count = (int) $diagramCounts->get($type, 0);
 
             if ($count > 0) {
-                $chapters[] = $this->chapter($label, $this->pageUrl('repositories.diagrams', $type), $count > 1 ? $count : null);
+                $chapters[] = $this->chapter($label, $this->pageUrl('repositories.diagrams', self::DIAGRAM_SECTIONS[$type]), $count > 1 ? $count : null);
             }
         }
 
@@ -284,7 +297,7 @@ class WorkspaceResource extends JsonResource
                 ->where('type', $type)
                 ->orderBy('key')
                 ->value('mermaid'),
-            'href' => $this->pageUrl('repositories.diagrams', $type),
+            'href' => $this->pageUrl('repositories.diagrams', self::DIAGRAM_SECTIONS[$type]),
         ];
     }
 
@@ -307,10 +320,6 @@ class WorkspaceResource extends JsonResource
      */
     private function diagramCountsByType(): Collection
     {
-        if (! Schema::hasTable('diagrams')) {
-            return collect();
-        }
-
         return DB::table('diagrams')
             ->where('repository_id', $this->id)
             ->groupBy('type')

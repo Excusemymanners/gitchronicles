@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import MermaidDiagram from '@/components/diagrams/mermaid-diagram';
 import ElementCard from '@/components/workspace/element-card';
 import { countLabel, formatNumber } from '@/lib/format';
 import { formatDay, formatMonth } from '@/lib/history-format';
@@ -16,7 +17,7 @@ type Props = {
  * video-ul, slide-urile, activitatea, zonele fierbinți), fiecare cu cardul lui. Un card cu date deschide
  * capitolul lui; unul fără date spune doar că nu a fost generat încă.
  *
- * Activitatea și zonele fierbinți vin de la același serviciu ca tab-ul „Istoric” (HistoryStatistics),
+ * Previzualizarea diagramei folosește MermaidDiagram din tab-ul „Diagrame”. Activitatea și zonele fierbinți vin de la același serviciu ca tab-ul „Istoric” (HistoryStatistics),
  * deci cifrele de aici sunt aceleași cu cele de acolo.
  */
 export default function ElementsPanel({ elements, placement }: Props) {
@@ -36,14 +37,20 @@ export default function ElementsPanel({ elements, placement }: Props) {
             </div>
 
             <ul className={placement === 'column' ? 'flex flex-col gap-3' : 'grid gap-3 sm:grid-cols-2'}>
-                {/* Previzualizarea diagramei (MermaidDiagram din Faza 7) intră aici, ca children. */}
                 <ElementCard
                     title={architecture?.title ?? 'Arhitectura pe straturi'}
                     description="Cum se leagă părțile aplicației, desenat din importurile reale."
                     href={architecture?.href ?? null}
                     actionLabel="Deschide diagramele"
                     emptyText="Încă nu a fost generată."
-                />
+                >
+                    {architecture && (
+                        // Diagrama micșorată ca să încapă toată; tot cardul duce la vederea completă.
+                        <div className="h-36 overflow-hidden rounded-lg border border-line-subtle bg-canvas p-2">
+                            <MermaidDiagram code={architecture.mermaid} title={architecture.title} compact />
+                        </div>
+                    )}
+                </ElementCard>
 
                 <ElementCard
                     title="Video de prezentare"

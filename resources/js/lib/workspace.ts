@@ -10,7 +10,7 @@ export type ActiveChapter = {
     href: string;
 };
 
-/** Desparte o adresă în cale și ancoră: „/repositories/1/diagrams#layers” → ['/repositories/1/diagrams', '#layers']. */
+/** Desparte o adresă în cale și ancoră: „/repositories/1/diagrams#straturi” → ['/repositories/1/diagrams', '#straturi']. */
 export function splitHref(href: string): [path: string, hash: string] {
     const hashStart = href.indexOf('#');
     const withoutHash = hashStart === -1 ? href : href.slice(0, hashStart);
@@ -21,7 +21,7 @@ export function splitHref(href: string): [path: string, hash: string] {
 
 /**
  * Capitolul care se potrivește cu pagina deschisă. Întâi căutăm aceeași cale și aceeași ancoră
- * (de exemplu „Straturi” pentru /diagrams#layers); fără ancoră, capitolul fără ancoră al paginii
+ * (de exemplu „Straturi” pentru /diagrams#straturi); fără ancoră, capitolul fără ancoră al paginii
  * („Prezentare generală”) sau, dacă pagina are doar secțiuni, prima ei secțiune.
  */
 export function findActiveChapter(groups: WorkspaceGroup[], path: string, hash: string): ActiveChapter | null {
@@ -55,7 +55,7 @@ function subscribeToLocation(onChange: () => void): () => void {
 }
 
 /**
- * Ancora din adresa paginii („#layers”), actualizată la fiecare schimbare. O citim din window.location,
+ * Ancora din adresa paginii („#straturi”), actualizată la fiecare schimbare. O citim din window.location,
  * pentru că o legătură obișnuită spre o secțiune a aceleiași pagini schimbă doar ancora, fără o vizită Inertia.
  */
 export function useLocationHash(): string {

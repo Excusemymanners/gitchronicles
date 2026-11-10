@@ -122,6 +122,17 @@ class Repository extends Model
     }
 
     /**
+     * The architecture diagrams and the „Cum funcționează” flows (Faza 7, BuildDiagrams).
+     * chaperone() gives every loaded diagram this repository back, without another query.
+     *
+     * @return HasMany<Diagram, $this>
+     */
+    public function diagrams(): HasMany
+    {
+        return $this->hasMany(Diagram::class)->chaperone();
+    }
+
+    /**
      * Whether a pipeline run for this repository has started and not finished yet.
      * A second run must wait: two clones in the same folder would break each other.
      */

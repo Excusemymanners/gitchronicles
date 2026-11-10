@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Actions\AddRepository;
 use App\Actions\ReprocessRepository;
+use App\Enums\DiagramType;
 use App\Git\HistoryStatistics;
 use App\Http\Controllers\Repository\RendersRepositoryPage;
 use App\Http\Requests\StoreRepositoryRequest;
 use App\Http\Resources\CodeStructureResource;
+use App\Http\Resources\DiagramResource;
 use App\Http\Resources\OverviewSummaryResource;
 use App\Http\Resources\RepositoryResource;
 use App\Models\Document;
@@ -107,8 +109,12 @@ class RepositoryController extends Controller
             // „Zone fierbinți”: the 5 files changed most often (Istoric), null when there are none.
             'hotspots' => fn () => $statistics->hotspots($repository, 5) ?: null,
 
-            // A preview of the architecture diagram (Faza 7).
-            'diagram_preview' => null,
+            // A preview of the architecture diagram (Faza 7): the layers view, null until BuildDiagrams draws it.
+            'diagram_preview' => function () use ($repository): ?array {
+                $layers = $repository->diagrams()->firstWhere('type', DiagramType::Layers);
+
+                return $layers === null ? null : DiagramResource::make($layers)->resolve();
+            },
 
             // „Structura codului”: the result of the code analysis (Faza 5), null until the first analysis ends.
             'code_structure' => fn () => $repository->analyzed_at === null

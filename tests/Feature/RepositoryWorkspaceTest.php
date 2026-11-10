@@ -164,9 +164,9 @@ class RepositoryWorkspaceTest extends TestCase
             ])
             ->where('workspace.chapters.1.key', 'architecture')
             ->where('workspace.chapters.1.chapters', [
-                ['label' => 'Cum funcționează', 'href' => "{$base}/diagrams#flow", 'count' => 2],
-                ['label' => 'Straturi', 'href' => "{$base}/diagrams#layers", 'count' => null],
-                ['label' => 'Containere (C4)', 'href' => "{$base}/diagrams#container", 'count' => null],
+                ['label' => 'Cum funcționează', 'href' => "{$base}/diagrams#cum-functioneaza", 'count' => 2],
+                ['label' => 'Straturi', 'href' => "{$base}/diagrams#straturi", 'count' => null],
+                ['label' => 'Containere (C4)', 'href' => "{$base}/diagrams#containere", 'count' => null],
             ])
             ->where('workspace.chapters.2.folders.0.modules.0.href', "{$base}/docs/app-http")
             ->where('workspace.chapters.3.key', 'history')
@@ -179,7 +179,7 @@ class RepositoryWorkspaceTest extends TestCase
                 'title' => 'Arhitectura pe straturi',
                 'type' => 'layers',
                 'mermaid' => 'flowchart TB'."\n".'  web --> data',
-                'href' => "{$base}/diagrams#layers",
+                'href' => "{$base}/diagrams#straturi",
             ])
             ->where('workspace.elements.activity.commit_count', 3)
             ->where('workspace.elements.activity.contributor_count', 2)
