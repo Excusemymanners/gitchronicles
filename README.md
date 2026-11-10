@@ -26,6 +26,8 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 **Faza curentă:** Faza 5 — Analiza codului, gata. După clonare, un analizor în Python cu tree-sitter citește fișierele (PHP, JavaScript, TypeScript, Python, Go, Java), găsește clasele, funcțiile și importurile, iar Laravel le grupează în module și construiește graful de dependențe. Pagina repository-ului are tab-uri (Prezentare, Documentație, Diagrame, Asistent, Istoric, Video), iar stratul AI comun scrie textele prin Claude Code, cu abonamentul (fără credite API), sau prin API-ul Anthropic. Interfața are temă întunecată (implicită), cu un comutator în antet spre tema luminoasă; alegerea se ține minte în browser. Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
+**Istoric:** gata. După analiza codului, GitChronicle importă din clonă cele mai noi 500 de commit-uri (apoi doar pe cele noi), cu fișierele și liniile schimbate. Tab-ul „Istoric” le arată pe luni, cu rulările GitChronicle pe commit-urile procesate, căutare, „Zone fierbinți” (fișierele schimbate cel mai des) și contribuitori; „Prezentare” are cardurile „Activitate” și „Zone fierbinți”.
+
 ## Tehnologii
 
 ✅ folosită · 🔄 în lucru · ⏳ urmează
@@ -78,7 +80,7 @@ Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; pân
 | 25 nov – 1 dec | 6. Documentația generată cu AI | 🏁 Documentație completă pentru un repo mic | ⏳ |
 | 2 – 8 dec | 7. Diagrame C4 + prezentare (Marp) | Diagrame și slide-uri pentru repo | ⏳ |
 | 9 – 15 dec | 8. Asistentul pe cod (RAG) | Răspunsuri cu fișierul și liniile citate | ⏳ |
-| 16 – 22 dec | 9. Actualizarea incrementală + webhook + time travel | 🏁 Miezul lucrării funcționează; istoria arhitecturii pe commit-uri | ⏳ |
+| 16 – 22 dec | 9. Actualizarea incrementală + webhook + time travel | 🏁 Miezul lucrării funcționează; istoria arhitecturii pe commit-uri | 🔄 |
 | 23 dec – 5 ian | 4. Kubernetes + deploy k3s | Aplicația online | ⏳ |
 | Ianuarie | Ajustări + experimente + bonusuri | Rezultate măsurate pentru lucrare. Dacă rămâne timp: leaderboard → video → Instagram, apoi consultanța | ⏳ |
 | Februarie – iunie 2027 | Lucrarea scrisă | Lucrarea predată | ⏳ |

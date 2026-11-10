@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\AddRepository;
 use App\Actions\ReprocessRepository;
+use App\Git\HistoryStatistics;
 use App\Http\Controllers\Repository\RendersRepositoryPage;
 use App\Http\Requests\StoreRepositoryRequest;
 use App\Http\Resources\CodeStructureResource;
@@ -88,17 +89,17 @@ class RepositoryController extends Controller
      * While the repository is processed, the page asks again every 2 seconds for
      * "repository" and "can_retry" only (Inertia polling with a partial reload, in RepositoryLayout).
      */
-    public function show(Request $request, Repository $repository): Response
+    public function show(Request $request, Repository $repository, HistoryStatistics $statistics): Response
     {
         return $this->renderRepositoryPage($request, $repository, 'repositories/show', [
             // „Despre proiect”: what the project does, from the generated overview page (Faza 6).
             'overview' => null,
 
-            // „Activitate”: the commits by month (Istoric).
-            'activity' => null,
+            // „Activitate”: the commits of the last 12 months and the contributors (Istoric), null until the first import.
+            'activity' => fn () => $statistics->activity($repository),
 
-            // „Zone fierbinți”: the files changed most often and their contributors (Istoric).
-            'hotspots' => null,
+            // „Zone fierbinți”: the 5 files changed most often (Istoric), null when there are none.
+            'hotspots' => fn () => $statistics->hotspots($repository, 5) ?: null,
 
             // A preview of the architecture diagram (Faza 7).
             'diagram_preview' => null,

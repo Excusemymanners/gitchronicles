@@ -112,6 +112,16 @@ class Repository extends Model
     }
 
     /**
+     * The commits imported from the clone's git history (ImportCommits).
+     *
+     * @return HasMany<Commit, $this>
+     */
+    public function commits(): HasMany
+    {
+        return $this->hasMany(Commit::class);
+    }
+
+    /**
      * Whether a pipeline run for this repository has started and not finished yet.
      * A second run must wait: two clones in the same folder would break each other.
      */

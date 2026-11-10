@@ -1,17 +1,26 @@
 import { Head } from '@inertiajs/react';
-import ComingSoon from '@/components/repository/coming-soon';
+import TimelineContent from '@/components/timeline/timeline-content';
+import type { TimelineContentProps } from '@/components/timeline/timeline-content';
 import RepositoryLayout from '@/layouts/repository-layout';
 import type { RepositoryPageProps } from '@/types';
 
-/** Tab-ul „Istoric”. Deocamdată spune doar ce va apărea aici. */
-export default function RepositoriesTimeline({ repository }: RepositoryPageProps) {
+type Props = RepositoryPageProps & Omit<TimelineContentProps, 'repository'>;
+
+/** Tab-ul „Istoric”: antetul repository-ului și capitolul cu istoricul (TimelineContent). */
+export default function RepositoriesTimeline({ repository, summary, commits, runs, hotspots, contributors, filters }: Props) {
     return (
         <RepositoryLayout>
             <Head title={`Istoric · ${repository.full_name}`} />
 
-            <ComingSoon title="Istoric">
-                Commit-urile pe luni, rulările GitChronicle peste ele și „călătoria în timp”: documentația așa cum era la un commit procesat mai vechi.
-            </ComingSoon>
+            <TimelineContent
+                repository={repository}
+                summary={summary}
+                commits={commits}
+                runs={runs}
+                hotspots={hotspots}
+                contributors={contributors}
+                filters={filters}
+            />
         </RepositoryLayout>
     );
 }
