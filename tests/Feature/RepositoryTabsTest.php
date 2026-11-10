@@ -10,8 +10,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The tabs of a repository page: every tab is public and gets the same header props
- * (RendersRepositoryPage), which RepositoryLayout shows above the tab's content.
+ * The pages of a repository (once tabs, now chapters of the workspace): every page is public and gets
+ * the same props (RendersRepositoryPage), which WorkspaceLayout shows around the page's content.
  */
 class RepositoryTabsTest extends TestCase
 {

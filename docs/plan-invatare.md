@@ -149,6 +149,7 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - [x] 6.1 stratul AI comun (`app/Ai`): interfața `TextGenerator` și trei variante alese din `AI_DRIVER`: Claude Code cu abonamentul (`claude-code`), API-ul Anthropic (`claude`), fără AI (`none`); teste fără rețea și fără CLI
 - [x] 6.2 verificat pe bune o dată prin Claude Code: răspuns în 2,7 s, 839 tokeni la intrare și 63 la ieșire (0,008 $ dacă ar fi fost pe API), fără cheie API în mediu
 - [x] 6.3 pagina repository-ului cu tab-uri (Prezentare, Documentație, Diagrame, Asistent, Istoric, Video), pregătită pentru fazele 6–9: tab-urile care nu sunt încă gata spun doar ce vor arăta
+- [x] 6.4 spațiul de lucru al repository-ului (stil NotebookLM): cuprinsul în stânga, capitolul în mijloc, panoul „Elemente” în dreapta, bara asistentului jos; pe telefon cuprinsul e un sertar
 
 **Jurnal:**
 - 2026-11-10 — Fundația pentru fazele 6–9. Decizii și motivele lor:
@@ -177,6 +178,17 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Pe fundal închis umbrele nu se văd, așa că un element „mai sus” are un fundal mai deschis (`surface-2`, `surface-raised`) și un chenar. Logo-ul primește un contur subțire doar în tema întunecată, altfel pătratul lui bleumarin se pierde pe fundal.
   - Pe telefon comutatorul rămâne sus, lângă logo, iar navigarea trece pe al doilea rând.
   - Un test verifică că fiecare pagină declară ambele scheme de culori și că tema se alege în `<head>`, înainte de conținut.
+- 2026-11-10 — Spațiul de lucru al repository-ului, în stilul NotebookLM. Decizii și motivele lor:
+  - Tab-urile au fost înlocuite de un spațiu de lucru: cuprinsul în stânga (ca pe Wikipedia sau pe un site de documentație), capitolul deschis în mijloc, într-o coloană de cel mult 760 px, ușor de citit, panoul „Elemente” în dreapta și bara asistentului mereu jos. Rutele și paginile Inertia au rămas aceleași, deci orice link vechi merge în continuare.
+  - Cuprinsul și elementele vin de la server dintr-un singur loc, `WorkspaceResource`, trimis de `RendersRepositoryPage` ca prop-ul `workspace` pe fiecare pagină. Un capitol apare doar când are date reale (README-ul generat, un tip de diagramă, commit-urile); un grup fără capitole nu apare deloc. Tabelele fazelor următoare sunt verificate cu `Schema::hasTable`, ca pagina să meargă și înainte să existe.
+  - `workspace` e un prop-closure: reîmprospătarea de la 2 secunde cere doar `repository` și `can_retry`, deci cuprinsul nu se recalculează degeaba. Numărul de interogări nu crește cu numărul de module; un test le numără pentru un repository cu un modul și pentru unul cu 40.
+  - Modulele sunt grupate pe folderul de sus, în ordinea unui explorator de fișiere: folderele obișnuite, apoi cele de unelte (`.github`), apoi rădăcina. Un folder cu un singur modul apare direct, fără să trebuiască deschis. De la 40 de module apare o căsuță de filtrare (`heygen-com/hyperframes` are 584).
+  - Un modul fără pagină de documentație duce la rândul lui din „Structura codului” (ancora `#modul-{id}`), evidențiat cu `:target`. Legăturile spre o secțiune a paginii deschise sunt ancore obișnuite: browserul derulează fără o cerere la server, iar capitolul evidențiat se calculează din cale și ancoră.
+  - Layout-ul spațiului de lucru e layout-ul implicit al paginilor `repositories/…` (opțiunea `layout` din `createInertiaApp`), așa că Inertia îl păstrează montat între capitole: cuprinsul își păstrează derularea și folderele deschise, iar conversația cu asistentul nu se va pierde la schimbarea capitolului. Paginile nu s-au schimbat: `RepositoryLayout` e acum doar rama capitolului (firul paginii, starea procesării, eroarea).
+  - Fiecare coloană se derulează separat. Coloana din mijloc are atributul `scroll-region`, ca Inertia să o readucă sus la un capitol nou și să-i refacă poziția la „Înapoi”. Coloanele sunt `relative`: altfel textele `sr-only` (poziționate absolut) ieșeau din ele și derulau toată pagina, cu bara de sus cu tot.
+  - Pe telefon cuprinsul e un sertar `<dialog>` deschis cu `showModal()`: browserul ține singur focusul în el și îl închide cu Escape. Panoul „Elemente” trece sub capitol, iar bara asistentului rămâne jos. Fiecare panou e montat într-un singur loc, ales cu `matchMedia`, nu de două ori și ascuns cu CSS.
+  - Accesibilitate: „Sari la conținut”, `aria-current` pe capitolul deschis, folderele sunt butoane cu `aria-expanded`, conturul de focus pe tot ce se poate apăsa, iar animațiile rulează doar cu `motion-safe`.
+  - Cardurile din „Elemente” fără date spun „Încă nu a fost generat” și nu duc nicăieri; bara asistentului e dezactivată până când codul e indexat (Faza 8). Cele trei întrebări de pornire numesc module reale: modulul folosit cel mai mult de celelalte, cea mai puternică dependență și cel mai mare modul rămas, fără folderele de teste.
 
 ## Faza 7 — Diagrame C4 + prezentare
 - **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.

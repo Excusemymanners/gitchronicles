@@ -77,8 +77,12 @@ export default function CodeStructureSection({ codeStructure }: Props) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-line-subtle">
+                            {/*
+                              Fiecare rând are o ancoră (#modul-{id}): cuprinsul duce aici modulele fără pagină de documentație.
+                              scroll-mt lasă loc antetului fix al tabelului; rândul deschis din cuprins e evidențiat (:target).
+                            */}
                             {modules.map((module) => (
-                                <tr key={module.id}>
+                                <tr key={module.id} id={`modul-${module.id}`} className="scroll-mt-10 target:bg-accent-soft">
                                     <td className="py-2 pr-4">
                                         <code className="font-mono break-all text-ink">{module.path}</code>
                                     </td>

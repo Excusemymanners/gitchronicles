@@ -1,3 +1,5 @@
+import type { Activity, Hotspot } from '@/types/history';
+
 /** Utilizatorul autentificat, așa cum îl trimite serverul în `auth.user`. */
 export type User = {
     id: number;
@@ -60,9 +62,73 @@ export type CodeStructure = {
     dependency_count: number;
 };
 
+/** Un capitol din cuprins: o pagină sau o secțiune a unei pagini (partea de după „#”). */
+export type WorkspaceChapter = {
+    label: string;
+    href: string;
+    /** Un număr afișat lângă capitol (de exemplu câte commit-uri); `null` = nimic. */
+    count: number | null;
+};
+
+/** Un modul în cuprins. `label` e numele din folderul lui („Http” în „app”); `href` duce la pagina lui. */
+export type WorkspaceModule = {
+    id: number;
+    path: string;
+    label: string;
+    file_count: number;
+    href: string;
+};
+
+/** Un folder de pe primul nivel („app”) cu modulele lui; „/” e rădăcina proiectului. */
+export type WorkspaceModuleFolder = {
+    name: string;
+    file_count: number;
+    modules: WorkspaceModule[];
+};
+
+export type WorkspaceGroupKey = 'docs' | 'architecture' | 'modules' | 'history';
+
+/** Un grup de capitole din cuprins. Doar grupul „Module” are foldere și un număr lângă titlu. */
+export type WorkspaceGroup = {
+    key: WorkspaceGroupKey;
+    title: string;
+    count: number | null;
+    chapters: WorkspaceChapter[];
+    folders: WorkspaceModuleFolder[];
+};
+
+/** Cardurile din panoul „Elemente”: fiecare e `null` până când datele lui există. */
+export type WorkspaceElements = {
+    /** Diagrama previzualizată (straturile, dacă există), cu codul Mermaid. */
+    architecture: { title: string; type: string; mermaid: string; href: string } | null;
+    /** Video-ul de prezentare. Deocamdată serverul trimite mereu `null`. */
+    video: null;
+    /** Slide-urile. Deocamdată serverul trimite mereu `null`. */
+    slides: null;
+    /** Activitatea ultimelor 12 luni, aceeași ca în tab-ul „Istoric” (HistoryStatistics). */
+    activity: (Activity & { href: string }) | null;
+    /** Primele 5 „Zone fierbinți”, fără fișiere lock, biblioteci și fișiere generate. */
+    hotspots: { files: Hotspot[]; href: string } | null;
+};
+
 /**
- * Prop-urile primite de fiecare pagină a unui repository (toate tab-urile), de la
- * RendersRepositoryPage în Laravel. RepositoryLayout le citește pentru antet.
+ * Spațiul de lucru al unui repository (WorkspaceResource în Laravel): cuprinsul din stânga,
+ * cardurile din dreapta și întrebările de pornire ale asistentului. Totul vine din date reale.
+ */
+export type Workspace = {
+    chapters: WorkspaceGroup[];
+    elements: WorkspaceElements;
+    assistant: {
+        /** Adevărat după ce codul a fost împărțit în bucăți căutabile (Faza 8). */
+        is_indexed: boolean;
+        /** Până la trei întrebări despre module reale, pentru butoanele de deasupra câmpului. */
+        starters: string[];
+    };
+};
+
+/**
+ * Prop-urile primite de fiecare pagină a unui repository, de la RendersRepositoryPage în Laravel.
+ * WorkspaceLayout le citește pentru bara de sus, cuprins, elemente și asistent.
  */
 export type RepositoryPageProps = {
     repository: RepositoryItem;
@@ -70,6 +136,7 @@ export type RepositoryPageProps = {
     can_delete: boolean;
     /** Adevărat pentru orice utilizator autentificat, când procesarea a eșuat. */
     can_retry: boolean;
+    workspace: Workspace;
 };
 
 /**

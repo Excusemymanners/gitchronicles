@@ -23,15 +23,24 @@ type Props = RepositoryPageProps & {
 };
 
 /**
- * Tab-ul „Prezentare”: rezumatul repository-ului. Fiecare secțiune apare doar când are date reale
- * de afișat; „Detalii” (datele etapelor) apare mereu.
+ * Capitolul „Prezentare generală”: numele și descrierea repository-ului, apoi rezumatul lui. Fiecare
+ * secțiune apare doar când are date reale de afișat; „Detalii” (datele etapelor) apare mereu.
  */
 export default function RepositoriesShow({ repository, overview, code_structure, diagram_preview, activity, hotspots }: Props) {
     return (
         <RepositoryLayout>
             <Head title={repository.full_name} />
 
-            <div className="flex flex-col gap-8">
+            <header>
+                {/* <wbr> lasă numele să treacă pe rândul următor după „/” pe un ecran îngust, nu la mijlocul unui cuvânt. */}
+                <h1 className="font-brand text-2xl font-bold tracking-tight break-words text-ink sm:text-3xl">
+                    {repository.owner}/<wbr />
+                    {repository.name}
+                </h1>
+                {repository.description && <p className="mt-3 max-w-prose text-base leading-relaxed text-ink-muted">{repository.description}</p>}
+            </header>
+
+            <div className="mt-8 flex flex-col gap-10">
                 <OverviewSection overview={overview} />
 
                 <StructureSection structure={code_structure} />

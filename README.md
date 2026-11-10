@@ -11,6 +11,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Ce face
 
+- **Spațiu de lucru pentru fiecare repository**, în stilul NotebookLM: cuprinsul în stânga (ca pe Wikipedia), capitolul deschis în mijloc, elementele generate (diagrame, video, slide-uri, activitate, zone fierbinți) în dreapta și bara asistentului mereu jos, în care întrebi orice despre cod.
 - **Documentație** în stil DeepWiki: o pagină pentru fiecare modul, cu navigare și căutare.
 - **Diagrame de arhitectură C4** (Context, Container, Component), generate din codul proiectului.
 - **Asistent pe cod**: răspunde la întrebări despre repository și citează fișierul și liniile exacte.
@@ -24,7 +25,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 5 — Analiza codului, gata. După clonare, un analizor în Python cu tree-sitter citește fișierele (PHP, JavaScript, TypeScript, Python, Go, Java), găsește clasele, funcțiile și importurile, iar Laravel le grupează în module și construiește graful de dependențe. Pagina repository-ului are tab-uri (Prezentare, Documentație, Diagrame, Asistent, Istoric, Video), iar stratul AI comun scrie textele prin Claude Code, cu abonamentul (fără credite API), sau prin API-ul Anthropic. Interfața are temă întunecată (implicită), cu un comutator în antet spre tema luminoasă; alegerea se ține minte în browser. Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 5 — Analiza codului, gata. După clonare, un analizor în Python cu tree-sitter citește fișierele (PHP, JavaScript, TypeScript, Python, Go, Java), găsește clasele, funcțiile și importurile, iar Laravel le grupează în module și construiește graful de dependențe. Pagina repository-ului e un spațiu de lucru: cuprinsul cu capitolele (documentație, arhitectură, modulele grupate pe foldere, istoric) în stânga, capitolul în mijloc, panoul „Elemente” în dreapta și bara asistentului jos; capitolele apar doar când au date reale. Stratul AI comun scrie textele prin Claude Code, cu abonamentul (fără credite API), sau prin API-ul Anthropic. Interfața are temă întunecată (implicită), cu un comutator în antet spre tema luminoasă; alegerea se ține minte în browser. Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 **Istoric:** gata. După analiza codului, GitChronicle importă din clonă cele mai noi 500 de commit-uri (apoi doar pe cele noi), cu fișierele și liniile schimbate. Tab-ul „Istoric” le arată pe luni, cu rulările GitChronicle pe commit-urile procesate, căutare, „Zone fierbinți” (fișierele schimbate cel mai des) și contribuitori; „Prezentare” are cardurile „Activitate” și „Zone fierbinți”.
 

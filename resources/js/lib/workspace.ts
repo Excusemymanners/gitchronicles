@@ -1,0 +1,89 @@
+import { router, usePage } from '@inertiajs/react';
+import { useCallback, useSyncExternalStore } from 'react';
+import type { WorkspaceGroup, WorkspaceGroupKey } from '@/types';
+
+/** Capitolul deschis acum: grupul din care face parte, eticheta și adresa lui. */
+export type ActiveChapter = {
+    groupKey: WorkspaceGroupKey;
+    groupTitle: string;
+    label: string;
+    href: string;
+};
+
+/** Desparte o adresă în cale și ancoră: „/repositories/1/diagrams#layers” → ['/repositories/1/diagrams', '#layers']. */
+export function splitHref(href: string): [path: string, hash: string] {
+    const hashStart = href.indexOf('#');
+    const withoutHash = hashStart === -1 ? href : href.slice(0, hashStart);
+    const queryStart = withoutHash.indexOf('?');
+
+    return [queryStart === -1 ? withoutHash : withoutHash.slice(0, queryStart), hashStart === -1 ? '' : href.slice(hashStart)];
+}
+
+/**
+ * Capitolul care se potrivește cu pagina deschisă. Întâi căutăm aceeași cale și aceeași ancoră
+ * (de exemplu „Straturi” pentru /diagrams#layers); fără ancoră, capitolul fără ancoră al paginii
+ * („Prezentare generală”) sau, dacă pagina are doar secțiuni, prima ei secțiune.
+ */
+export function findActiveChapter(groups: WorkspaceGroup[], path: string, hash: string): ActiveChapter | null {
+    const chapters: ActiveChapter[] = groups.flatMap((group) => [
+        ...group.chapters.map((chapter) => ({ groupKey: group.key, groupTitle: group.title, label: chapter.label, href: chapter.href })),
+        ...group.folders.flatMap((folder) =>
+            folder.modules.map((module) => ({ groupKey: group.key, groupTitle: group.title, label: module.path, href: module.href })),
+        ),
+    ]);
+
+    const onThisPage = chapters.filter((chapter) => splitHref(chapter.href)[0] === path);
+
+    return (
+        (hash !== '' ? onThisPage.find((chapter) => splitHref(chapter.href)[1] === hash) : undefined) ??
+        onThisPage.find((chapter) => splitHref(chapter.href)[1] === '') ??
+        onThisPage[0] ??
+        null
+    );
+}
+
+function subscribeToLocation(onChange: () => void): () => void {
+    window.addEventListener('hashchange', onChange);
+    window.addEventListener('popstate', onChange);
+    const removeNavigateListener = router.on('navigate', onChange);
+
+    return () => {
+        window.removeEventListener('hashchange', onChange);
+        window.removeEventListener('popstate', onChange);
+        removeNavigateListener();
+    };
+}
+
+/**
+ * Ancora din adresa paginii („#layers”), actualizată la fiecare schimbare. O citim din window.location,
+ * pentru că o legătură obișnuită spre o secțiune a aceleiași pagini schimbă doar ancora, fără o vizită Inertia.
+ */
+export function useLocationHash(): string {
+    return useSyncExternalStore(subscribeToLocation, () => window.location.hash);
+}
+
+/** Capitolul deschis acum, din cuprinsul primit de la server și adresa paginii. */
+export function useActiveChapter(): ActiveChapter | null {
+    const { props, url } = usePage<{ workspace?: { chapters: WorkspaceGroup[] } }>();
+    const hash = useLocationHash();
+
+    return findActiveChapter(props.workspace?.chapters ?? [], splitHref(url)[0], hash);
+}
+
+/**
+ * Dacă ecranul se potrivește cu o regulă CSS (de exemplu „(min-width: 80rem)”), urmărită la redimensionare.
+ * Așa montăm un panou într-un singur loc (coloană sau sub conținut), nu de două ori ascuns cu CSS.
+ */
+export function useMediaQuery(query: string): boolean {
+    const subscribe = useCallback(
+        (onChange: () => void) => {
+            const mediaQueryList = window.matchMedia(query);
+            mediaQueryList.addEventListener('change', onChange);
+
+            return () => mediaQueryList.removeEventListener('change', onChange);
+        },
+        [query],
+    );
+
+    return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches);
+}
