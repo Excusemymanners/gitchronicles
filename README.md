@@ -25,7 +25,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 7 — Diagramele de arhitectură, gata. Tab-ul „Diagrame” arată arhitectura pe straturi și vederile C4 (Containere, Componente, Context), desenate în browser cu Mermaid și ELK doar din analiza codului și din fișierele proiectului (tehnologiile reale, cu logo-urile lor), plus „Cum funcționează”: 1–3 fluxuri principale explicate de Claude, cu legături la liniile din cod. Înainte: Faza 6 — documentația generată: o pagină pentru fiecare modul, „Despre proiect” și un README descărcabil, cu legături la liniile exacte de pe GitHub, scrise de Claude (local prin Claude Code, cu abonamentul, fără credite API) sau, fără AI, de un șablon care folosește doar faptele din analiză; paginile al căror cod nu s-a schimbat nu se mai scriu. Analiza codului (Faza 5) e făcută de un analizor în Python cu tree-sitter. Pagina repository-ului e un spațiu de lucru: cuprinsul cu capitolele (documentație, arhitectură, modulele grupate pe foldere, istoric) în stânga, capitolul în mijloc, panoul „Elemente” în dreapta și bara asistentului jos; capitolele apar doar când au date reale. Interfața are temă întunecată (implicită), cu un comutator spre tema luminoasă. Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 8 — Asistentul pe cod, gata. Codul analizat e tăiat în bucăți (funcții, clase, ferestre de linii) și indexat cu căutarea full-text din SQLite (FTS5); bara asistentului, jos pe orice pagină a repository-ului, răspunde la întrebări despre cod cu Claude și citează fișierele și liniile exacte pe GitHub, iar fără AI arată fragmentele găsite. Înainte: Faza 7 — diagramele de arhitectură (straturi și C4 Containere, Componente, Context, desenate cu Mermaid și ELK doar din analiza codului și din fișierele proiectului, plus 1–3 fluxuri „Cum funcționează” explicate de Claude); Faza 6 — documentația generată (o pagină pentru fiecare modul, „Despre proiect” și un README descărcabil, scrise de Claude sau, fără AI, de un șablon care folosește doar faptele din analiză; paginile al căror cod nu s-a schimbat nu se mai scriu); Faza 5 — un analizor în Python cu tree-sitter găsește clasele, funcțiile și importurile, iar Laravel le grupează în module. Pagina repository-ului e un spațiu de lucru: cuprinsul cu capitolele (documentație, arhitectură, modulele grupate pe foldere, istoric) în stânga, capitolul în mijloc, panoul „Elemente” în dreapta și bara asistentului jos; capitolele apar doar când au date reale. Stratul AI comun scrie textele prin Claude Code, cu abonamentul (fără credite API), sau prin API-ul Anthropic. Interfața are temă întunecată (implicită), cu un comutator spre tema luminoasă. Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 **Istoric:** gata. După analiza codului, GitChronicle importă din clonă cele mai noi 500 de commit-uri (apoi doar pe cele noi), cu fișierele și liniile schimbate. Tab-ul „Istoric” le arată pe luni, cu rulările GitChronicle pe commit-urile procesate, căutare, „Zone fierbinți” (fișierele schimbate cel mai des) și contribuitori.
 
@@ -55,10 +55,11 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | Kubernetes + kind + Kustomize | Rularea aplicației, a bazei de date și a workerilor ca în producție | 4 | ⏳ |
 | Python + tree-sitter | Analiza codului: clase, funcții, importuri → graful de dependențe | 5 | ✅ |
 | Claude (Claude Code CLI sau API, SDK-ul oficial PHP) | Generarea documentației, a rapoartelor și a răspunsurilor din chat; local prin Claude Code, cu abonamentul | 6, 8 | 🔄 |
-| react-markdown + remark-gfm | Afișarea documentației generate (Markdown fără HTML) | 6 | ✅ |
+| react-markdown + remark-gfm | Afișarea documentației generate și a răspunsurilor asistentului (Markdown fără HTML) | 6, 8 | ✅ |
 | Mermaid 12 + ELK | Diagramele de arhitectură (straturi, C4 Context/Container/Component) și fluxurile „Cum funcționează”, desenate în browser | 7 | ✅ |
 | Iconify „logos” (CC0) | Logo-urile tehnologiilor din diagrame, salvate local (doar cele folosite) | 7 | ✅ |
-| pgvector + Voyage AI | Embedding-uri și căutare semantică pentru asistent | 8 | ⏳ |
+| SQLite FTS5 (bm25) | Căutarea în cod pentru asistent: fragmentele cele mai potrivite unei întrebări | 8 | ✅ |
+| pgvector + Voyage AI | Embedding-uri și căutare semantică pentru asistent (opțional, comparată cu FTS5) | 8 | ⏳ |
 | GitHub webhooks | Pornesc actualizarea incrementală la fiecare push | 9 | ⏳ |
 | Semgrep, OSV-Scanner, scc | Consultanța: bug-uri, vulnerabilități, statistici despre cod | bonus | ⏳ |
 | Marp | Prezentarea repository-ului ca slide-uri | 7 | ⏳ |
@@ -81,7 +82,7 @@ Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; pân
 | 18 – 24 nov | 5. Analiza codului (tree-sitter) | Modulele și dependențele unui repo | ✅ |
 | 25 nov – 1 dec | 6. Documentația generată cu AI | 🏁 Documentație completă pentru un repo mic | ✅ |
 | 2 – 8 dec | 7. Diagrame C4 + prezentare (Marp) | Diagrame și slide-uri pentru repo | 🔄 |
-| 9 – 15 dec | 8. Asistentul pe cod (RAG) | Răspunsuri cu fișierul și liniile citate | ⏳ |
+| 9 – 15 dec | 8. Asistentul pe cod (RAG) | Răspunsuri cu fișierul și liniile citate | ✅ |
 | 16 – 22 dec | 9. Actualizarea incrementală + webhook + time travel | 🏁 Miezul lucrării funcționează; istoria arhitecturii pe commit-uri | 🔄 |
 | 23 dec – 5 ian | 4. Kubernetes + deploy k3s | Aplicația online | ⏳ |
 | Ianuarie | Ajustări + experimente + bonusuri | Rezultate măsurate pentru lucrare. Dacă rămâne timp: leaderboard → video → Instagram, apoi consultanța | ⏳ |

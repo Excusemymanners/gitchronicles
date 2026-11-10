@@ -49,7 +49,7 @@ class ProcessRepository implements ShouldBeUnique, ShouldQueue
 
         BuildDiagrams::class,
 
-        // Faza 8: IndexCode::class,
+        IndexCode::class,
 
         FinishProcessing::class,
     ];

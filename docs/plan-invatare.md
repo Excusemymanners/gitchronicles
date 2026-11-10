@@ -264,6 +264,43 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Fac:** împart codul în bucăți, le salvez ca vectori și fac un chat care răspunde citând fișierul și liniile.
 - **Gata când:** întreb „unde se face autentificarea?” și primesc un răspuns cu fișierul și liniile corecte.
 
+**Progres:**
+- [x] 8.1 tabela `code_chunks` (o funcție, o metodă sau o clasă cu liniile ei exacte; restul liniilor în ferestre de cel mult 80) și, pe SQLite, indexul full-text `code_chunks_fts` (FTS5); interfața `CodeSearch` are două variante: `SqliteCodeSearch` (FTS5, scor bm25) și `LikeCodeSearch` (SQL simplu, pentru alte baze de date)
+- [x] 8.2 `CodeChunker`, `CodeIndexer` și jobul `IndexCode` în pipeline (după diagrame, înainte de „gata”); fișierele peste 200 KB, cele generate (rânduri foarte lungi) și desenele SVG sunt sărite; o reindexare înlocuiește tot, într-o tranzacție
+- [x] 8.3 întrebarea devine termeni de căutare (`SearchTerms`): fără diacritice, fără cuvinte de legătură, ca prefixe („modulele” → `modul*`), plus un glosar mic român → englez („autentificare” → `authenticat*`, `login*`); `MentionedPaths` recunoaște folderele și fișierele numite în întrebare
+- [x] 8.4 `AnswerQuestion`: 8 fragmente (cel mult 2 din același fișier și 2 din teste, cele de 1–2 linii la urmă), răspuns în română cu citări [1], [2]; fără AI, sau când Claude nu poate răspunde, răspunsul e chiar lista fragmentelor
+- [x] 8.5 `POST /repositories/{id}/assistant`: public, 20 de întrebări pe oră pentru fiecare IP, întrebarea între 3 și 1.000 de caractere, cel mult 6 mesaje anterioare; citările duc la liniile exacte pe GitHub, la commitul indexat
+- [x] 8.6 interfața: `useAssistant` (conversația, ținută doar în browser), `AssistantThread` (mesaje în Markdown, citări, surse, așteptare, eroare cu „Încearcă din nou”), `AssistantBar` (Enter trimite, întrebările de pornire ale spațiului de lucru); bara de jos a spațiului de lucru (`AssistantDock`) le folosește, cu conversația într-un panou care se poate ascunde, iar pagina „Asistent” arată aceeași conversație pe toată înălțimea
+- [x] 8.7 teste: 67 noi, 299 în total; Claude nu e apelat niciodată în teste
+- [x] 8.8 verificat pe bune (vezi jurnalul)
+- [ ] 8.9 opțional, după deploy: căutare semantică cu embedding-uri (pgvector), comparată cu cea pe cuvinte
+
+**Jurnal:**
+- 2026-11-10 — Faza 8, asistentul pe cod. Decizii și motivele lor:
+  - Căutarea e full-text (FTS5 din SQLite, cu scorul bm25), nu cu embedding-uri: merge local, fără un serviciu extern și fără costuri, iar întrebările despre cod conțin de obicei nume din cod (clase, fișiere, funcții). Embedding-urile rămân o variantă de comparat mai târziu.
+  - O bucată = o funcție, o metodă sau o clasă fără metode, cu liniile ei exacte (din `code_symbols`, Faza 5) și cu comentariul de deasupra ei; restul liniilor (importuri, proprietăți, Markdown) în ferestre de cel mult 80 de linii; un simbol de peste 120 de linii se taie în ferestre. Așa o citare duce exact la funcția despre care vorbește răspunsul.
+  - Numele unei metode include clasa (`LoginController.store`), ca metoda să fie găsită și după numele clasei.
+  - Indexul FTS5 e scris explicit din cod, nu prin triggere: după salvarea bucăților, `rebuild()` scrie câte un rând pentru fiecare. `repository_id` stă și el în index (fără să fie căutabil), ca indexul unui repository să se șteargă cu o singură comandă, chiar dacă o analiză nouă a șters deja bucățile în cascadă. La ștergerea repository-ului, modelul șterge și indexul.
+  - În index, identificatorii sunt despărțiți în cuvinte (`LoginController` → „Login Controller”), iar FTS5 ignoră majusculele și diacriticele; întrebarea trece prin aceeași despărțire.
+  - Codul e scris în engleză, întrebările vin în română, așa că un glosar mic de termeni de programare adaugă cuvintele englezești („autentificare” → `authenticat*`, `login*`). Am ales `authenticat*` și nu `auth*`, fiindcă `auth*` găsea și `authorize`.
+  - Cuvintele care descriu întrebarea, nu codul („modulul”, „fișierul”, „definite”, „implementată”), nu se caută.
+  - Clasamentul: o potrivire în numele simbolului contează de 6 ori, în cale de 4 ori față de una în cod. Apoi păstrez cel mult 2 fragmente din același fișier și 2 din teste (testele arată cum se folosește codul, dar nu sunt codul), iar fragmentele de 1–2 linii (un tip, o constantă) vin după cele lungi.
+  - Dacă întrebarea numește un folder sau un fișier care există („Ce face modulul app/Http?”), caut doar acolo și completez cu începutul fișierelor, README-ul primul.
+  - O întrebare de continuare („Și cine o apelează?”) are puține cuvinte: abia când găsește sub 8 fragmente, completez cu o căutare care include și cuvintele întrebării anterioare. La început le amestecam mereu, iar o întrebare nouă primea fragmente despre cea veche.
+  - Promptul e în engleză (instrucțiunile sunt urmate mai sigur), răspunsul în română. Modelul primește fragmentele numerotate, cu numerele liniilor, trebuie să citeze [1], [2] doar din ele și să spună clar când nu ajung. Tot ce vine din repository e marcat ca date, nu ca instrucțiuni, iar etichetele de închidere scrise în cod sunt neutralizate.
+  - Fără AI (`AI_DRIVER=none`) sau când Claude nu poate (de exemplu limita abonamentului), răspunsul e lista fragmentelor, cu primele 20 de linii din fiecare și legătura la GitHub: asistentul ajută și fără AI, și nu inventează nimic.
+  - Endpointul e public, ca restul paginilor, dar limitat la 20 de întrebări pe oră pentru fiecare IP, fiindcă fiecare întrebare poate porni un apel la Claude. Conversația stă doar în pagină: browserul trimite ultimele 6 mesaje cu fiecare întrebare, serverul nu salvează nimic.
+  - Citările duc la `https://github.com/{proprietar}/{nume}/blob/{sha}/{cale}#L{a}-L{b}`, la commitul indexat, deci liniile rămân corecte și după push-uri noi. La fișierele Markdown adaug `?plain=1`, altfel GitHub le arată randate și liniile nu pot fi evidențiate.
+  - Interfața e din piese separate (`useAssistant`, `AssistantThread`, `AssistantBar`), ca bara de întrebări să stea în josul oricărei pagini a repository-ului. `AssistantProvider`, pus în `WorkspaceLayout` sub cheia repository-ului, ține o singură conversație pentru bara de jos și pagina „Asistent”: conversația rămâne când deschizi alt capitol și începe din nou la alt repository.
+  - Culorile vin din tokenii temei (`bg-surface`, `text-ink`, `bg-accent-strong`, ...), deci asistentul arată bine în tema întunecată și în cea luminoasă fără clase `dark:`.
+- 2026-11-10 — Verificare pe bune:
+  - `excusemymanners/gitchronicles` (`3ac73c4`): 94 de fișiere → 251 de bucăți (139 sunt funcții, metode sau clase), indexate în 0,16 s.
+  - `heygen-com/hyperframes`: 8.596 de fișiere → 57.260 de bucăți, în 16,7 s și 38 MB de memorie. Aici am găsit o problemă: cu un JOIN obișnuit, SQLite parcurgea toate bucățile repository-ului și rula căutarea din nou pentru fiecare (143 s pentru o întrebare). Cu `CROSS JOIN`, care îl obligă să citească întâi indexul, aceeași căutare durează 70 ms.
+  - Fără AI, trei întrebări puse din pagină: „Ce face modulul app/Http?” (începutul celor 8 fișiere din app/Http), „Unde se face autentificarea?” (`LoginRequest::authenticate`, `LoginController::store`, pagina de login, mesajele din `lang/ro/auth.php`), „Cum se validează linkul de GitHub?” (`GitHubUrl::normalize` și `parse`).
+  - Cu Claude, prin abonament, fără credite API: „Unde se face autentificarea?” → răspuns în 9,3 s, 4.332 de tokeni la intrare și 762 la ieșire (0,05 $ dacă ar fi fost pe API). A citat corect 4 fragmente (`LoginRequest.php` 41–59, `LoginController.php` 28–45, `login.tsx` 11–86, `lang/ro/auth.php` 1–22) și a spus singur ce lipsea din fragmente. Încă trei întrebări pe hyperframes au folosit între 2.611 și 8.513 tokeni la intrare.
+  - Limita de 20 de întrebări pe oră a funcționat și în browser: la a 21-a întrebare, pagina a spus după câte minute se poate întreba din nou, cu butonul „Încearcă din nou”.
+  - Observație: bm25 calculează cât de rar e un cuvânt pe tot indexul, adică pe toate repository-urile; după indexarea unui repository mare, ordinea rezultatelor la unul mic s-a schimbat puțin.
+
 ## Faza 9 — Actualizarea incrementală (miezul licenței)
 - **Fac:** `git diff` față de ultimul SHA, reprocesez doar ce s-a schimbat, propag schimbarea prin graf, apoi adaug webhook-ul GitHub și detectarea documentației învechite.
 - **Time travel:** nu mai suprascriu documentația și diagramele, ci le păstrez pe fiecare cu SHA-ul commit-ului lor. În interfață, un slider prin commit-uri arată cum arăta proiectul atunci și ce componente au apărut sau au dispărut.

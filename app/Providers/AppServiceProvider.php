@@ -7,8 +7,12 @@ use App\Ai\ClaudeApiGenerator;
 use App\Ai\ClaudeCodeGenerator;
 use App\Ai\NullTextGenerator;
 use App\Ai\TextGenerator;
+use App\Search\CodeSearch;
+use App\Search\LikeCodeSearch;
+use App\Search\SqliteCodeSearch;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +24,12 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(TextGenerator::class, fn (): TextGenerator => $this->textGenerator());
+
+        // The assistant's code search (Faza 8): SQLite's full-text index (FTS5) when the database is SQLite,
+        // plain LIKE queries on any other database.
+        $this->app->bind(CodeSearch::class, fn (): CodeSearch => DB::connection()->getDriverName() === 'sqlite'
+            ? new SqliteCodeSearch
+            : new LikeCodeSearch);
     }
 
     /**
@@ -68,11 +78,18 @@ class AppServiceProvider extends ServiceProvider
      * IP address when the visitor is a guest (guests may submit the form too),
      * because every new repository and every „Reîncearcă” starts a clone job.
      * Adding and retrying share the same 10 requests (same limiter, same key).
+     *
+     * "assistant": at most 20 questions per hour for each IP address, logged in or not
+     * (the assistant is public), because every question can start a call to Claude.
      */
     private function configureRateLimiting(): void
     {
         RateLimiter::for('repositories', function (Request $request) {
             return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('assistant', function (Request $request) {
+            return Limit::perHour(20)->by($request->ip());
         });
     }
 }

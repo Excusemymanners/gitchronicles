@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Repository\AssistantController;
+use App\Http\Controllers\Repository\AssistantQuestionController;
 use App\Http\Controllers\Repository\DiagramsController;
 use App\Http\Controllers\Repository\DocsController;
 use App\Http\Controllers\Repository\DownloadReadmeController;
@@ -32,6 +33,7 @@ Route::prefix('repositories/{repository}')->name('repositories.')->group(functio
 
     // „Asistent”: questions about the code, answered with cited files and lines (Faza 8).
     Route::get('assistant', AssistantController::class)->name('assistant');
+    Route::post('assistant', AssistantQuestionController::class)->middleware('throttle:assistant')->name('assistant.ask');
 
     // „Istoric”: the commits, the processing runs and the time travel (Faza 9).
     Route::get('timeline', TimelineController::class)->name('timeline');

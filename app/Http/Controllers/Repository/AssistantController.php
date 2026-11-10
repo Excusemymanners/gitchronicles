@@ -9,7 +9,8 @@ use Inertia\Response;
 
 /**
  * The „Asistent” tab of a repository: the chat that answers questions about the code and cites files and lines (Faza 8).
- * Until that part is built, the page only says what will appear here.
+ * The conversation itself lives in the workspace (WorkspaceLayout), so this page needs only the shared props;
+ * the questions go to AssistantQuestionController.
  */
 class AssistantController extends Controller
 {

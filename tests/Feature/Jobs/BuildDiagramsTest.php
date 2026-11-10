@@ -12,6 +12,7 @@ use App\Jobs\CloneRepository;
 use App\Jobs\FinishProcessing;
 use App\Jobs\GenerateDocumentation;
 use App\Jobs\ImportCommits;
+use App\Jobs\IndexCode;
 use App\Jobs\ProcessRepository;
 use App\Models\Diagram;
 use App\Models\Module;
@@ -39,7 +40,7 @@ class BuildDiagramsTest extends TestCase
 
         (new ProcessRepository($repository, ProcessingTrigger::Manual))->handle();
 
-        Bus::assertChained([CloneRepository::class, AnalyzeRepository::class, ImportCommits::class, GenerateDocumentation::class, BuildDiagrams::class, FinishProcessing::class]);
+        Bus::assertChained([CloneRepository::class, AnalyzeRepository::class, ImportCommits::class, GenerateDocumentation::class, BuildDiagrams::class, IndexCode::class, FinishProcessing::class]);
     }
 
     public function test_saves_the_architecture_diagrams_for_the_processed_commit(): void

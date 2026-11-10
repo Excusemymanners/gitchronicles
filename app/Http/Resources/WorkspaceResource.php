@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * The workspace of a repository (the Workspace type in TypeScript), sent with every page of the repository:
@@ -20,7 +19,6 @@ use Illuminate\Support\Facades\Schema;
  * - "elements": the cards of the „Elemente” panel on the right; each one is null until its data exists.
  * - "assistant": whether the code is indexed for questions, and up to three starter questions about real modules.
  *
- * The code_chunks table comes with Faza 8, so the query on it first checks that the table exists.
  * The git history is counted by HistoryStatistics, the same service as the „Istoric” tab, so the
  * panel and the tab always show the same numbers (lock files and libraries left out).
  * The number of queries is fixed, whatever the size of the repository: nothing is queried once per module.
@@ -333,7 +331,7 @@ class WorkspaceResource extends JsonResource
      */
     private function isCodeIndexed(): bool
     {
-        return Schema::hasTable('code_chunks') && DB::table('code_chunks')->where('repository_id', $this->id)->exists();
+        return $this->codeChunks()->exists();
     }
 
     /**

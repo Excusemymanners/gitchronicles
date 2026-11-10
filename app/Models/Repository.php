@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProcessingRunStatus;
 use App\Enums\RepositoryStatus;
+use App\Search\CodeSearch;
 use Database\Factories\RepositoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Storage;
  * and a short `description` taken from the README.
  *
  * The clone lives in storage/app/private/repositories/{id} and is deleted together with the record.
+ * So is the search index of its code (Faza 8, CodeSearch::forget()).
  */
 #[Fillable([
     'url', 'owner', 'name', 'description', 'status', 'default_branch', 'last_sha', 'error',
@@ -37,12 +39,14 @@ class Repository extends Model
     use HasFactory;
 
     /**
-     * Delete the clone together with the repository, whoever deletes it.
+     * Delete the clone and the search index of its code together with the repository, whoever deletes it.
      */
     protected static function booted(): void
     {
         static::deleted(function (Repository $repository): void {
             Storage::disk('local')->deleteDirectory($repository->cloneDirectory());
+
+            app(CodeSearch::class)->forget($repository);
         });
     }
 
@@ -130,6 +134,16 @@ class Repository extends Model
     public function diagrams(): HasMany
     {
         return $this->hasMany(Diagram::class)->chaperone();
+    }
+
+    /**
+     * The pieces of code the assistant searches and cites, written by the last IndexCode step (Faza 8).
+     *
+     * @return HasMany<CodeChunk, $this>
+     */
+    public function codeChunks(): HasMany
+    {
+        return $this->hasMany(CodeChunk::class);
     }
 
     /**

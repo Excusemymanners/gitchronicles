@@ -111,6 +111,38 @@ export type WorkspaceElements = {
     hotspots: { files: Hotspot[]; href: string } | null;
 };
 
+/** Un fragment de cod pe care se bazează un răspuns, cu liniile lui exacte. */
+export type AssistantCitation = {
+    /** Numărul din răspuns: [1], [2], ... */
+    index: number;
+    path: string;
+    start_line: number;
+    end_line: number;
+    /** Clasa sau funcția fragmentului, de exemplu „LoginController.store”; `null` pentru o fereastră de linii. */
+    symbol_name: string | null;
+    /** Liniile pe GitHub, la commitul indexat; `null` dacă nu știm commitul. */
+    url: string | null;
+    /** Adevărat dacă răspunsul chiar citează fragmentul. */
+    cited: boolean;
+};
+
+/** Răspunsul serverului la o întrebare (POST /repositories/{id}/assistant). */
+export type AssistantReply = {
+    answer_markdown: string;
+    citations: AssistantCitation[];
+    /** „ai”: scris de Claude din fragmente; „retrieval”: doar fragmentele găsite, fără AI. */
+    mode: 'ai' | 'retrieval';
+    /** De ce răspunsul e fără AI (AI oprit sau Claude indisponibil); `null` altfel. */
+    notice: string | null;
+    usage: {
+        input_tokens: number;
+        output_tokens: number;
+        cost_usd_equivalent: number | null;
+        model: string;
+        driver: string;
+    } | null;
+};
+
 /**
  * Spațiul de lucru al unui repository (WorkspaceResource în Laravel): cuprinsul din stânga,
  * cardurile din dreapta și întrebările de pornire ale asistentului. Totul vine din date reale.

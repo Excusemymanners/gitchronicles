@@ -6,10 +6,8 @@ use App\Models\Module;
 use App\Models\ModuleDependency;
 use App\Models\Repository;
 use App\Models\RepositoryFile;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use Tests\TestCase;
@@ -128,7 +126,6 @@ class RepositoryWorkspaceTest extends TestCase
 
     public function test_generated_data_of_the_repository_adds_its_chapters_and_elements(): void
     {
-        $this->createLaterPhaseTables();
         $repository = Repository::factory()->ready()->analyzed()->create();
         $http = $this->module($repository, 'app/Http', 9);
         $otherRepository = Repository::factory()->ready()->create();
@@ -213,7 +210,6 @@ class RepositoryWorkspaceTest extends TestCase
 
     public function test_the_workspace_runs_the_same_number_of_queries_for_any_number_of_modules(): void
     {
-        $this->createLaterPhaseTables();
         $smallRepository = Repository::factory()->ready()->analyzed()->create();
         $this->module($smallRepository, 'app/Http', 1);
         $bigRepository = Repository::factory()->ready()->analyzed()->create();
@@ -260,79 +256,6 @@ class RepositoryWorkspaceTest extends TestCase
             'to_module_id' => $to->id,
             'weight' => $weight,
         ]);
-    }
-
-    /**
-     * The tables written by the later phases (documentation, diagrams, history, assistant), with the
-     * columns from the shared data model. Once those phases are merged their migrations create the
-     * tables, and this only fills the gap before that.
-     */
-    private function createLaterPhaseTables(): void
-    {
-        if (! Schema::hasTable('documents')) {
-            Schema::create('documents', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('repository_id');
-                $table->foreignId('module_id')->nullable();
-                $table->string('slug');
-                $table->string('title');
-                $table->longText('markdown');
-                $table->string('source_sha', 40);
-                $table->string('input_hash', 64);
-                $table->string('writer', 20);
-                $table->timestamp('generated_at');
-                $table->boolean('is_stale')->default(false);
-            });
-        }
-
-        if (! Schema::hasTable('diagrams')) {
-            Schema::create('diagrams', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('repository_id');
-                $table->string('type', 20);
-                $table->string('key')->default('');
-                $table->text('mermaid');
-                $table->json('meta')->nullable();
-                $table->string('source_sha', 40);
-            });
-        }
-
-        if (! Schema::hasTable('commits')) {
-            Schema::create('commits', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('repository_id');
-                $table->string('sha', 40);
-                $table->string('parent_sha', 40)->nullable();
-                $table->string('author_name');
-                $table->timestamp('authored_at');
-                $table->string('subject');
-                $table->unsignedInteger('files_changed');
-                $table->unsignedInteger('insertions');
-                $table->unsignedInteger('deletions');
-            });
-        }
-
-        if (! Schema::hasTable('commit_files')) {
-            Schema::create('commit_files', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('commit_id');
-                $table->string('path', 1024);
-                $table->unsignedInteger('insertions');
-                $table->unsignedInteger('deletions');
-            });
-        }
-
-        if (! Schema::hasTable('code_chunks')) {
-            Schema::create('code_chunks', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('repository_id');
-                $table->foreignId('repository_file_id');
-                $table->unsignedInteger('start_line');
-                $table->unsignedInteger('end_line');
-                $table->string('symbol_name')->nullable();
-                $table->text('content');
-            });
-        }
     }
 
     private function document(Repository $repository, ?Module $module, string $slug): void

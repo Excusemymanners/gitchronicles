@@ -1,6 +1,7 @@
 import { router, usePage, usePoll } from '@inertiajs/react';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
+import AssistantProvider from '@/components/assistant/assistant-provider';
 import FlashMessage from '@/components/flash-message';
 import AssistantDock from '@/components/workspace/assistant-dock';
 import ChaptersDrawer from '@/components/workspace/chapters-drawer';
@@ -32,7 +33,7 @@ const ELEMENTS_COLUMN_QUERY = '(min-width: 80rem)';
  * Tot aici e reîmprospătarea cât timp repository-ul se procesează (mutată din fosta bară de tab-uri).
  */
 export default function WorkspaceLayout({ children }: Props) {
-    const { props } = usePage<RepositoryPageProps>();
+    const { props, component } = usePage<RepositoryPageProps>();
     const { repository, workspace, can_delete, can_retry } = props;
 
     // Cât timp procesarea mai are de lucru, cerem serverului la fiecare 2 secunde doar
@@ -72,7 +73,8 @@ export default function WorkspaceLayout({ children }: Props) {
 
     return (
         // Cheia: alt repository pornește cu un spațiu de lucru nou (foldere închise, fără conversație).
-        <Fragment key={repository.id}>
+        // AssistantProvider ține conversația, comună barei de jos și paginii „Asistent”.
+        <AssistantProvider key={repository.id} repositoryId={repository.id}>
             {/*
               Fiecare coloană care se derulează e „relative”: textele sr-only (poziționate absolut) rămân în coloana lor;
               altfel ar ieși din ea și ar face să se deruleze toată rama, cu bara de sus cu tot.
@@ -114,7 +116,12 @@ export default function WorkspaceLayout({ children }: Props) {
                             <div aria-hidden="true" className="h-52" />
                         </div>
 
-                        <AssistantDock repository={repository} assistant={workspace.assistant} />
+                        {/* Pagina „Asistent” arată ea conversația, pe toată înălțimea; aici rămâne doar bara. */}
+                        <AssistantDock
+                            repository={repository}
+                            assistant={workspace.assistant}
+                            showThread={component !== 'repositories/assistant'}
+                        />
                     </div>
 
                     {hasElementsColumn && (
@@ -136,6 +143,6 @@ export default function WorkspaceLayout({ children }: Props) {
 
                 <FlashMessage placement="top" />
             </div>
-        </Fragment>
+        </AssistantProvider>
     );
 }
