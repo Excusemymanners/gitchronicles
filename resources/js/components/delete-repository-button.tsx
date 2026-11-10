@@ -29,7 +29,7 @@ export default function DeleteRepositoryButton({ repository }: Props) {
             type="button"
             onClick={handleClick}
             disabled={isDeleting}
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md bg-white px-3 py-1.5 text-sm font-medium text-red-700 shadow-xs ring-1 ring-red-200 ring-inset hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-danger-ink shadow-xs ring-1 ring-danger-line ring-inset hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:cursor-not-allowed disabled:opacity-60"
         >
             {isDeleting ? 'Se șterge…' : 'Șterge'}
             {/* Text citit doar de cititoarele de ecran, ca să știe ce repository se șterge. */}

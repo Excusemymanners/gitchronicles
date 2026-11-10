@@ -2,34 +2,42 @@ import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import AppLogo from '@/components/app-logo';
+import ThemeToggle from '@/components/theme-toggle';
 
 type Props = {
     children: ReactNode;
 };
 
-const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600';
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
-const navLinkClasses = `rounded-md px-2 py-1 font-medium text-gray-700 hover:text-indigo-600 ${focusRing}`;
+const navLinkClasses = `rounded-md px-2 py-1 font-medium text-ink-muted hover:text-accent ${focusRing}`;
 
 /**
  * Rama comună a tuturor paginilor: antetul cu navigarea (alta pentru vizitatori și pentru
- * utilizatorii autentificați), conținutul paginii și mesajul flash de la server.
+ * utilizatorii autentificați) și comutatorul de temă, conținutul paginii și mesajul flash de la server.
  */
 export default function AppLayout({ children }: Props) {
     const { auth } = usePage().props;
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900">
-            <header className="border-b border-gray-200 bg-white">
-                <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-                    <Link href="/" className={`rounded-md text-gray-900 ${focusRing}`}>
+        <div className="min-h-screen bg-canvas text-ink">
+            <header className="border-b border-line bg-surface">
+                {/*
+                  Pe ecrane late: logo, navigarea, apoi comutatorul de temă. Pe telefon navigarea trece singură
+                  pe al doilea rând (order-last, toată lățimea), iar comutatorul rămâne sus, lângă logo.
+                */}
+                <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
+                    <Link href="/" className={`mr-auto rounded-md text-ink ${focusRing}`}>
                         <AppLogo />
                     </Link>
 
-                    <nav aria-label="Navigare principală" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                    <nav
+                        aria-label="Navigare principală"
+                        className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm max-sm:order-last max-sm:-ml-2 max-sm:w-full"
+                    >
                         {auth.user ? (
                             <>
-                                <span className="max-w-40 truncate px-2 text-gray-500">{auth.user.name}</span>
+                                <span className="max-w-40 truncate px-2 text-ink-subtle">{auth.user.name}</span>
                                 <Link href="/logout" method="post" as="button" className={`cursor-pointer ${navLinkClasses}`}>
                                     Ieșire
                                 </Link>
@@ -41,13 +49,16 @@ export default function AppLayout({ children }: Props) {
                                 </Link>
                                 <Link
                                     href="/register"
-                                    className={`rounded-md bg-indigo-600 px-3 py-1.5 font-semibold text-white shadow-xs hover:bg-indigo-500 ${focusRing}`}
+                                    className={`rounded-md bg-accent-strong px-3 py-1.5 font-semibold text-on-accent shadow-xs hover:bg-accent-strong-hover ${focusRing}`}
                                 >
                                     Cont nou
                                 </Link>
                             </>
                         )}
                     </nav>
+
+                    {/* Comutatorul nu e o legătură de navigare, așa că stă lângă <nav>, nu în el. */}
+                    <ThemeToggle />
                 </div>
             </header>
 
@@ -65,16 +76,16 @@ const flashKindsByPriority: FlashKind[] = ['error', 'info', 'success'];
 
 /** Culoarea chenarului și a textului pentru fiecare tip de mesaj. */
 const flashBoxClasses: Record<FlashKind, string> = {
-    error: 'border-red-200 text-red-800',
-    info: 'border-indigo-200 text-indigo-800',
-    success: 'border-green-200 text-green-800',
+    error: 'border-danger-line text-danger-ink',
+    info: 'border-info-line text-info-ink',
+    success: 'border-success-line text-success-ink',
 };
 
 /** Culoarea punctului din fața mesajului. */
 const flashDotClasses: Record<FlashKind, string> = {
-    error: 'bg-red-500',
-    info: 'bg-indigo-500',
-    success: 'bg-green-500',
+    error: 'bg-danger',
+    info: 'bg-info',
+    success: 'bg-success',
 };
 
 type VisibleFlash = {
@@ -121,7 +132,7 @@ function FlashMessage() {
         >
             {visibleFlash && (
                 <div
-                    className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-white p-4 text-sm shadow-lg ${flashBoxClasses[visibleFlash.kind]}`}
+                    className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-surface-raised p-4 text-sm shadow-lg ${flashBoxClasses[visibleFlash.kind]}`}
                 >
                     <span aria-hidden="true" className={`mt-1.5 size-2 shrink-0 rounded-full ${flashDotClasses[visibleFlash.kind]}`} />
                     <p className="flex-1">{visibleFlash.text}</p>
@@ -129,7 +140,7 @@ function FlashMessage() {
                         type="button"
                         onClick={() => setVisibleFlash(null)}
                         aria-label="Închide mesajul"
-                        className={`-my-1 cursor-pointer rounded-md px-1.5 text-lg leading-none text-gray-400 hover:text-gray-600 ${focusRing}`}
+                        className={`-my-1 cursor-pointer rounded-md px-1.5 text-lg leading-none text-ink-subtle hover:text-ink ${focusRing}`}
                     >
                         ×
                     </button>

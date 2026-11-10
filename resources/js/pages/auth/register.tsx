@@ -15,10 +15,10 @@ export default function Register({ pending_repository }: Props) {
 
             <div className="mx-auto w-full max-w-sm">
                 <h1 className="text-2xl font-semibold tracking-tight">Cont nou</h1>
-                <p className="mt-1 text-sm text-gray-600">Creează un cont ca să adaugi repository-uri de pe GitHub.</p>
+                <p className="mt-1 text-sm text-ink-muted">Creează un cont ca să adaugi repository-uri de pe GitHub.</p>
 
                 {pending_repository && (
-                    <p className="mt-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800">
+                    <p className="mt-6 rounded-lg border border-info-line bg-info-soft p-4 text-sm text-info-ink">
                         După ce îți creezi contul, adăugăm automat <span className="font-medium break-all">{pending_repository}</span>.
                     </p>
                 )}
@@ -29,7 +29,7 @@ export default function Register({ pending_repository }: Props) {
                     method="post"
                     resetOnError={['password', 'password_confirmation']}
                     noValidate
-                    className="mt-6 flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-xs"
+                    className="mt-6 flex flex-col gap-4 rounded-lg border border-line bg-surface p-6 shadow-xs"
                 >
                     {({ errors, processing }) => (
                         <>
@@ -55,11 +55,11 @@ export default function Register({ pending_repository }: Props) {
                     )}
                 </Form>
 
-                <p className="mt-6 text-center text-sm text-gray-600">
+                <p className="mt-6 text-center text-sm text-ink-muted">
                     Ai deja cont?{' '}
                     <Link
                         href="/login"
-                        className="rounded-sm font-medium text-indigo-600 hover:text-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        className="rounded-sm font-medium text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                     >
                         Autentifică-te
                     </Link>

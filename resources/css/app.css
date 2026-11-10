@@ -3,9 +3,151 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ * Tema întunecată: scriptul din resources/views/app.blade.php pune clasa „dark” pe <html>.
+ * Varianta dark: rămâne pentru excepții rare; culorile obișnuite vin din tokenii de mai jos.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     /* Fontul numelui GitChronicle din logo: Mona Sans, fontul open-source al GitHub. */
     --font-brand: 'Mona Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * Culorile interfeței, numite după rol (fundal, suprafață, text, accent, stare), nu după nuanță:
+ * o componentă scrie bg-surface sau text-ink-muted și arată bine în ambele teme.
+ * Valorile de aici sunt tema luminoasă (aspectul de până acum); clasa .dark le înlocuiește mai jos.
+ * Sunt în hex, ca diagramele Mermaid să le poată citi din JavaScript și folosi direct.
+ * „static” păstrează toate variabilele în CSS, chiar și pe cele pe care nicio clasă nu le folosește încă.
+ */
+@theme static {
+    /*
+     * Fundaluri: pagina, cardurile, elementele mici de pe carduri (cod, bare, hover) și ce plutește
+     * deasupra paginii (mesajul flash, bara fixă de jos). În tema întunecată „mai sus” înseamnă „mai deschis”.
+     */
+    --color-canvas: #f9fafb;
+    --color-surface: #ffffff;
+    --color-surface-2: #f3f4f6;
+    --color-surface-raised: #ffffff;
+
+    /* Linii: între rândurile unei liste, chenarul cardurilor, chenarul câmpurilor de formular. */
+    --color-line-subtle: #f3f4f6;
+    --color-line: #e5e7eb;
+    --color-line-strong: #d1d5db;
+
+    /* Text: principal, secundar (descrieri, etichete), discret (date, indicii, placeholder). */
+    --color-ink: #111827;
+    --color-ink-muted: #4b5563;
+    --color-ink-subtle: #6b7280;
+
+    /* Accentul: legături, tab-ul deschis, conturul de focus; butonul principal; fundalul unui element ales. */
+    --color-accent: #4f46e5;
+    --color-accent-hover: #6366f1;
+    --color-accent-soft: #eef2ff;
+    --color-accent-strong: #4f46e5;
+    --color-accent-strong-hover: #6366f1;
+    --color-on-accent: #ffffff;
+    --color-selection: rgb(79 70 229 / 0.18);
+
+    /*
+     * Stările, fiecare cu patru nuanțe: culoarea plină (punct, text de eroare), fundalul pal,
+     * chenarul și textul de pe fundalul pal.
+     * info = în lucru (albastru), warning = în așteptare (chihlimbar), success = gata (verde), danger = eșuat (roșu).
+     */
+    --color-info: #0ea5e9;
+    --color-info-soft: #f0f9ff;
+    --color-info-line: rgb(2 132 199 / 0.2);
+    --color-info-ink: #075985;
+    --color-warning: #f59e0b;
+    --color-warning-soft: #fffbeb;
+    --color-warning-line: rgb(217 119 6 / 0.2);
+    --color-warning-ink: #92400e;
+    --color-success: #22c55e;
+    --color-success-soft: #f0fdf4;
+    --color-success-line: rgb(22 163 74 / 0.2);
+    --color-success-ink: #166534;
+    --color-danger: #dc2626;
+    --color-danger-soft: #fef2f2;
+    --color-danger-line: rgb(220 38 38 / 0.2);
+    --color-danger-ink: #991b1b;
+
+    /*
+     * Umbra unei bare fixe jos pe ecran (de exemplu câmpul asistentului): cade în sus, peste conținut.
+     * Tailwind copiază forma umbrei în clasa shadow-raised, dar culoarea rămâne variabila --color-shadow,
+     * așa că .dark o poate schimba.
+     */
+    --color-shadow: rgb(17 24 39 / 0.08);
+    --shadow-raised: 0 -6px 20px var(--color-shadow);
+}
+
+@layer base {
+    :root {
+        color-scheme: light;
+    }
+
+    /*
+     * Tema întunecată, din culorile logo-ului: fundal bleumarin, text alb-argintiu, accent albastru-indigo.
+     * Contrastul fiecărei perechi text/fundal e notat în DARK_THEME.md (WCAG AA: minimum 4,5:1).
+     */
+    .dark {
+        color-scheme: dark;
+
+        --color-canvas: #0a0e1a;
+        --color-surface: #111727;
+        --color-surface-2: #172036;
+        --color-surface-raised: #1a2440;
+
+        --color-line-subtle: #1c2539;
+        --color-line: #253049;
+        --color-line-strong: #4a5675;
+
+        --color-ink: #e8ebf4;
+        --color-ink-muted: #a3acc2;
+        --color-ink-subtle: #838ca4;
+
+        --color-accent: #7c8cff;
+        --color-accent-hover: #a3aeff;
+        --color-accent-soft: rgb(124 140 255 / 0.14);
+        --color-accent-strong: #4c5bd4;
+        --color-accent-strong-hover: #5b67e0;
+        --color-on-accent: #ffffff;
+        --color-selection: rgb(124 140 255 / 0.35);
+
+        --color-info: #38bdf8;
+        --color-info-soft: rgb(56 189 248 / 0.12);
+        --color-info-line: rgb(56 189 248 / 0.3);
+        --color-info-ink: #7dd3fc;
+        --color-warning: #fbbf24;
+        --color-warning-soft: rgb(245 158 11 / 0.12);
+        --color-warning-line: rgb(245 158 11 / 0.3);
+        --color-warning-ink: #fcd34d;
+        --color-success: #4ade80;
+        --color-success-soft: rgb(34 197 94 / 0.12);
+        --color-success-line: rgb(34 197 94 / 0.3);
+        --color-success-ink: #86efac;
+        --color-danger: #f87171;
+        --color-danger-soft: rgb(239 68 68 / 0.12);
+        --color-danger-line: rgb(239 68 68 / 0.35);
+        --color-danger-ink: #fca5a5;
+
+        --color-shadow: rgb(0 0 0 / 0.5);
+    }
+
+    /*
+     * Fundalul și textul paginii stau pe <html>, ca nici zona de dinainte de încărcarea React,
+     * nici cea de la derularea peste margine să nu apară albe în tema întunecată.
+     * scrollbar-color se moștenește: și panourile derulabile primesc bare în culorile temei.
+     */
+    html {
+        background-color: var(--color-canvas);
+        color: var(--color-ink);
+        scrollbar-color: var(--color-line-strong) transparent;
+    }
+
+    ::selection {
+        background-color: var(--color-selection);
+    }
 }

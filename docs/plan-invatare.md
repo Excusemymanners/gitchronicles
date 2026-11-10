@@ -168,6 +168,15 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Pagina „Prezentare” e făcută din secțiuni separate, fiecare cu componenta și prop-ul ei. O secțiune fără date reale nu apare deloc, ca să nu afișăm nimic inventat.
   - Pașii procesării sunt o listă în ordine (`ProcessRepository::STAGES`: Clone → Analyze → ImportCommits → GenerateDocumentation → BuildDiagrams → IndexCode → Finish), ca o fază nouă să-și adauge jobul cu o singură linie.
   - Pachete noi: `anthropic-ai/sdk` (API-ul), `react-markdown` și `remark-gfm` (documentația), `mermaid` (diagramele).
+- 2026-11-10 — Tema întunecată, implicită, cu comutator spre tema luminoasă. Decizii și motivele lor:
+  - Culorile sunt tokeni numiți după rol (`canvas`, `surface`, `line`, `ink`, `accent`, `info`/`warning`/`success`/`danger`), definiți o singură dată în `resources/css/app.css`; clasa `.dark` le schimbă doar valorile, așa că o componentă scrie `bg-surface text-ink` și arată bine în ambele teme, fără variante `dark:` peste tot.
+  - Paleta întunecată vine din logo (fundal bleumarin, text alb-argintiu, accent albastru-indigo). Textul nu e alb pur (`#e8ebf4`), ca să nu obosească ochii, și fiecare pereche text/fundal are contrastul cerut de WCAG AA (minimum 4,5:1), măsurat.
+  - Tema se alege într-un script mic din `<head>`, înainte ca browserul să deseneze ceva, ca pagina să nu clipească în alb. Alegerea se păstrează în `localStorage` (`gitchronicle-theme`), fără server și fără cont; când nu e nimic salvat, tema e cea întunecată.
+  - La schimbarea temei se trimite evenimentul `gitchronicle-theme-change`, ca diagramele Mermaid să se poată redesena cu culorile noi. Componentele React citesc tema cu `useTheme()`, făcut cu `useSyncExternalStore`, felul recomandat de React pentru o valoare care trăiește în afara lui (clasa de pe `<html>`).
+  - Accentul indigo înseamnă „se poate apăsa” (legături, butonul principal, tab-ul deschis, conturul de focus), iar culorile de stare spun ce se întâmplă. Statusurile au patru culori, pe grupuri: chihlimbar = așteaptă, albastru = se lucrează, verde = gata, roșu = eșuat; eticheta spune etapa exactă.
+  - Pe fundal închis umbrele nu se văd, așa că un element „mai sus” are un fundal mai deschis (`surface-2`, `surface-raised`) și un chenar. Logo-ul primește un contur subțire doar în tema întunecată, altfel pătratul lui bleumarin se pierde pe fundal.
+  - Pe telefon comutatorul rămâne sus, lângă logo, iar navigarea trece pe al doilea rând.
+  - Un test verifică că fiecare pagină declară ambele scheme de culori și că tema se alege în `<head>`, înainte de conținut.
 
 ## Faza 7 — Diagrame C4 + prezentare
 - **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.

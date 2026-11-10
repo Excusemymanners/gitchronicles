@@ -1,25 +1,31 @@
 import type { RepositoryStatus } from '@/types';
 
-/** Culorile etichetei pentru fiecare status. */
+/*
+ * Culoarea spune în ce grup e statusul, textul spune etapa exactă:
+ * chihlimbar = așteaptă, albastru = se lucrează (clonare, analiză, documentare, actualizare),
+ * verde = gata, roșu = a eșuat. Culorile sunt tokenii de stare din resources/css/app.css.
+ */
+
+/** Fundalul, textul și chenarul etichetei pentru fiecare status. */
 const badgeClasses: Record<RepositoryStatus, string> = {
-    pending: 'bg-amber-50 text-amber-800 ring-amber-600/20',
-    cloning: 'bg-sky-50 text-sky-800 ring-sky-600/20',
-    analyzing: 'bg-indigo-50 text-indigo-800 ring-indigo-600/20',
-    documenting: 'bg-violet-50 text-violet-800 ring-violet-600/20',
-    ready: 'bg-green-50 text-green-800 ring-green-600/20',
-    updating: 'bg-sky-50 text-sky-800 ring-sky-600/20',
-    failed: 'bg-red-50 text-red-800 ring-red-600/20',
+    pending: 'bg-warning-soft text-warning-ink ring-warning-line',
+    cloning: 'bg-info-soft text-info-ink ring-info-line',
+    analyzing: 'bg-info-soft text-info-ink ring-info-line',
+    documenting: 'bg-info-soft text-info-ink ring-info-line',
+    ready: 'bg-success-soft text-success-ink ring-success-line',
+    updating: 'bg-info-soft text-info-ink ring-info-line',
+    failed: 'bg-danger-soft text-danger-ink ring-danger-line',
 };
 
 /** Culoarea punctului din fața textului; cât timp o etapă lucrează, punctul pulsează ușor. */
 const dotClasses: Record<RepositoryStatus, string> = {
-    pending: 'bg-amber-500',
-    cloning: 'bg-sky-500 motion-safe:animate-pulse',
-    analyzing: 'bg-indigo-500 motion-safe:animate-pulse',
-    documenting: 'bg-violet-500 motion-safe:animate-pulse',
-    ready: 'bg-green-500',
-    updating: 'bg-sky-500 motion-safe:animate-pulse',
-    failed: 'bg-red-500',
+    pending: 'bg-warning',
+    cloning: 'bg-info motion-safe:animate-pulse',
+    analyzing: 'bg-info motion-safe:animate-pulse',
+    documenting: 'bg-info motion-safe:animate-pulse',
+    ready: 'bg-success',
+    updating: 'bg-info motion-safe:animate-pulse',
+    failed: 'bg-danger',
 };
 
 type Props = {

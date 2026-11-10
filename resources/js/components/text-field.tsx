@@ -19,7 +19,7 @@ export default function TextField({ label, name, error, id = name, ...inputProps
 
     return (
         <div className="flex flex-col gap-1.5">
-            <label htmlFor={id} className="text-sm font-medium text-gray-700">
+            <label htmlFor={id} className="text-sm font-medium text-ink-muted">
                 {label}
             </label>
             <TextInput
@@ -30,7 +30,7 @@ export default function TextField({ label, name, error, id = name, ...inputProps
                 {...inputProps}
             />
             {error && (
-                <p id={errorId} className="text-sm text-red-600">
+                <p id={errorId} className="text-sm text-danger">
                     {error}
                 </p>
             )}

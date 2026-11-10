@@ -10,7 +10,7 @@ export default function TextInput(props: Props) {
     return (
         <input
             {...props}
-            className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-1 focus:outline-indigo-600 aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:outline-red-600"
+            className="block w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink shadow-xs placeholder:text-ink-subtle focus:outline-2 focus:-outline-offset-1 focus:outline-accent aria-[invalid=true]:border-danger aria-[invalid=true]:focus:outline-danger"
         />
     );
 }

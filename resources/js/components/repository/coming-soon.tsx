@@ -11,8 +11,8 @@ type Props = {
 export default function ComingSoon({ title, children }: Props) {
     return (
         <SectionCard title={title}>
-            <p className="text-sm font-medium text-gray-900">Această secțiune apare în curând.</p>
-            <p className="mt-2 text-sm text-gray-600">{children}</p>
+            <p className="text-sm font-medium text-ink">Această secțiune apare în curând.</p>
+            <p className="mt-2 text-sm text-ink-muted">{children}</p>
         </SectionCard>
     );
 }

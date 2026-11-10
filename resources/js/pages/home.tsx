@@ -37,7 +37,7 @@ export default function Home({ mesaj, repositories }: Props) {
             <section className="flex flex-col items-center gap-2 pb-8 text-center">
                 <AppLogoMark className="mb-2 size-20" />
                 <h1 className="font-brand text-3xl font-bold tracking-tight sm:text-4xl">GitChronicle</h1>
-                <p className="max-w-xl text-gray-600 sm:text-lg">{mesaj}</p>
+                <p className="max-w-xl text-ink-muted sm:text-lg">{mesaj}</p>
             </section>
 
             {/*
@@ -50,11 +50,11 @@ export default function Home({ mesaj, repositories }: Props) {
                 method="post"
                 resetOnSuccess
                 noValidate
-                className="rounded-lg border border-gray-200 bg-white p-4 shadow-xs sm:p-6"
+                className="rounded-lg border border-line bg-surface p-4 shadow-xs sm:p-6"
             >
                 {({ errors, processing }) => (
                     <>
-                        <label htmlFor="url" className="text-sm font-medium text-gray-700">
+                        <label htmlFor="url" className="text-sm font-medium text-ink-muted">
                             Link GitHub
                         </label>
                         <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
@@ -72,11 +72,11 @@ export default function Home({ mesaj, repositories }: Props) {
                             <PrimaryButton disabled={processing}>{processing ? 'Se adaugă…' : 'Adaugă'}</PrimaryButton>
                         </div>
                         {errors.url && (
-                            <p id="url-error" className="mt-1.5 text-sm text-red-600">
+                            <p id="url-error" className="mt-1.5 text-sm text-danger">
                                 {errors.url}
                             </p>
                         )}
-                        <p id="url-hint" className="mt-3 text-sm text-gray-500">
+                        <p id="url-hint" className="mt-3 text-sm text-ink-subtle">
                             {auth.user
                                 ? 'Lipește linkul unui repository de pe GitHub ca să-l adaugi.'
                                 : 'Poți răsfoi totul fără cont. Ca să adaugi un repository nou, îți cerem să intri în cont — apoi îl adăugăm automat.'}
@@ -91,28 +91,28 @@ export default function Home({ mesaj, repositories }: Props) {
                 </h2>
 
                 {repositories.length === 0 ? (
-                    <p className="mt-4 rounded-lg border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-600">
+                    <p className="mt-4 rounded-lg border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-muted">
                         Încă nu a fost adăugat niciun repository. Adaugă primul link de GitHub mai sus.
                     </p>
                 ) : (
-                    <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-xs">
+                    <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-surface shadow-xs">
                         {repositories.map((repository) => (
                             <li key={repository.id} className="px-4 py-4 sm:px-6">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <Link
                                         href={`/repositories/${repository.id}`}
-                                        className="rounded-sm font-medium break-words text-gray-900 hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                                        className="rounded-sm font-medium break-words text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                                     >
                                         {repository.full_name}
                                     </Link>
                                     <StatusBadge status={repository.status} label={repository.status_label} />
                                 </div>
-                                <p className="mt-1 truncate text-sm text-gray-500">{repository.url}</p>
-                                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                                <p className="mt-1 truncate text-sm text-ink-subtle">{repository.url}</p>
+                                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-subtle">
                                     {repository.last_sha && (
                                         <code
                                             title={repository.last_sha}
-                                            className="rounded-sm bg-gray-100 px-1.5 py-0.5 font-mono text-gray-700"
+                                            className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ink-muted"
                                         >
                                             {shortSha(repository.last_sha)}
                                         </code>

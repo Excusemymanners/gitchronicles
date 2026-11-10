@@ -23,8 +23,8 @@ export default function DetailsSection({ repository }: Props) {
             <dl className="grid gap-6 sm:grid-cols-2">
                 {dates.map((item) => (
                     <div key={item.label}>
-                        <dt className="text-sm text-gray-500">{item.label}</dt>
-                        <dd className="mt-1 text-sm text-gray-900">
+                        <dt className="text-sm text-ink-subtle">{item.label}</dt>
+                        <dd className="mt-1 text-sm text-ink">
                             <time dateTime={item.date}>{formatDate(item.date)}</time>
                         </dd>
                     </div>
