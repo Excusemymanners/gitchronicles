@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Actions\AddRepository;
 use App\Enums\ProcessingTrigger;
 use App\Jobs\ProcessRepository;
+use App\Models\Module;
+use App\Models\ModuleDependency;
 use App\Models\Repository;
+use App\Models\RepositoryFile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -88,6 +91,63 @@ class RepositoryTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('repositories/show')
             ->where('can_delete', false)
+        );
+    }
+
+    public function test_show_has_no_code_structure_before_the_first_analysis(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+
+        $response = $this->get("/repositories/{$repository->id}");
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('repositories/show')
+            ->where('code_structure', null)
+        );
+    }
+
+    public function test_show_includes_the_code_structure_of_an_analyzed_repository_only(): void
+    {
+        $repository = Repository::factory()->ready()->analyzed()->create(['name' => 'magazin']);
+        $root = Module::factory()->for($repository)->create(['path' => '/', 'name' => 'magazin', 'file_count' => 1, 'line_count' => 12]);
+        $http = Module::factory()->for($repository)->create(['path' => 'app/Http', 'name' => 'app/Http', 'file_count' => 2, 'line_count' => 150]);
+        $models = Module::factory()->for($repository)->create(['path' => 'app/Models', 'name' => 'app/Models', 'file_count' => 1, 'line_count' => 40]);
+        RepositoryFile::factory()->for($repository)->for($root)->create(['language' => null, 'lines' => 12]);
+        RepositoryFile::factory()->for($repository)->for($http)->create(['language' => 'PHP', 'lines' => 100]);
+        RepositoryFile::factory()->for($repository)->for($http)->create(['language' => 'TypeScript', 'lines' => 50]);
+        RepositoryFile::factory()->for($repository)->for($models)->create(['language' => 'PHP', 'lines' => 40]);
+        ModuleDependency::factory()->for($repository)->create(['from_module_id' => $http->id, 'to_module_id' => $models->id, 'weight' => 3]);
+        ModuleDependency::factory()->for($repository)->create(['from_module_id' => $root->id, 'to_module_id' => $http->id, 'weight' => 5]);
+        RepositoryFile::factory()->create(['language' => 'Go', 'lines' => 999]);
+        ModuleDependency::factory()->create(['weight' => 50]);
+
+        $response = $this->get("/repositories/{$repository->id}");
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('repositories/show')
+            ->where('code_structure', [
+                'file_count' => 4,
+                'line_count' => 202,
+                'module_count' => 3,
+                'language_count' => 2,
+                'languages' => [
+                    ['name' => 'PHP', 'file_count' => 2, 'line_count' => 140],
+                    ['name' => 'TypeScript', 'file_count' => 1, 'line_count' => 50],
+                    ['name' => 'Altele', 'file_count' => 1, 'line_count' => 12],
+                ],
+                'modules' => [
+                    ['id' => $root->id, 'path' => '/', 'name' => 'magazin', 'file_count' => 1, 'line_count' => 12],
+                    ['id' => $http->id, 'path' => 'app/Http', 'name' => 'app/Http', 'file_count' => 2, 'line_count' => 150],
+                    ['id' => $models->id, 'path' => 'app/Models', 'name' => 'app/Models', 'file_count' => 1, 'line_count' => 40],
+                ],
+                'dependencies' => [
+                    ['from' => '/', 'to' => 'app/Http', 'weight' => 5],
+                    ['from' => 'app/Http', 'to' => 'app/Models', 'weight' => 3],
+                ],
+                'dependency_count' => 2,
+            ])
         );
     }
 

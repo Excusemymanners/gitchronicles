@@ -24,7 +24,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 3 — Joburi: clonarea. Clonarea în fundal e gata (lanț de joburi, rulări măsurate în `processing_runs`, pagina se actualizează singură, „Reîncearcă” după o eroare); Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 5 — Analiza codului, gata. După clonare, un analizor în Python cu tree-sitter citește fișierele (PHP, JavaScript, TypeScript, Python, Go, Java), găsește clasele, funcțiile și importurile, iar Laravel le grupează în module și construiește graful de dependențe; pagina repository-ului are secțiunea „Structura codului”. Din Faza 3 au rămas amânate Postgres, Redis și Horizon (până la deploy). Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 ## Tehnologii
 
@@ -50,7 +50,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | PostgreSQL | Baza de date principală | 3 | ⏳ |
 | Redis + Horizon | Coada de joburi și monitorizarea workerilor | 3 | ⏳ |
 | Kubernetes + kind + Kustomize | Rularea aplicației, a bazei de date și a workerilor ca în producție | 4 | ⏳ |
-| Python + tree-sitter | Analiza codului: clase, funcții, importuri → graful de dependențe | 5 | ⏳ |
+| Python + tree-sitter | Analiza codului: clase, funcții, importuri → graful de dependențe | 5 | ✅ |
 | Laravel AI SDK + Claude API | Generarea documentației, a rapoartelor și a răspunsurilor din chat | 6, 8 | ⏳ |
 | react-markdown | Afișarea documentației generate | 6 | ⏳ |
 | Mermaid (C4) | Diagramele de arhitectură | 7 | ⏳ |
@@ -74,7 +74,7 @@ Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; pân
 | 28 oct – 3 nov 2026 | 1. Inertia + React + TypeScript | Pagina de start în React, cu test | ✅ |
 | 4 – 10 nov | 2. Utilizatori și repository-uri | Aplicație publică; login doar ca să adaugi un repo, apoi se adaugă singur | ✅ |
 | 11 – 17 nov | 3. Joburi + Postgres, Redis, Horizon | 🏁 Aplicația clonează un repo și afișează SHA-ul | 🔄 |
-| 18 – 24 nov | 5. Analiza codului (tree-sitter) | Modulele și dependențele unui repo | ⏳ |
+| 18 – 24 nov | 5. Analiza codului (tree-sitter) | Modulele și dependențele unui repo | ✅ |
 | 25 nov – 1 dec | 6. Documentația generată cu AI | 🏁 Documentație completă pentru un repo mic | ⏳ |
 | 2 – 8 dec | 7. Diagrame C4 + prezentare (Marp) | Diagrame și slide-uri pentru repo | ⏳ |
 | 9 – 15 dec | 8. Asistentul pe cod (RAG) | Răspunsuri cu fișierul și liniile citate | ⏳ |
@@ -92,7 +92,7 @@ Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; pân
 
 ## Rulare locală
 
-Cerințe: PHP 8.3+, Composer, Node.js 22+.
+Cerințe: PHP 8.3+, Composer, Node.js 22+, Python 3.10+.
 
 ```bash
 composer install
@@ -100,6 +100,7 @@ cp .env.example .env
 php artisan key:generate
 php artisan migrate
 npm install
+composer analyzer:install   # analizorul de cod: analyzer/.venv + gramaticile tree-sitter
 ```
 
 Apoi, în trei terminale:
@@ -107,7 +108,7 @@ Apoi, în trei terminale:
 ```bash
 php artisan serve       # aplicația, pe http://127.0.0.1:8000
 npm run dev             # Vite: CSS/JS și reîncărcare automată
-php artisan queue:work  # workerul care rulează joburile (clonarea)
+php artisan queue:work  # workerul care rulează joburile (clonarea, analiza codului)
 ```
 
 Sau totul într-un singur terminal: `composer run dev`. Fără worker, repository-urile adăugate rămân „În așteptare”. Pentru cele adăugate înainte de Faza 3: `php artisan repositories:process --all-pending`.

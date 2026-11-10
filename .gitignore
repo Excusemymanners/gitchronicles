@@ -12,6 +12,7 @@
 /.phpunit.cache
 /.vscode
 /.zed
+/analyzer/.venv
 /auth.json
 /node_modules
 /public/build

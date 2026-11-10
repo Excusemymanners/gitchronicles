@@ -50,6 +50,11 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
+        "analyzer:install": [
+            "python3 -m venv analyzer/.venv",
+            "analyzer/.venv/bin/pip install --quiet --disable-pip-version-check -r analyzer/requirements.txt",
+            "analyzer/.venv/bin/python analyzer/analyze.py --install-grammars"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

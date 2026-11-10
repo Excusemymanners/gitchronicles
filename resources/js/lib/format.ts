@@ -1,3 +1,7 @@
+const numberFormatter = new Intl.NumberFormat('ro-RO');
+
+const percentFormatter = new Intl.NumberFormat('ro-RO', { style: 'percent', maximumFractionDigits: 1 });
+
 const dateFormatter = new Intl.DateTimeFormat('ro-RO', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -18,4 +22,29 @@ export function formatDate(isoDate: string): string {
 /** Primele 7 caractere ale unui SHA, ca în `git log --oneline`. */
 export function shortSha(sha: string): string {
     return sha.slice(0, 7);
+}
+
+/** Un număr cu separatorul de mii din română, de exemplu „12.345”. */
+export function formatNumber(value: number): string {
+    return numberFormatter.format(value);
+}
+
+/** O parte din întreg (între 0 și 1) ca procent, de exemplu 0.452 → „45,2 %”. */
+export function formatPercent(share: number): string {
+    return percentFormatter.format(share);
+}
+
+/**
+ * Un număr urmat de cuvântul potrivit în română: „1 linie”, „5 linii”, „20 de linii”, „101 linii”.
+ * De la 20 în sus (după ultimele două cifre) româna cere „de”.
+ */
+export function countLabel(count: number, singular: string, plural: string): string {
+    if (count === 1) {
+        return `1 ${singular}`;
+    }
+
+    const lastTwoDigits = count % 100;
+    const needsDe = count !== 0 && (lastTwoDigits === 0 || lastTwoDigits >= 20);
+
+    return `${formatNumber(count)} ${needsDe ? 'de ' : ''}${plural}`;
 }

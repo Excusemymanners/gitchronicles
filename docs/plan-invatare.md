@@ -111,6 +111,35 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Fac:** un serviciu mic în Python care extrage din cod fișierele, clasele, funcțiile și importurile. Laravel le salvează în baza de date și construiește graful de dependențe.
 - **Gata când:** pentru un repository clonat văd ce module are și cine pe cine importă.
 
+**Progres:**
+- [x] 5.1 analizorul `analyzer/analyze.py` (Python + tree-sitter): pentru PHP, JavaScript/JSX, TypeScript/TSX, Python, Go și Java găsește clasele, funcțiile, metodele și importurile; pentru restul fișierelor doar limbajul și liniile; răspunde în JSON; instalare cu `composer analyzer:install`
+- [x] 5.2 importurile sunt legate de fișierul din repository spre care arată (PSR-4 din `composer.json`, căi relative și aliasuri `@/` din `tsconfig.json`, module Python, `go.mod`, pachete Java)
+- [x] 5.3 tabelele `repository_files`, `code_symbols`, `file_imports`, `modules`, `module_dependencies` și modelele lor
+- [x] 5.4 `ModuleGrouper` (un modul = folderul, tăiat la 2 niveluri; peste 40 de fișiere se împarte o dată) și `RepositoryAnalyzer` (listează fișierele cu `git ls-files`, rulează analizorul, salvează totul într-o tranzacție, descrierea din README)
+- [x] 5.5 jobul `AnalyzeRepository` în lanț, după clonare (status „Se analizează codul”); rularea notează `files_total`, `files_analyzed`, `modules_total`
+- [x] 5.6 secțiunea „Structura codului” pe pagina repository-ului: cifre, limbaje cu bare, module, cele mai puternice dependențe
+- [x] 5.7 teste: un proiect mic de test (`tests/Fixtures/analyzer-project`, PHP + TypeScript + Python) analizat cu analizorul real; `ModuleGrouper` testat fără Python; 139 de teste trec
+- [x] 5.8 verificat pe bune pe cele 3 repository-uri din aplicația locală (vezi jurnalul)
+
+**Jurnal:**
+- 2026-11-10 — Faza 5 implementată cu Claude Code. Decizii și motivele lor:
+  - Analizorul e un script Python separat (`analyzer/`), pornit din Laravel cu `Process` (comanda ca listă, fără shell, limită de 4 minute). Lista de fișiere intră pe stdin (`--files-from -`), așa că nu rămân fișiere temporare. Python pornește cu `-I` (izolat), ca nimic din repository-ul clonat să nu poată fi importat din greșeală.
+  - `tree-sitter-language-pack` 1.25 descarcă gramaticile la prima folosire. Ca analiza să nu folosească niciodată internetul, `composer analyzer:install` le descarcă o singură dată în `analyzer/.venv/grammars`, iar analizorul refuză să pornească dacă lipsește vreuna (altfel ar încerca să o descarce).
+  - Simbolurile și importurile se caută mergând prin arborele sintactic al fiecărui fișier, cu un tabel mic „tip de nod → tip de simbol” pentru fiecare limbaj (de exemplu `class_declaration` → `class`). Am ales asta în locul funcției gata făcute `process()` din pachet ca să pot explica exact ce se întâmplă.
+  - Un fișier care nu poate fi citit ajunge în lista `errors` și restul analizei merge mai departe; erorile se scriu doar în log. Legăturile simbolice nu se urmează niciodată (ar putea arăta spre fișiere din afara clonei, de exemplu `/etc/passwd`): PHP le sare după modul din git (120000), iar Python le refuză încă o dată.
+  - Ce fișiere se analizează decide PHP, cu o singură comandă `git ls-files --format=...`, care dă pentru fiecare fișier modul, SHA-ul conținutului (`blob_sha`, folosit în Faza 9 ca să vedem ce s-a schimbat), mărimea și dacă git îl consideră binar. Sar peste `vendor/`, `node_modules/`, `dist/`, `build/`, `.min.js`, fișierele binare, cele peste 1 MB și fișierele lock (`composer.lock`, `package-lock.json`, ...): lock-urile au mii de linii generate care ar fi ascuns codul adevărat în statistici.
+  - Modulele (`ModuleGrouper`): folderul fișierului tăiat la 2 niveluri, „/” pentru rădăcină; un modul cu peste 40 de fișiere se împarte o singură dată, un nivel mai jos — o pagină de documentație pe modul (Faza 6) trebuie să rămână de mărime rezonabilă.
+  - Dependențele dintre module se calculează în PHP din importurile rezolvate: A → B când un fișier din A importă un fișier din B; `weight` = câte astfel de importuri. Importurile din același modul nu contează.
+  - Salvarea înlocuiește analiza veche într-o singură tranzacție, cu ștergeri explicite (dependențe, importuri, simboluri, fișiere, module), ca pagina să vadă fie analiza veche, fie pe cea nouă, niciodată jumătăți. Rândurile se scriu cu `insert` în bucăți de 500, nu unul câte unul.
+  - Tabelele analizei nu au `created_at`/`updated_at`: fiecare analiză le rescrie complet, iar `repositories.analyzed_at` spune deja când. Toate au `repository_id`, ca ștergerea și numărarea pe repository să fie o singură interogare.
+  - `AnalyzeRepository` are o singură încercare (`$tries = 1`): analiza nu folosește rețeaua, deci o eroare s-ar repeta; după eșec există „Reîncearcă”.
+  - Pe pagină, `code_structure` e un prop-closure: Inertia rulează interogările doar când pagina îl cere; e inclus în reîmprospătarea la 2 secunde, ca rezultatul să apară singur când se termină analiza.
+- 2026-11-10 — Verificare pe bune, cu un worker temporar, fiecare repository procesat singur:
+  - `excusemymanners/gitchronicles` (versiunea de pe GitHub, `3ac73c4`): 103 fișiere urmărite, 94 analizate, 28 de module, 20 de dependențe; cele mai puternice: `tests/Feature → app/Models` (6), `app/Http → app/Actions` (3), `app/Http → app/Models` (3), `routes → app/Http` (3). Analizorul Python: 0,07 s; toată rularea: 2,4 s.
+  - `octocat/hello-world`: 1 fișier, 1 modul, descrierea „Hello World!”; rularea: 1,7 s.
+  - `heygen-com/hyperframes` (adăugat din aplicație, era în coadă): 9.924 de fișiere urmărite, 9.188 analizate, 584 de module, 56 de dependențe; analizorul Python: 16 s; toată rularea (clonare 38 s + analiză 18 s): 57 s.
+  - Observații: într-un monorepo TypeScript importurile dintre pachete se fac după numele pachetului (`@hyperframes/core`), așa că apar ca externe; iar folderele foarte mari (`packages/studio/src`, 1.695 de fișiere) rămân un singur modul, fiindcă împărțirea se face o singură dată.
+
 ## Faza 6 — Documentația generată cu AI
 - **Învăț:** apeluri la un LLM prin Prism, prompturi și controlul costului în tokeni.
 - **Fac:** o pagină Markdown pentru fiecare modul, plus o pagină de ansamblu, afișate cu meniu lateral și căutare (stil Docsify).

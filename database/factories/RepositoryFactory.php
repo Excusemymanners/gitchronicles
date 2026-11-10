@@ -50,6 +50,16 @@ class RepositoryFactory extends Factory
     }
 
     /**
+     * Indicate that the code analysis ran: the repository has files, modules and dependencies.
+     */
+    public function analyzed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'analyzed_at' => now(),
+        ]);
+    }
+
+    /**
      * Indicate that the pipeline stopped with an error.
      */
     public function failed(): static

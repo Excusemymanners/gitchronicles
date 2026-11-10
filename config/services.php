@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    /*
+    | GitChronicle's code analyzer (analyzer/analyze.py, Python + tree-sitter). "python" is the
+    | interpreter that runs it: by default the one of analyzer/.venv (composer analyzer:install).
+    */
+    'analyzer' => [
+        'python' => env('ANALYZER_PYTHON', base_path('analyzer/.venv/bin/python')),
+    ],
+
 ];

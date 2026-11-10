@@ -42,6 +42,25 @@ export type RepositoryItem = {
 };
 
 /**
+ * Rezultatul analizei codului (tree-sitter), afișat în secțiunea „Structura codului”.
+ * Un modul este un folder care grupează fișiere, de exemplu „app/Http”; „/” e folderul rădăcină.
+ */
+export type CodeStructure = {
+    file_count: number;
+    line_count: number;
+    module_count: number;
+    language_count: number;
+    /** Limbajele, cel cu cele mai multe linii primul; „Altele” = fișierele cu limbaj necunoscut. */
+    languages: { name: string; file_count: number; line_count: number }[];
+    /** Toate modulele, în ordinea căii. */
+    modules: { id: number; path: string; name: string; file_count: number; line_count: number }[];
+    /** Cele mai puternice dependențe: fișierele din `from` importă de `weight` ori fișiere din `to`. */
+    dependencies: { from: string; to: string; weight: number }[];
+    /** Câte dependențe sunt în total (lista de mai sus le arată doar pe cele mai puternice). */
+    dependency_count: number;
+};
+
+/**
  * Tipuri globale pentru Inertia: prop-urile trimise pe fiecare pagină
  * (HandleInertiaRequests::share) și mesajele flash (Inertia::flash).
  * Așa, `usePage().props.auth` și `usePage().flash.success` au tipuri corecte în toate paginile.

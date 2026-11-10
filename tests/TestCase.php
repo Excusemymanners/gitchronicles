@@ -20,4 +20,14 @@ abstract class TestCase extends BaseTestCase
 
         Storage::fake('local');
     }
+
+    /**
+     * Skip a test that runs the real code analyzer (Python + tree-sitter) when it is not installed.
+     */
+    protected function skipUnlessAnalyzerIsInstalled(): void
+    {
+        if (! is_file(config('services.analyzer.python'))) {
+            $this->markTestSkipped('The code analyzer is not installed (analyzer/.venv is missing). Run: composer analyzer:install');
+        }
+    }
 }

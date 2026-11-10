@@ -9,22 +9,25 @@ use App\Models\ProcessingRun;
 use App\Models\Repository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\RunsGit;
 use Tests\TestCase;
 
 /**
- * The whole pipeline (ProcessRepository → CloneRepository → FinishProcessing) with real git
- * and no network: a local git repository stands in for GitHub and is cloned through its folder path.
- * The tests queue is "sync", so dispatch() runs the jobs right away, one after the other.
+ * The whole pipeline (ProcessRepository → CloneRepository → AnalyzeRepository → FinishProcessing)
+ * with real git and no network: a local git repository stands in for GitHub and is cloned through
+ * its folder path. The tests queue is "sync", so dispatch() runs the jobs right away, one after the other.
+ * The tests that reach the analysis need the real analyzer (analyzer/.venv) and are skipped without it.
  */
 class ProcessRepositoryTest extends TestCase
 {
     use RefreshDatabase;
+    use RunsGit;
 
-    public function test_pipeline_clones_the_repository_and_marks_it_ready(): void
+    public function test_pipeline_clones_and_analyzes_the_repository_and_marks_it_ready(): void
     {
+        $this->skipUnlessAnalyzerIsInstalled();
         Storage::fake('local');
         $originPath = $this->createOriginRepository();
         $headSha = $this->git($originPath, ['rev-parse', 'HEAD']);
@@ -39,6 +42,8 @@ class ProcessRepositoryTest extends TestCase
             'last_sha' => $headSha,
             'default_branch' => 'main',
             'cloned_at' => '2026-11-10 12:00:00',
+            'analyzed_at' => '2026-11-10 12:00:00',
+            'description' => null,
             'error' => null,
         ]);
         $this->assertDatabaseCount('processing_runs', 1);
@@ -50,6 +55,8 @@ class ProcessRepositoryTest extends TestCase
             'from_sha' => null,
             'to_sha' => $headSha,
             'files_total' => 2,
+            'files_analyzed' => 2,
+            'modules_total' => 1,
             'started_at' => '2026-11-10 12:00:00.250',
             'finished_at' => '2026-11-10 12:00:00.250',
             'duration_ms' => 0,
@@ -59,10 +66,12 @@ class ProcessRepositoryTest extends TestCase
             "repositories/{$repository->id}/README.md",
             "repositories/{$repository->id}/app.php",
         ]);
+        $this->assertSame(['README.md', 'app.php'], $repository->files()->orderBy('path')->pluck('path')->all());
     }
 
     public function test_pipeline_replaces_a_partial_clone_left_by_an_earlier_attempt(): void
     {
+        $this->skipUnlessAnalyzerIsInstalled();
         Storage::fake('local');
         $originPath = $this->createOriginRepository();
         $repository = Repository::factory()->create(['url' => $originPath]);
@@ -160,29 +169,5 @@ class ProcessRepositoryTest extends TestCase
         $this->git($originPath, ['commit', '--quiet', '-m', 'Al doilea commit']);
 
         return $originPath;
-    }
-
-    /**
-     * Run a git command in the given folder and return its trimmed output.
-     *
-     * The machine's own git settings are ignored (no signing, no hooks from ~/.gitconfig),
-     * and the author is fixed, so the commits are the same on any computer.
-     *
-     * @param  list<string>  $arguments
-     */
-    private function git(string $path, array $arguments): string
-    {
-        return trim(Process::path($path)
-            ->env([
-                'GIT_CONFIG_GLOBAL' => '/dev/null',
-                'GIT_CONFIG_NOSYSTEM' => '1',
-                'GIT_AUTHOR_NAME' => 'Ana Popescu',
-                'GIT_AUTHOR_EMAIL' => 'ana@example.com',
-                'GIT_COMMITTER_NAME' => 'Ana Popescu',
-                'GIT_COMMITTER_EMAIL' => 'ana@example.com',
-            ])
-            ->run(['git', ...$arguments])
-            ->throw()
-            ->output());
     }
 }

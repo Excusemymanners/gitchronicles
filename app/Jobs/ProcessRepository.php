@@ -19,9 +19,9 @@ use Throwable;
  * The entry point of the processing pipeline: it records a new processing run and queues
  * the steps as a chain, so each one starts only after the previous one succeeded:
  *
- *     CloneRepository → FinishProcessing (status "ready")
+ *     CloneRepository → AnalyzeRepository → FinishProcessing (status "ready")
  *
- * The next phases add their steps between the two (analysis, documentation, diagrams, search).
+ * The next phases add their steps before FinishProcessing (documentation, diagrams, search).
  * If any step fails, the chain stops and its "catch" marks the repository and the run as failed.
  *
  * Only one pipeline per repository: ShouldBeUnique keeps a second one from being queued while
@@ -92,6 +92,7 @@ class ProcessRepository implements ShouldBeUnique, ShouldQueue
 
         Bus::chain([
             new CloneRepository($repository, $run),
+            new AnalyzeRepository($repository, $run),
             new FinishProcessing($repository, $run),
         ])->catch(function (Throwable $exception) use ($repository, $run): void {
             $message = RepositoryProcessingException::messageFor($exception);

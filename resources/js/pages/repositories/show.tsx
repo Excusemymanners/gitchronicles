@@ -1,11 +1,12 @@
 import { Form, Head, Link, usePage, usePoll } from '@inertiajs/react';
 import { useEffect } from 'react';
+import CodeStructureSection from '@/components/code-structure';
 import DeleteRepositoryButton from '@/components/delete-repository-button';
 import PrimaryButton from '@/components/primary-button';
 import StatusBadge from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
 import { formatDate, shortSha } from '@/lib/format';
-import type { RepositoryItem } from '@/types';
+import type { CodeStructure, RepositoryItem } from '@/types';
 
 type Props = {
     repository: RepositoryItem;
@@ -13,17 +14,19 @@ type Props = {
     can_delete: boolean;
     /** Adevărat pentru orice utilizator autentificat, când procesarea a eșuat. */
     can_retry: boolean;
+    /** Rezultatul analizei codului; `null` până se termină prima analiză. */
+    code_structure: CodeStructure | null;
 };
 
 const linkClasses =
     'rounded-sm text-indigo-600 hover:text-indigo-500 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600';
 
-export default function RepositoriesShow({ repository, can_delete, can_retry }: Props) {
+export default function RepositoriesShow({ repository, can_delete, can_retry, code_structure }: Props) {
     const { auth } = usePage().props;
 
-    // Cât timp procesarea mai are de lucru, cerem serverului la fiecare 2 secunde doar
-    // repository-ul și dreptul de „Reîncearcă”; când e gata sau a eșuat, ne oprim.
-    const { start, stop } = usePoll(2000, { only: ['repository', 'can_retry'] }, { autoStart: false });
+    // Cât timp procesarea mai are de lucru, cerem serverului la fiecare 2 secunde doar repository-ul,
+    // dreptul de „Reîncearcă” și structura codului; când e gata sau a eșuat, ne oprim.
+    const { start, stop } = usePoll(2000, { only: ['repository', 'can_retry', 'code_structure'] }, { autoStart: false });
 
     useEffect(() => {
         if (repository.is_processing) {
@@ -59,6 +62,7 @@ export default function RepositoriesShow({ repository, can_delete, can_retry }: 
                         {repository.url} <span aria-hidden="true">↗</span>
                         <span className="sr-only"> (se deschide într-o filă nouă)</span>
                     </a>
+                    {repository.description && <p className="mt-3 max-w-2xl text-gray-700">{repository.description}</p>}
                 </div>
 
                 {can_delete && <DeleteRepositoryButton repository={repository} />}
@@ -150,6 +154,22 @@ export default function RepositoriesShow({ repository, can_delete, can_retry }: 
                     </dd>
                 </div>
             </dl>
+
+            <section aria-labelledby="code-structure-heading" className="mt-10">
+                <h2 id="code-structure-heading" className="text-lg font-semibold tracking-tight">
+                    Structura codului
+                </h2>
+
+                {code_structure ? (
+                    <CodeStructureSection codeStructure={code_structure} />
+                ) : (
+                    <p className="mt-4 rounded-lg border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-600">
+                        {repository.is_processing
+                            ? 'Codul se analizează după clonare; rezultatul apare aici singur.'
+                            : 'Codul nu a fost analizat încă.'}
+                    </p>
+                )}
+            </section>
         </AppLayout>
     );
 }

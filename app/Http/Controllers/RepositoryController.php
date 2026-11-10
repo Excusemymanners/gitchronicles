@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\AddRepository;
 use App\Actions\ReprocessRepository;
 use App\Http\Requests\StoreRepositoryRequest;
+use App\Http\Resources\CodeStructureResource;
 use App\Http\Resources\RepositoryResource;
 use App\Models\Repository;
 use App\Support\GitHubUrl;
@@ -77,8 +78,11 @@ class RepositoryController extends Controller
      * Show one repository to anyone. Only the user who added it sees the delete button;
      * any logged-in user sees „Reîncearcă” when the processing failed.
      *
+     * "code_structure" is the result of the code analysis, or null until the first analysis ends.
+     * It is a closure, so Inertia runs its queries only when the page asks for this prop.
+     *
      * While the repository is processed, the page asks again every 2 seconds for
-     * "repository" and "can_retry" only (Inertia polling with a partial reload).
+     * "repository", "can_retry" and "code_structure" only (Inertia polling with a partial reload).
      */
     public function show(Request $request, Repository $repository): Response
     {
@@ -86,6 +90,9 @@ class RepositoryController extends Controller
             'repository' => RepositoryResource::make($repository)->resolve(),
             'can_delete' => $request->user()?->can('delete', $repository) ?? false,
             'can_retry' => $request->user()?->can('retry', $repository) ?? false,
+            'code_structure' => fn () => $repository->analyzed_at === null
+                ? null
+                : CodeStructureResource::make($repository)->resolve(),
         ]);
     }
 

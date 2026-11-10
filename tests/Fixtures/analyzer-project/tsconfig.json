@@ -1,0 +1,7 @@
+{
+    // tsconfig.json may contain comments and trailing commas
+    "compilerOptions": {
+        "strict": true,
+        "paths": { "@/*": ["./frontend/*"] },
+    },
+}
