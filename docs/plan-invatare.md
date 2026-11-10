@@ -59,6 +59,7 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - 2026-11-10 — Logo: pana cronicarului într-o insignă rotundă, după „rețeta” logo-ului GitHub (cerc plin, desen decupat), dar cu desenul nostru: pana scrie o linie cu două commit-uri în formă de inel, ca simbolul de commit din GitHub. Octocat-ul nu poate fi folosit (regulile GitHub interzic). Numele e scris cu Mona Sans, fontul open-source al GitHub. Fișiere: `components/app-logo.tsx`, `public/favicon.svg`, `public/logo.svg`.
 - 2026-11-10 — Lecție: în `app.blade.php` lipsea `@fonts`, deci fonturile din `vite.config.js` nu se încărcau deloc (nici Instrument Sans, din Faza 1); pagina folosea fontul sistemului.
 - 2026-11-10 — **Faza 2 gata.** Test cap-coadă în Chrome (Playwright): ca vizitator lipesc `github.com/Octocat/Hello-World.git`, sunt trimis la login („adăugăm automat…”), îmi fac cont și ajung direct pe pagina `octocat/hello-world`, fără erori în pagină.
+- 2026-11-10 — Logo nou (desenat de mine): iconiță bleumarin în care pana scrie o linie cu două commit-uri, iar linia se continuă într-un cerc ca un cadran de ceas (timpul, istoria). E folosit ca imagine (`public/logo.png`, `logo-256.png`, `favicon.ico`, `apple-touch-icon.png`).
 
 ## Faza 3 — Joburi: clonarea
 - **Învăț:** cozi și joburi în Laravel, rularea comenzilor git din PHP, testarea joburilor, containere Podman.

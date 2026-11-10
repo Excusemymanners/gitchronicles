@@ -1,4 +1,4 @@
-<img src="public/logo.svg" alt="" width="72">
+<img src="public/logo.png" alt="" width="96">
 
 # GitChronicle
 

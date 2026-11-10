@@ -21,7 +21,7 @@ export default function Home({ mesaj, repositories }: Props) {
             <Head title="Acasă" />
 
             <section className="flex flex-col items-center gap-2 pb-8 text-center">
-                <AppLogoMark className="mb-2 size-16 text-gray-900" />
+                <AppLogoMark className="mb-2 size-20" />
                 <h1 className="font-brand text-3xl font-bold tracking-tight sm:text-4xl">GitChronicle</h1>
                 <p className="max-w-xl text-gray-600 sm:text-lg">{mesaj}</p>
             </section>
