@@ -17,11 +17,7 @@ use Throwable;
 
 /**
  * The entry point of the processing pipeline: it records a new processing run and queues
- * the steps as a chain, so each one starts only after the previous one succeeded:
- *
- *     CloneRepository → AnalyzeRepository → FinishProcessing (status "ready")
- *
- * The next phases add their steps before FinishProcessing (documentation, diagrams, search).
+ * the steps listed in STAGES as a chain, so each one starts only after the previous one succeeded.
  * If any step fails, the chain stops and its "catch" marks the repository and the run as failed.
  *
  * Only one pipeline per repository: ShouldBeUnique keeps a second one from being queued while
@@ -30,6 +26,33 @@ use Throwable;
 class ProcessRepository implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
+
+    /**
+     * The steps of the pipeline, in the order they run. The full order, filled in phase by phase:
+     *
+     *     CloneRepository → AnalyzeRepository → ImportCommits → GenerateDocumentation
+     *         → BuildDiagrams → IndexCode → FinishProcessing (status "ready")
+     *
+     * Every step is a queued job built as `new Step($repository, $run)`, so a phase adds its step
+     * by uncommenting (or writing) one line in its place below.
+     *
+     * @var list<class-string<ShouldQueue>>
+     */
+    public const STAGES = [
+        CloneRepository::class,
+
+        AnalyzeRepository::class,
+
+        // Istoric: ImportCommits::class,
+
+        // Faza 6: GenerateDocumentation::class,
+
+        // Faza 7: BuildDiagrams::class,
+
+        // Faza 8: IndexCode::class,
+
+        FinishProcessing::class,
+    ];
 
     /**
      * Only one attempt: if starting the chain fails, the repository stays "pending" without a running
@@ -90,11 +113,9 @@ class ProcessRepository implements ShouldBeUnique, ShouldQueue
             'started_at' => now(),
         ]);
 
-        Bus::chain([
-            new CloneRepository($repository, $run),
-            new AnalyzeRepository($repository, $run),
-            new FinishProcessing($repository, $run),
-        ])->catch(function (Throwable $exception) use ($repository, $run): void {
+        $steps = array_map(fn (string $step): ShouldQueue => new $step($repository, $run), self::STAGES);
+
+        Bus::chain($steps)->catch(function (Throwable $exception) use ($repository, $run): void {
             $message = RepositoryProcessingException::messageFor($exception);
 
             $repository->update(['status' => RepositoryStatus::Failed, 'error' => $message]);

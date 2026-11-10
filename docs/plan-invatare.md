@@ -141,9 +141,33 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Observații: într-un monorepo TypeScript importurile dintre pachete se fac după numele pachetului (`@hyperframes/core`), așa că apar ca externe; iar folderele foarte mari (`packages/studio/src`, 1.695 de fișiere) rămân un singur modul, fiindcă împărțirea se face o singură dată.
 
 ## Faza 6 — Documentația generată cu AI
-- **Învăț:** apeluri la un LLM prin Prism, prompturi și controlul costului în tokeni.
+- **Învăț:** apeluri la Claude (prin CLI-ul Claude Code cu abonamentul sau prin SDK-ul oficial PHP), prompturi și controlul costului în tokeni.
 - **Fac:** o pagină Markdown pentru fiecare modul, plus o pagină de ansamblu, afișate cu meniu lateral și căutare (stil Docsify).
 - **Gata când:** pentru un repo mic am o documentație completă pe care o pot naviga.
+
+**Progres:**
+- [x] 6.1 stratul AI comun (`app/Ai`): interfața `TextGenerator` și trei variante alese din `AI_DRIVER`: Claude Code cu abonamentul (`claude-code`), API-ul Anthropic (`claude`), fără AI (`none`); teste fără rețea și fără CLI
+- [x] 6.2 verificat pe bune o dată prin Claude Code: răspuns în 2,7 s, 839 tokeni la intrare și 63 la ieșire (0,008 $ dacă ar fi fost pe API), fără cheie API în mediu
+- [x] 6.3 pagina repository-ului cu tab-uri (Prezentare, Documentație, Diagrame, Asistent, Istoric, Video), pregătită pentru fazele 6–9: tab-urile care nu sunt încă gata spun doar ce vor arăta
+
+**Jurnal:**
+- 2026-11-10 — Fundația pentru fazele 6–9. Decizii și motivele lor:
+  - Toate textele AI trec prin aceeași interfață, `TextGenerator`, iar `AI_DRIVER` alege cine le scrie: restul aplicației nu depinde de felul în care e apelat Claude.
+  - Local folosesc CLI-ul Claude Code logat cu abonamentul meu, ca să nu cheltui credite API. Pornește ca `claude -p` cu comanda ca listă, cu textul pe STDIN, fără unelte (`--tools ""`), fără MCP și fără setările laptopului, într-un folder gol din `/tmp` șters după apel, ca să nu vadă proiectul, `.env` sau vreun `CLAUDE.md`.
+  - Din mediul CLI-ului scot `ANTHROPIC_API_KEY` și `ANTHROPIC_AUTH_TOKEN`, ca să folosească mereu abonamentul, chiar dacă într-o zi pun o cheie în `.env`.
+  - Varianta cu API folosește SDK-ul oficial `anthropic-ai/sdk`, fiindcă e biblioteca întreținută de Anthropic pentru PHP. Modelul e `claude-opus-5-5`, cu efortul `medium` scris explicit, ca să știu exact cât „gândește” modelul.
+  - Promptul de sistem e marcat pentru cache, pentru că paginile aceluiași repository primesc aceleași instrucțiuni și astfel costă mai puțin.
+  - `fallbacks: "default"`: dacă modelul refuză o cerere, API-ul încearcă singur modelul de rezervă, fără cod în plus la mine.
+  - Verific `stop_reason` înainte să citesc textul: un refuz sau un text tăiat la `max_tokens` devin erori clare, nu documentație pe jumătate.
+  - SDK-ul nu reîncearcă singur; eroarea (`AiException`) spune dacă merită reîncercat (limită atinsă, API supraîncărcat, conexiune pierdută), iar jobul decide. Așa reîncercările sunt într-un singur loc.
+  - Mesajele de eroare sunt în română, pentru pagină; detaliile merg în log, fără prompturi și fără chei.
+  - Cu `AI_DRIVER=none`, apelul aruncă `AiDisabled`, iar fiecare funcție are un mod fără AI: nu inventăm text. În teste AI-ul e mereu oprit (`phpunit.xml`), deci testele nu cheltuie nimic.
+  - Tokenii de intrare numără tot ce a primit modelul (necache-uiți, scriși în cache, citiți din cache), ca măsurătorile din lucrare să fie complete.
+  - Pagina repository-ului are tab-uri, fiecare cu URL-ul lui. Antetul comun e `RepositoryLayout`, iar serverul îi trimite aceleași date pe fiecare tab printr-un trait (`RendersRepositoryPage`), ca să nu le repet în fiecare controller.
+  - Tab-urile sunt legături obișnuite (`<nav>` cu `aria-current`): merg cu Tab și Enter, cu butonul Înapoi și se pot trimite cuiva. Pe telefon bara se derulează orizontal și tab-ul deschis e adus în vedere.
+  - Pagina „Prezentare” e făcută din secțiuni separate, fiecare cu componenta și prop-ul ei. O secțiune fără date reale nu apare deloc, ca să nu afișăm nimic inventat.
+  - Pașii procesării sunt o listă în ordine (`ProcessRepository::STAGES`: Clone → Analyze → ImportCommits → GenerateDocumentation → BuildDiagrams → IndexCode → Finish), ca o fază nouă să-și adauge jobul cu o singură linie.
+  - Pachete noi: `anthropic-ai/sdk` (API-ul), `react-markdown` și `remark-gfm` (documentația), `mermaid` (diagramele).
 
 ## Faza 7 — Diagrame C4 + prezentare
 - **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.

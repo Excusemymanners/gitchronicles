@@ -61,6 +61,18 @@ export type CodeStructure = {
 };
 
 /**
+ * Prop-urile primite de fiecare pagină a unui repository (toate tab-urile), de la
+ * RendersRepositoryPage în Laravel. RepositoryLayout le citește pentru antet.
+ */
+export type RepositoryPageProps = {
+    repository: RepositoryItem;
+    /** Adevărat doar pentru utilizatorul autentificat care a adăugat acest repository. */
+    can_delete: boolean;
+    /** Adevărat pentru orice utilizator autentificat, când procesarea a eșuat. */
+    can_retry: boolean;
+};
+
+/**
  * Tipuri globale pentru Inertia: prop-urile trimise pe fiecare pagină
  * (HandleInertiaRequests::share) și mesajele flash (Inertia::flash).
  * Așa, `usePage().props.auth` și `usePage().flash.success` au tipuri corecte în toate paginile.

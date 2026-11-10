@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\AddRepository;
 use App\Actions\ReprocessRepository;
+use App\Http\Controllers\Repository\RendersRepositoryPage;
 use App\Http\Requests\StoreRepositoryRequest;
 use App\Http\Resources\CodeStructureResource;
 use App\Http\Resources\RepositoryResource;
@@ -20,6 +21,8 @@ use Inertia\Response;
  */
 class RepositoryController extends Controller
 {
+    use RendersRepositoryPage;
+
     /**
      * The home page: every repository, newest first.
      */
@@ -75,21 +78,32 @@ class RepositoryController extends Controller
     }
 
     /**
-     * Show one repository to anyone. Only the user who added it sees the delete button;
-     * any logged-in user sees „Reîncearcă” when the processing failed.
+     * The „Prezentare” tab, open to anyone: the header of every repository page (RendersRepositoryPage)
+     * plus one prop for each section of the page. A section's prop stays null until its phase
+     * fills it from the repository's real data, and a null section is not shown at all.
      *
      * "code_structure" is the result of the code analysis, or null until the first analysis ends.
      * It is a closure, so Inertia runs its queries only when the page asks for this prop.
      *
      * While the repository is processed, the page asks again every 2 seconds for
-     * "repository", "can_retry" and "code_structure" only (Inertia polling with a partial reload).
+     * "repository" and "can_retry" only (Inertia polling with a partial reload, in RepositoryLayout).
      */
     public function show(Request $request, Repository $repository): Response
     {
-        return Inertia::render('repositories/show', [
-            'repository' => RepositoryResource::make($repository)->resolve(),
-            'can_delete' => $request->user()?->can('delete', $repository) ?? false,
-            'can_retry' => $request->user()?->can('retry', $repository) ?? false,
+        return $this->renderRepositoryPage($request, $repository, 'repositories/show', [
+            // „Despre proiect”: what the project does, from the generated overview page (Faza 6).
+            'overview' => null,
+
+            // „Activitate”: the commits by month (Istoric).
+            'activity' => null,
+
+            // „Zone fierbinți”: the files changed most often and their contributors (Istoric).
+            'hotspots' => null,
+
+            // A preview of the architecture diagram (Faza 7).
+            'diagram_preview' => null,
+
+            // „Structura codului”: the result of the code analysis (Faza 5), null until the first analysis ends.
             'code_structure' => fn () => $repository->analyzed_at === null
                 ? null
                 : CodeStructureResource::make($repository)->resolve(),

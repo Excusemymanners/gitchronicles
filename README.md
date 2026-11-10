@@ -24,7 +24,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 5 — Analiza codului, gata. După clonare, un analizor în Python cu tree-sitter citește fișierele (PHP, JavaScript, TypeScript, Python, Go, Java), găsește clasele, funcțiile și importurile, iar Laravel le grupează în module și construiește graful de dependențe; pagina repository-ului are secțiunea „Structura codului”. Din Faza 3 au rămas amânate Postgres, Redis și Horizon (până la deploy). Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 5 — Analiza codului, gata. După clonare, un analizor în Python cu tree-sitter citește fișierele (PHP, JavaScript, TypeScript, Python, Go, Java), găsește clasele, funcțiile și importurile, iar Laravel le grupează în module și construiește graful de dependențe. Pagina repository-ului are tab-uri (Prezentare, Documentație, Diagrame, Asistent, Istoric, Video), iar stratul AI comun scrie textele prin Claude Code, cu abonamentul (fără credite API), sau prin API-ul Anthropic. Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 ## Tehnologii
 
@@ -51,9 +51,9 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | Redis + Horizon | Coada de joburi și monitorizarea workerilor | 3 | ⏳ |
 | Kubernetes + kind + Kustomize | Rularea aplicației, a bazei de date și a workerilor ca în producție | 4 | ⏳ |
 | Python + tree-sitter | Analiza codului: clase, funcții, importuri → graful de dependențe | 5 | ✅ |
-| Laravel AI SDK + Claude API | Generarea documentației, a rapoartelor și a răspunsurilor din chat | 6, 8 | ⏳ |
-| react-markdown | Afișarea documentației generate | 6 | ⏳ |
-| Mermaid (C4) | Diagramele de arhitectură | 7 | ⏳ |
+| Claude (Claude Code CLI sau API, SDK-ul oficial PHP) | Generarea documentației, a rapoartelor și a răspunsurilor din chat; local prin Claude Code, cu abonamentul | 6, 8 | 🔄 |
+| react-markdown | Afișarea documentației generate | 6 | 🔄 |
+| Mermaid (C4) | Diagramele de arhitectură | 7 | 🔄 |
 | pgvector + Voyage AI | Embedding-uri și căutare semantică pentru asistent | 8 | ⏳ |
 | GitHub webhooks | Pornesc actualizarea incrementală la fiecare push | 9 | ⏳ |
 | Semgrep, OSV-Scanner, scc | Consultanța: bug-uri, vulnerabilități, statistici despre cod | bonus | ⏳ |
@@ -112,3 +112,5 @@ php artisan queue:work  # workerul care rulează joburile (clonarea, analiza cod
 ```
 
 Sau totul într-un singur terminal: `composer run dev`. Fără worker, repository-urile adăugate rămân „În așteptare”. Pentru cele adăugate înainte de Faza 3: `php artisan repositories:process --all-pending`.
+
+Textele AI: în `.env`, `AI_DRIVER=claude-code` le scrie cu CLI-ul Claude Code logat pe laptop (abonamentul, fără credite API; calea lui în `CLAUDE_CODE_BIN`), `AI_DRIVER=claude` folosește API-ul (cere `ANTHROPIC_API_KEY`), iar `AI_DRIVER=none` merge fără AI.

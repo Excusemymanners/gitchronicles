@@ -1,0 +1,27 @@
+{
+    "id": "msg_01AbCdEfGhIjKlMnOpQrStUv",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-opus-5-5",
+    "content": [
+        {
+            "type": "thinking",
+            "thinking": "",
+            "signature": "c2lnbmF0dXJl"
+        },
+        {
+            "type": "text",
+            "text": "## Rol\n\nModulul `app/Jobs` rulează pașii procesării în fundal."
+        }
+    ],
+    "stop_reason": "end_turn",
+    "stop_sequence": null,
+    "stop_details": null,
+    "usage": {
+        "input_tokens": 12,
+        "cache_creation_input_tokens": 2048,
+        "cache_read_input_tokens": 4096,
+        "output_tokens": 230,
+        "service_tier": "standard"
+    }
+}
