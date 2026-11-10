@@ -13,6 +13,9 @@ export default defineConfig({
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],
                 }),
+                bunny('Mona Sans', {
+                    weights: [700],
+                }),
             ],
         }),
         react(),

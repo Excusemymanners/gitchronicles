@@ -1,3 +1,5 @@
+<img src="public/logo.svg" alt="" width="72">
+
 # GitChronicle
 
 Asistent AI care documentează automat un repository GitHub și ține documentația la zi pe baza istoricului git: după prima indexare, procesează doar ce s-a schimbat de la ultimul commit indexat, nu tot proiectul de la zero.
@@ -22,7 +24,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 2 — Utilizatori și repository-uri, pasul 2.1 din 4. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 2 — Utilizatori și repository-uri: pașii 2.1–2.4 gata (84 de teste trec), urmează 2.5, verificarea cap-coadă în browser. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 ## Tehnologii
 
@@ -41,8 +43,8 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | Inertia | Leagă Laravel de React fără un API separat | 1 | ✅ |
 | React + TypeScript | Interfața: pagini, formulare, chat, documentație | 1 | ✅ |
 | PHPUnit | Teste pentru fiecare funcționalitate | 1+ | ✅ |
-| SQLite | Baza de date locală la început | 2 | 🔄 |
-| Eloquent + migrații | Tabelele `users`, `repositories` și accesul la ele | 2 | 🔄 |
+| SQLite | Baza de date locală la început | 2 | ✅ |
+| Eloquent + migrații | Tabelele `users`, `repositories` și accesul la ele | 2 | ✅ |
 | Cozi Laravel + Process | Joburile care rulează `git clone` / `git diff` în fundal | 3 | ⏳ |
 | Podman | Containere pentru Postgres și Redis; mai târziu imaginea aplicației | 3, 4 | ⏳ |
 | PostgreSQL | Baza de date principală | 3 | ⏳ |

@@ -42,16 +42,22 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 
 ## Faza 2 — Utilizatori și repository-uri 🔄
 - **Învăț:** migrații, modele Eloquent, validare, formulare Inertia, autentificare.
-- **Fac:** login, modelul `Repository` (url, ultimul_sha, status), un formular „adaugă repository” și lista repository-urilor mele.
-- **Gata când:** mă loghez, adaug un URL de GitHub și îl văd în listă.
+- **Fac:** login, modelul `Repository` (url, ultimul_sha, status), un formular „adaugă repository” și lista publică a repository-urilor.
+- **Regulă (schimbată pe 2026-11-09):** aplicația e gratuită și publică; oricine vede lista și paginile repository-urilor. Contul trebuie doar ca să adaugi un repository nou: după login (sau cont nou) se adaugă automat exact cel cerut.
+- **Gata când:** fără cont văd lista; lipesc un link de GitHub, mi se cere login, iar după login repository-ul apare singur în listă.
 
 **Progres:**
-- [ ] 2.1 tabelul `repositories` (migrație) + modelul `Repository`
-- [ ] 2.2 login
-- [ ] 2.3 formularul „adaugă repository” + lista
-- [ ] 2.4 teste
+- [x] 2.1 tabelul `repositories` (migrație) + modelul `Repository`
+- [x] 2.2 login (cont nou, intrare, ieșire, limită de 5 încercări greșite)
+- [x] 2.3 formularul „adaugă repository” + lista publică
+- [x] 2.4 teste (84 trec)
+- [ ] 2.5 verificare cap-coadă în browser: vizitator → link → login → repository adăugat
 
 **Jurnal:**
+- 2026-11-09 — Faza 2 implementată cu Claude Code. Decizii: autentificare scrisă de mână (fără starter kit), ca s-o pot explica; linkurile de GitHub sunt aduse la o formă unică (`App\Support\GitHubUrl`), ca `github.com/Laravel/Framework.git` și `https://github.com/laravel/framework` să fie același repository; regulile stricte pentru proprietar/nume protejează și viitorul `git clone`; mesajele de eroare în română (`lang/ro`).
+- 2026-11-09 — Regulă nouă: aplicația e publică. Un repository există o singură dată (`url` unic), indiferent cine l-a adăugat; doar cine l-a adăugat îl poate șterge. Adăugarea trece printr-un singur loc (`App\Actions\AddRepository`), folosit și după login, ca să adauge automat linkul cerut de vizitator. Am instalat Laravel Boost (ghiduri și unelte pentru Laravel).
+- 2026-11-10 — Logo: pana cronicarului într-o insignă rotundă, după „rețeta” logo-ului GitHub (cerc plin, desen decupat), dar cu desenul nostru: pana scrie o linie cu două commit-uri în formă de inel, ca simbolul de commit din GitHub. Octocat-ul nu poate fi folosit (regulile GitHub interzic). Numele e scris cu Mona Sans, fontul open-source al GitHub. Fișiere: `components/app-logo.tsx`, `public/favicon.svg`, `public/logo.svg`.
+- 2026-11-10 — Lecție: în `app.blade.php` lipsea `@fonts`, deci fonturile din `vite.config.js` nu se încărcau deloc (nici Instrument Sans, din Faza 1); pagina folosea fontul sistemului.
 
 ## Faza 3 — Joburi: clonarea
 - **Învăț:** cozi și joburi în Laravel, rularea comenzilor git din PHP, testarea joburilor, containere Podman.

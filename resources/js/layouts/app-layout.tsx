@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import AppLogo from '@/components/app-logo';
 
 type Props = {
     children: ReactNode;
@@ -21,8 +22,8 @@ export default function AppLayout({ children }: Props) {
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <header className="border-b border-gray-200 bg-white">
                 <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-                    <Link href="/" className={`rounded-md text-lg font-semibold tracking-tight text-gray-900 ${focusRing}`}>
-                        GitChronicle
+                    <Link href="/" className={`rounded-md text-gray-900 ${focusRing}`}>
+                        <AppLogo />
                     </Link>
 
                     <nav aria-label="Navigare principală" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">

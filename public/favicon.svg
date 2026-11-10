@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <style>.badge{fill:#1f2328}@media (prefers-color-scheme: dark){.badge{fill:#f0f6fc}}</style>
+  <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48">
+    <rect width="48" height="48" fill="#fff"/>
+    <g transform="translate(20.4 38) rotate(30) scale(1.02)" fill="#000"><path d="M0 -6C-5.2 -9.2 -7.9 -14.2 -7.7 -19.4C-7.4 -25.6 -3.9 -30.8 0.6 -34C3.5 -30.2 4.6 -24.4 4.2 -18.4C3.8 -12.8 2.2 -8.6 0 -6Z"/><path d="M-1.25 -5.2L1.25 -5.2L0 1.6Z"/></g>
+    <path d="M11 39.5H19.6" stroke="#000" stroke-width="3.2" stroke-linecap="round"/>
+  </mask>
+  <circle class="badge" cx="24" cy="24" r="23" mask="url(#cut)"/>
+</svg>

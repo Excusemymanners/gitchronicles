@@ -1,4 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { AppLogoMark } from '@/components/app-logo';
 import PrimaryButton from '@/components/primary-button';
 import StatusBadge from '@/components/status-badge';
 import TextInput from '@/components/text-input';
@@ -20,7 +21,8 @@ export default function Home({ mesaj, repositories }: Props) {
             <Head title="Acasă" />
 
             <section className="flex flex-col items-center gap-2 pb-8 text-center">
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">GitChronicle</h1>
+                <AppLogoMark className="mb-2 size-16 text-gray-900" />
+                <h1 className="font-brand text-3xl font-bold tracking-tight sm:text-4xl">GitChronicle</h1>
                 <p className="max-w-xl text-gray-600 sm:text-lg">{mesaj}</p>
             </section>
 

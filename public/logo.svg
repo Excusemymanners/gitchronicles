@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="#1f2328" role="img" aria-label="GitChronicle">
+  <mask id="gc-quill-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48">
+    <rect width="48" height="48" fill="#fff"/>
+    <g transform="translate(22.6 37) rotate(26) scale(.96)" fill="#000"><path d="M0 -6C-5.2 -9.2 -7.9 -14.2 -7.7 -19.4C-7.4 -25.6 -3.9 -30.8 0.6 -34C3.5 -30.2 4.6 -24.4 4.2 -18.4C3.8 -12.8 2.2 -8.6 0 -6Z"/><path d="M-1.25 -5.2L1.25 -5.2L0 1.6Z"/></g>
+    <path d="M11 38.4H21.9" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="11" cy="38.4" r="2.4" fill="#000"/>
+    <circle cx="17.4" cy="38.4" r="2.4" fill="#000"/>
+  </mask>
+  <circle cx="24" cy="24" r="23" fill="#1f2328" mask="url(#gc-quill-cut)"/>
+  <g transform="translate(22.6 37) rotate(26) scale(.96)" fill="#1f2328">
+    <path d="M0 -6.6Q0.5 -20 0.55 -32.4" fill="none" stroke="#1f2328" stroke-width="1.46" stroke-linecap="round"/>
+    <path d="M-7.72 -20.9L-7.6 -18.9L-2.9 -16.6ZM4 -26.4L3.5 -28.4L1.5 -25Z"/>
+  </g>
+  <circle cx="11" cy="38.4" r="1" fill="#1f2328"/>
+  <circle cx="17.4" cy="38.4" r="1" fill="#1f2328"/>
+</svg>
