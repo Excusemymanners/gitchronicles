@@ -1,7 +1,8 @@
 import { useId } from 'react';
 import MermaidDiagram from '@/components/diagrams/mermaid-diagram';
+import MediaStatusBadge from '@/components/media/media-status-badge';
 import ElementCard from '@/components/workspace/element-card';
-import { countLabel, formatNumber } from '@/lib/format';
+import { countLabel, formatNumber, formatTimecode } from '@/lib/format';
 import { formatDay, formatMonth } from '@/lib/history-format';
 import type { WorkspaceElements } from '@/types';
 import type { Activity } from '@/types/history';
@@ -22,7 +23,7 @@ type Props = {
  */
 export default function ElementsPanel({ elements, placement }: Props) {
     const headingId = useId();
-    const { architecture, activity, hotspots } = elements;
+    const { architecture, video, slides, activity, hotspots } = elements;
 
     return (
         <section
@@ -55,18 +56,40 @@ export default function ElementsPanel({ elements, placement }: Props) {
                 <ElementCard
                     title="Video de prezentare"
                     description="Un video scurt despre ce face proiectul, făcut din datele lui."
-                    href={null}
+                    href={video?.href ?? null}
                     actionLabel="Vezi video-ul"
                     emptyText="Încă nu a fost generat."
-                />
+                >
+                    {video &&
+                        (video.poster ? (
+                            // Posterul e un cadru din video (vertical, 9:16); durata stă în colțul lui, ca pe un player.
+                            <div className="relative w-24 overflow-hidden rounded-lg border border-line-subtle bg-canvas">
+                                <img src={video.poster} alt="" loading="lazy" className="block aspect-9/16 w-full object-cover" />
+                                {video.duration_ms !== null && (
+                                    <span className="absolute right-1 bottom-1 rounded-sm bg-canvas/80 px-1 text-[0.6875rem] text-ink tabular-nums">
+                                        {formatTimecode(video.duration_ms)}
+                                    </span>
+                                )}
+                            </div>
+                        ) : (
+                            <MediaStatusBadge status={video.status} label={video.status_label} />
+                        ))}
+                </ElementCard>
 
                 <ElementCard
                     title="Prezentare (slide-uri)"
                     description="Slide-uri despre repository, de descărcat ca PDF sau PPTX."
-                    href={null}
+                    href={slides?.href ?? null}
                     actionLabel="Vezi slide-urile"
                     emptyText="Încă nu au fost generate."
-                />
+                >
+                    {slides &&
+                        (slides.slide_count !== null ? (
+                            <p className="text-[0.8125rem] text-ink">{countLabel(slides.slide_count, 'slide', 'slide-uri')}, în format PDF și PPTX.</p>
+                        ) : (
+                            <MediaStatusBadge status={slides.status} label={slides.status_label} />
+                        ))}
+                </ElementCard>
 
                 <ElementCard
                     title="Activitate"

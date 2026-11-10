@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MediaKind;
 use App\Enums\ProcessingRunStatus;
 use App\Enums\RepositoryStatus;
 use App\Search\CodeSearch;
@@ -39,12 +40,14 @@ class Repository extends Model
     use HasFactory;
 
     /**
-     * Delete the clone and the search index of its code together with the repository, whoever deletes it.
+     * Delete the clone, the search index of its code and the presentation media together with the
+     * repository, whoever deletes it.
      */
     protected static function booted(): void
     {
         static::deleted(function (Repository $repository): void {
             Storage::disk('local')->deleteDirectory($repository->cloneDirectory());
+            Storage::disk('local')->deleteDirectory($repository->mediaDirectory());
 
             app(CodeSearch::class)->forget($repository);
         });
@@ -147,6 +150,24 @@ class Repository extends Model
     }
 
     /**
+     * The presentation video and the slides (one row of each kind at most).
+     *
+     * @return HasMany<MediaAsset, $this>
+     */
+    public function mediaAssets(): HasMany
+    {
+        return $this->hasMany(MediaAsset::class);
+    }
+
+    /**
+     * The video or the slides of this repository: the saved row, or a new one (not saved yet) of that kind.
+     */
+    public function mediaAsset(MediaKind $kind): MediaAsset
+    {
+        return $this->mediaAssets()->firstOrNew(['kind' => $kind]);
+    }
+
+    /**
      * Whether a pipeline run for this repository has started and not finished yet.
      * A second run must wait: two clones in the same folder would break each other.
      */
@@ -161,6 +182,14 @@ class Repository extends Model
     public function cloneDirectory(): string
     {
         return "repositories/{$this->id}";
+    }
+
+    /**
+     * The folder of the presentation video and slides, relative to the "local" disk (storage/app/private).
+     */
+    public function mediaDirectory(): string
+    {
+        return "media/{$this->id}";
     }
 
     /**

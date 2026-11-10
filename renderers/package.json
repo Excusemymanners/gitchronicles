@@ -1,0 +1,20 @@
+{
+    "name": "gitchronicle-renderers",
+    "private": true,
+    "description": "Uneltele Node care fac video-ul (HyperFrames) și slide-urile (Marp) unui repository. Separat de package.json-ul aplicației (Vite).",
+    "type": "module",
+    "engines": {
+        "node": ">=22"
+    },
+    "dependencies": {
+        "@marp-team/marp-cli": "4.5.1",
+        "hyperframes": "0.9.29",
+        "mermaid": "12.3.0",
+        "puppeteer-core": "24.43.1"
+    },
+    "devDependencies": {
+        "@fontsource/instrument-sans": "5.3.0",
+        "@fontsource/jetbrains-mono": "5.3.0",
+        "@fontsource/mona-sans": "5.3.0"
+    }
+}

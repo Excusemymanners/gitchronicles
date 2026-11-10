@@ -1,0 +1,232 @@
+/* @theme gitchronicle */
+
+/*
+ * Tema Marp a slide-urilor GitChronicle: fundal bleumarin, text alb, accentul albastru-lavandă al aplicației,
+ * aceleași fonturi ca video-ul. Fișierele de font (url("fonts/…")) sunt înlocuite de SlideRenderer cu
+ * conținutul lor în base64: Marp nu are voie să citească fișiere locale, iar PDF-ul trebuie să aibă fonturile.
+ * Fiecare greutate are fișierul „latin” (â, î) și „latin-ext” (ă, ș, ț).
+ */
+
+@import 'default';
+
+@font-face { font-family: 'Instrument Sans'; font-weight: 400; font-display: block; src: url("fonts/instrument-sans-latin-400-normal.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Instrument Sans'; font-weight: 400; font-display: block; src: url("fonts/instrument-sans-latin-ext-400-normal.woff2") format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Instrument Sans'; font-weight: 600; font-display: block; src: url("fonts/instrument-sans-latin-600-normal.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Instrument Sans'; font-weight: 600; font-display: block; src: url("fonts/instrument-sans-latin-ext-600-normal.woff2") format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Mona Sans'; font-weight: 700; font-display: block; src: url("fonts/mona-sans-latin-700-normal.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Mona Sans'; font-weight: 700; font-display: block; src: url("fonts/mona-sans-latin-ext-700-normal.woff2") format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Mona Sans'; font-weight: 900; font-display: block; src: url("fonts/mona-sans-latin-900-normal.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Mona Sans'; font-weight: 900; font-display: block; src: url("fonts/mona-sans-latin-ext-900-normal.woff2") format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 500; font-display: block; src: url("fonts/jetbrains-mono-latin-500-normal.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 500; font-display: block; src: url("fonts/jetbrains-mono-latin-ext-500-normal.woff2") format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+section {
+    width: 1280px;
+    height: 720px;
+    padding: 64px 80px 72px;
+    background:
+        radial-gradient(900px 600px at 85% -10%, rgb(124 140 255 / 0.22) 0%, transparent 60%),
+        linear-gradient(160deg, #111a33 0%, #0a0e1a 70%);
+    color: #e8ebf4;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 26px;
+    line-height: 1.45;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* Numărul paginii, jos în dreapta (padding 0: regula Marpit l-ar împinge în conținut). */
+section::after {
+    padding: 0;
+    right: 48px;
+    bottom: 30px;
+    font-size: 18px;
+    color: #838ca4;
+}
+
+footer {
+    left: 80px;
+    bottom: 28px;
+    font-size: 18px;
+    color: #838ca4;
+}
+
+h1, h2, h3 {
+    font-family: 'Mona Sans', sans-serif;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+
+h1 { font-weight: 900; font-size: 84px; line-height: 1.02; }
+h2 { font-weight: 900; font-size: 52px; line-height: 1.08; margin-bottom: 32px; }
+h3 { font-weight: 700; font-size: 26px; color: #a3aeff; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+
+p { margin: 0 0 18px; }
+strong { color: #ffffff; font-weight: 600; }
+em { color: #a3aeff; font-style: normal; }
+a { color: #a3aeff; text-decoration: none; }
+
+ul, ol { margin: 0; padding-left: 1.1em; }
+li { margin: 6px 0; }
+li::marker { color: #7c8cff; }
+
+code {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    background: rgb(232 235 244 / 0.08);
+    color: #e8ebf4;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+pre {
+    background: #05070f;
+    border: 2px solid #253049;
+    border-radius: 16px;
+    padding: 26px 30px;
+    margin: 0 0 22px;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    font-size: 30px;
+    color: #e8ebf4;
+}
+
+/* Tabelele: tema implicită Marp le dă rânduri albe; aici sunt transparente, pe toată lățimea. */
+table {
+    display: table;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 24px;
+    margin-bottom: 22px;
+}
+
+table tr, table tr:nth-child(2n), table thead tr {
+    background: transparent;
+    border: none;
+}
+
+table th, table td {
+    border: none;
+    border-bottom: 1px solid #253049;
+    padding: 12px 16px;
+    text-align: left;
+    background: transparent;
+}
+
+table th { color: #a3acc2; font-weight: 600; font-size: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
+table td { color: #e8ebf4; }
+table td:not(:first-child), table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+
+img { background: transparent; }
+
+.muted, section .muted { color: #a3acc2; }
+
+/* Logo-ul mic din colțul fiecărui slide (antetul Marp; coperta și finalul nu îl au). */
+header {
+    top: 44px;
+    right: 64px;
+    left: auto;
+}
+
+header img { border-radius: 10px; }
+
+/* --- Coperta --- */
+section.lead {
+    justify-content: center;
+    padding-left: 96px;
+}
+
+section.lead h1 { font-size: 104px; margin: 28px 0 12px; }
+section.lead p { font-size: 30px; max-width: 980px; color: #c9cfdd; }
+section.lead img { border-radius: 28px; }
+
+/* --- Ce îl face special: lista devine carduri pe coloane --- */
+section.features ol {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+section.features.columns-2 ol { grid-template-columns: repeat(2, 1fr); }
+section.features.columns-1 ol { grid-template-columns: 1fr; }
+
+section.features li {
+    margin: 0;
+    padding: 28px;
+    border-radius: 20px;
+    background: rgb(232 235 244 / 0.05);
+    border: 2px solid #253049;
+    font-size: 24px;
+    color: #c9cfdd;
+}
+
+section.features li strong {
+    display: block;
+    font-family: 'Mona Sans', sans-serif;
+    font-weight: 700;
+    font-size: 30px;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    color: #ffffff;
+}
+
+/* --- Cifrele: lista devine un rând de numere mari --- */
+section.stats ul {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px 32px;
+}
+
+section.stats li {
+    margin: 0;
+    padding: 24px 28px;
+    border-radius: 18px;
+    background: rgb(232 235 244 / 0.05);
+    border: 2px solid #253049;
+    color: #a3acc2;
+    font-size: 22px;
+}
+
+section.stats li strong {
+    display: block;
+    font-family: 'Mona Sans', sans-serif;
+    font-weight: 900;
+    font-size: 58px;
+    line-height: 1.05;
+    color: #ffffff;
+}
+
+/* --- Diagrama --- */
+section.diagram h2 { margin-bottom: 20px; }
+section.diagram p { margin-bottom: 14px; }
+section.diagram p:has(img) { text-align: center; margin: 24px 0 32px; }
+section.diagram .muted { font-size: 20px; }
+
+/* --- Finalul --- */
+section.closing {
+    justify-content: center;
+    align-items: flex-start;
+    padding-left: 96px;
+}
+
+section.closing img { border-radius: 22px; }
+section.closing h1 { font-size: 72px; margin: 20px 0 28px; }
+section.closing .muted { font-size: 22px; }
+section.closing .url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 30px;
+    color: #ffffff;
+    background: #4c5bd4;
+    padding: 14px 28px;
+    border-radius: 999px;
+}

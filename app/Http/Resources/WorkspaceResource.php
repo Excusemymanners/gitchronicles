@@ -2,7 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\MediaKind;
+use App\Enums\MediaStatus;
 use App\Git\HistoryStatistics;
+use App\Models\MediaAsset;
 use App\Models\Module;
 use App\Models\ModuleDependency;
 use App\Models\Repository;
@@ -14,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * The workspace of a repository (the Workspace type in TypeScript), sent with every page of the repository:
  *
- * - "chapters": the table of contents on the left, in groups (Documentație, Arhitectură, Module, Istoric).
+ * - "chapters": the table of contents on the left, in groups (Documentație, Arhitectură, Module, Istoric, Prezentare).
  *   A chapter appears only when its data exists, and a group without chapters is left out.
  * - "elements": the cards of the „Elemente” panel on the right; each one is null until its data exists.
  * - "assistant": whether the code is indexed for questions, and up to three starter questions about real modules.
@@ -71,6 +74,11 @@ class WorkspaceResource extends JsonResource
     public const SHOWN_HOTSPOTS = 5;
 
     /**
+     * The id of the slides section on the „Video” page (media.tsx in React), for the links.
+     */
+    public const SLIDES_SECTION = 'slide-uri';
+
+    /**
      * Transform the resource into an array.
      *
      * @return array{chapters: list<array<string, mixed>>, elements: array<string, mixed>, assistant: array{is_indexed: bool, starters: list<string>}}
@@ -86,20 +94,22 @@ class WorkspaceResource extends JsonResource
         $statistics = app(HistoryStatistics::class);
         $activity = $statistics->activity($this->resource);
         $hotspots = $activity === null ? [] : $statistics->hotspots($this->resource, self::SHOWN_HOTSPOTS);
+        $media = $this->mediaAssets()->get()->keyBy(fn (MediaAsset $asset): string => $asset->kind->value);
 
         $groups = [
             $this->group('docs', 'Documentație', $this->documentationChapters($documents)),
             $this->group('architecture', 'Arhitectură', $this->architectureChapters($diagramCounts)),
             $this->group('modules', 'Module', count: $modules->count(), folders: $this->moduleFolders($modules, $documents)),
             $this->group('history', 'Istoric', $this->historyChapters($activity, $hotspots)),
+            $this->group('media', 'Prezentare', $this->mediaChapters($media)),
         ];
 
         return [
             'chapters' => array_values(array_filter($groups, fn (array $group): bool => $group['chapters'] !== [] || $group['folders'] !== [])),
             'elements' => [
                 'architecture' => $this->architectureElement($diagramCounts),
-                'video' => null,
-                'slides' => null,
+                'video' => $this->videoElement($media->get(MediaKind::Video->value)),
+                'slides' => $this->slidesElement($media->get(MediaKind::Slides->value)),
                 'activity' => $activity === null ? null : [
                     ...$activity,
                     'href' => $this->pageUrl('repositories.timeline', 'commits'),
@@ -113,6 +123,64 @@ class WorkspaceResource extends JsonResource
                 'is_indexed' => $this->isCodeIndexed(),
                 'starters' => $this->starterQuestions($modules),
             ],
+        ];
+    }
+
+    /**
+     * „Video” and „Slide-uri”: the two parts of the „Video” page, once GenerateMedia started them
+     * (whatever their state: the page shows it).
+     *
+     * @param  Collection<string, MediaAsset>  $media
+     * @return list<array{label: string, href: string, count: int|null}>
+     */
+    private function mediaChapters(Collection $media): array
+    {
+        return array_values(array_filter([
+            $media->has(MediaKind::Video->value) ? $this->chapter('Video', $this->pageUrl('repositories.media')) : null,
+            $media->has(MediaKind::Slides->value) ? $this->chapter('Slide-uri', $this->pageUrl('repositories.media', self::SLIDES_SECTION)) : null,
+        ]));
+    }
+
+    /**
+     * The „Video de prezentare” card: its state and, when the video is ready, the poster and the length.
+     * Null until the video was started for the first time.
+     *
+     * @return array{href: string, status: string, status_label: string, poster: string|null, duration_ms: int|null}|null
+     */
+    private function videoElement(?MediaAsset $video): ?array
+    {
+        if ($video === null) {
+            return null;
+        }
+
+        return [
+            'href' => $this->pageUrl('repositories.media'),
+            'status' => $video->status->value,
+            'status_label' => $video->status->label(),
+            'poster' => $video->file('poster') === null
+                ? null
+                : route('repositories.media.poster', ['repository' => $this->id, 'v' => $video->generated_at?->timestamp], absolute: false),
+            'duration_ms' => $video->status === MediaStatus::Ready ? $video->duration_ms : null,
+        ];
+    }
+
+    /**
+     * The „Prezentare (slide-uri)” card: its state and, when the slides are ready, how many they are.
+     * Null until the slides were started for the first time.
+     *
+     * @return array{href: string, status: string, status_label: string, slide_count: int|null}|null
+     */
+    private function slidesElement(?MediaAsset $slides): ?array
+    {
+        if ($slides === null) {
+            return null;
+        }
+
+        return [
+            'href' => $this->pageUrl('repositories.media', self::SLIDES_SECTION),
+            'status' => $slides->status->value,
+            'status_label' => $slides->status->label(),
+            'slide_count' => $slides->status === MediaStatus::Ready ? count($slides->meta['slides'] ?? []) : null,
         ];
     }
 

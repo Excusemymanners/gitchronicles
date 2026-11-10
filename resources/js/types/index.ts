@@ -1,4 +1,5 @@
 import type { Activity, Hotspot } from '@/types/history';
+import type { MediaStatus } from '@/types/media';
 
 /** Utilizatorul autentificat, așa cum îl trimite serverul în `auth.user`. */
 export type User = {
@@ -86,7 +87,7 @@ export type WorkspaceModuleFolder = {
     modules: WorkspaceModule[];
 };
 
-export type WorkspaceGroupKey = 'docs' | 'architecture' | 'modules' | 'history';
+export type WorkspaceGroupKey = 'docs' | 'architecture' | 'modules' | 'history' | 'media';
 
 /** Un grup de capitole din cuprins. Doar grupul „Module” are foldere și un număr lângă titlu. */
 export type WorkspaceGroup = {
@@ -101,10 +102,10 @@ export type WorkspaceGroup = {
 export type WorkspaceElements = {
     /** Diagrama previzualizată (straturile, dacă există), cu codul Mermaid. */
     architecture: { title: string; type: string; mermaid: string; href: string } | null;
-    /** Video-ul de prezentare. Deocamdată serverul trimite mereu `null`. */
-    video: null;
-    /** Slide-urile. Deocamdată serverul trimite mereu `null`. */
-    slides: null;
+    /** Video-ul de prezentare: starea lui și, când e gata, posterul și durata. `null` până e pornit prima dată. */
+    video: { href: string; status: MediaStatus; status_label: string; poster: string | null; duration_ms: number | null } | null;
+    /** Slide-urile: starea lor și, când sunt gata, câte sunt. `null` până sunt pornite prima dată. */
+    slides: { href: string; status: MediaStatus; status_label: string; slide_count: number | null } | null;
     /** Activitatea ultimelor 12 luni, aceeași ca în tab-ul „Istoric” (HistoryStatistics). */
     activity: (Activity & { href: string }) | null;
     /** Primele 5 „Zone fierbinți”, fără fișiere lock, biblioteci și fișiere generate. */

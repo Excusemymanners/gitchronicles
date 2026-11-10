@@ -230,7 +230,7 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - [x] 7.6 tab-ul „Diagrame” (componente refolosibile: `mermaid-diagram`, `diagrams-content`, `diagram-card`) și previzualizarea arhitecturii pe „Prezentare”
 - [x] 7.7 teste: constructorul pe proiectul de test din Faza 5 cu analizorul real, escaparea, trunchierea, tehnologiile, validarea fluxurilor, jobul și pagina; 268 de teste trec
 - [x] 7.8 verificat pe bune pe cele 3 repository-uri din aplicația locală (vezi jurnalul)
-- [ ] 7.9 prezentarea Marp (PDF/PPTX) — separat, după MVP
+- [x] 7.9 prezentarea Marp (PDF și PPTX): 10 slide-uri din aceleași date reale ca video-ul (ce face, ce îl face special, diagrama de containere desenată ca PNG, tehnologii, module, cifre, istoric, cum începi), cu tema și fonturile aplicației; vezi „Video scurt” la bonusuri
 
 **Jurnal:**
 - 2026-11-10 — Faza 7: diagramele de arhitectură și fluxurile aplicației. Decizii și motivele lor:
@@ -346,6 +346,28 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Învăț:** HyperFrames (HTML/CSS/animații → MP4), FFmpeg.
 - **Fac:** dintr-un șablon HTML și documentația generată fac un video vertical (9:16) despre un repo.
 - **Gata când:** pentru orice repo documentat pot genera un MP4.
+
+**Progres:**
+- [x] V.1 uneltele de randare într-un proiect Node separat (`renderers/`): HyperFrames 0.9.29 (HTML + GSAP → MP4 prin Chrome și FFmpeg), Marp CLI 4.5.1, Mermaid pentru diagrama din slide-uri; `composer media:install` le instalează, împreună cu vocea
+- [x] V.2 tabelul `media_assets` (video, slide-uri PDF/PPTX: stare, fișier, commit, durată, mărime) și fișierele în `storage/app/private/media/{id}`
+- [x] V.3 scenariul video-ului: `FactsCollector` adună faptele reale (README, „Despre proiect”, GitHub, analiza, istoricul), iar `ScriptWriter` cere lui Claude scenele ca JSON strict; fiecare propoziție are un citat care trebuie să existe cuvânt cu cuvânt în textul trimis, altfel scena e respinsă; fără AI, `TemplateScenes` face un video mai scurt doar din fapte
+- [x] V.4 vocea în română cu Piper (local, fără internet), muzica generată de un program propriu (fără drepturi de autor ale altcuiva), mixate cu FFmpeg; subtitrări WebVTT din aceleași texte
+- [x] V.5 joburile de pe coada separată `media` (`GenerateMedia` → `RenderPresentationVideo`, `RenderPresentationSlides`), pornite după ce repository-ul e „gata”, fără să întârzie sau să strice procesarea; comanda `php artisan repositories:media {id} {--force} {--now}`
+- [x] V.6 pagina „Video și slide-uri”: playerul vertical cu subtitrări, descărcări MP4/PDF/PPTX și lista „De unde vine fiecare propoziție” (citatul și sursa fiecărei scene); cardurile „Video de prezentare” și „Prezentare (slide-uri)” din panoul „Elemente”
+- [x] V.7 teste fără Chrome, FFmpeg, Piper sau rețea (procesele sunt simulate); 516 teste trec
+- [x] V.8 verificat pe bune pe `excusemymanners/gitchronicles`: video de 32,5 s (1080×1920, voce + muzică), 10 slide-uri; totul în 1 min 28 s, cu un singur apel la Claude pentru scenariu
+
+**Jurnal:**
+- 2026-11-11 — Video-ul și slide-urile. Decizii și motivele lor:
+  - Video-ul spune ce face proiectul și ce îl face special (cârlig, problema rezolvată, 2–3 funcționalități, cum începi, cifre, îndemn), nu statistici despre cod: așa arată reel-urile care prezintă repository-uri.
+  - Regula „doar date reale” e verificată de server, nu doar cerută modelului: fiecare scenă vine cu un citat, iar citatul trebuie găsit în textul trimis lui Claude (după normalizarea spațiilor). O scenă fără citat valid e respinsă și înlocuită de varianta din șablon sau lăsată deoparte.
+  - Uneltele de randare stau în `renderers/`, nu în `package.json`-ul aplicației: sunt mari, rulează doar pe server și nu trebuie să ajungă în pachetul trimis browserului.
+  - Randarea e pe coada `media`, separată: durează cam un minut și nu trebuie să țină pe loc procesarea altor repository-uri. Dacă randarea eșuează, repository-ul rămâne „gata”; pagina arată motivul.
+  - Vocea e Piper (`ro_RO-mihai-medium`), rulat local ca proces separat: fără servicii plătite și fără internet după instalare. Muzica e generată de un program propriu, ca să nu depindă de licența unei piese.
+  - Durata fiecărei scene vine din durata reală a propoziției rostite, măsurată cu `ffprobe`, ca vocea și imaginea să rămână sincronizate. Video-ul are cel mult 35 de secunde: dacă ar depăși, a treia funcționalitate rămâne doar în slide-uri.
+  - Marp nu desenează Mermaid, așa că diagrama de containere e desenată separat ca PNG (Chrome + Mermaid) și pusă în slide ca imagine; fonturile și imaginile sunt incluse în fișier, deci PDF-ul arată la fel pe orice calculator.
+  - Pagina arată pentru fiecare propoziție citatul și sursa ei („De unde vine fiecare propoziție”), ca oricine să poată verifica video-ul.
+  - De știut: FFmpeg-ul din Fedora nu are `libx264`, așa că video-ul se codează pe placa video (VAAPI) și iese mai mare (≈13 MB la 32 s); calea spre alt FFmpeg se poate pune în `.env` (`MEDIA_FFMPEG_PATH`).
 
 ### Postări automate pe Instagram
 - **Învăț:** Instagram Graph API (container media → publicare), aplicații Meta.

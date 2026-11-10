@@ -7,10 +7,13 @@ use App\Ai\ClaudeApiGenerator;
 use App\Ai\ClaudeCodeGenerator;
 use App\Ai\NullTextGenerator;
 use App\Ai\TextGenerator;
+use App\Media\AudioMixer;
+use App\Media\Narrator;
 use App\Search\CodeSearch;
 use App\Search\LikeCodeSearch;
 use App\Search\SqliteCodeSearch;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -25,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(TextGenerator::class, fn (): TextGenerator => $this->textGenerator());
 
+        // The voice and the sound of the presentation video use the paths of config('gitchronicle.media').
+        $this->app->bind(Narrator::class, fn (): Narrator => Narrator::fromConfig());
+        $this->app->bind(AudioMixer::class, fn (): AudioMixer => AudioMixer::fromConfig());
+
         // The assistant's code search (Faza 8): SQLite's full-text index (FTS5) when the database is SQLite,
         // plain LIKE queries on any other database.
         $this->app->bind(CodeSearch::class, fn (): CodeSearch => DB::connection()->getDriverName() === 'sqlite'
@@ -38,6 +45,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimiting();
+
+        // `php artisan dev` (composer run dev) also starts a worker for the "media" queue, next to the
+        // default one, so a video being rendered never keeps a repository waiting to be processed.
+        if ($this->app->runningInConsole()) {
+            DevCommands::artisan('queue:listen --queue='.config('gitchronicle.media.queue').' --tries=1 --timeout=0', 'media');
+        }
     }
 
     /**

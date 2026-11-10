@@ -8,6 +8,7 @@ use App\Http\Controllers\Repository\DiagramsController;
 use App\Http\Controllers\Repository\DocsController;
 use App\Http\Controllers\Repository\DownloadReadmeController;
 use App\Http\Controllers\Repository\MediaController;
+use App\Http\Controllers\Repository\MediaFileController;
 use App\Http\Controllers\Repository\TimelineController;
 use App\Http\Controllers\RepositoryController;
 use Illuminate\Support\Facades\Route;
@@ -38,8 +39,15 @@ Route::prefix('repositories/{repository}')->name('repositories.')->group(functio
     // „Istoric”: the commits, the processing runs and the time travel (Faza 9).
     Route::get('timeline', TimelineController::class)->name('timeline');
 
-    // „Video”: the presentation video and slides (bonus).
+    // „Video”: the presentation video and the slides (bonus), and the routes that serve their files
+    // from the private disk (the video with Range support, so the player can seek).
     Route::get('media', MediaController::class)->name('media');
+    Route::get('media/video', [MediaFileController::class, 'video'])->name('media.video');
+    Route::get('media/poster', [MediaFileController::class, 'poster'])->name('media.poster');
+    Route::get('media/captions', [MediaFileController::class, 'captions'])->name('media.captions');
+    Route::get('media/download/{format}', [MediaFileController::class, 'download'])
+        ->whereIn('format', ['mp4', 'pdf', 'pptx'])
+        ->name('media.download');
 });
 
 // „Reîncearcă” after a failed processing: it starts a new clone, so it shares the add limit.

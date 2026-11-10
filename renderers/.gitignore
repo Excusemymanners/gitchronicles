@@ -1,0 +1,5 @@
+# Instalate de `composer media:install`, niciodată urcate în repository.
+/node_modules/
+/tts/.venv/
+/tts/voices/
+.hyperframes/

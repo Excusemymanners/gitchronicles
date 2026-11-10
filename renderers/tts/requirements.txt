@@ -1,0 +1,9 @@
+# Vocea video-ului: Piper TTS (GPL-3.0-or-later), rulat local, fără internet după instalare.
+# Versiuni fixe, ca instalarea să dea mereu același rezultat (composer media:install).
+piper-tts==1.8.0
+onnxruntime==1.31.1
+numpy==2.5.4
+flatbuffers==25.12.19
+packaging==26.3
+protobuf==7.36.2
+pathvalidate==3.3.1

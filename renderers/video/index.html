@@ -1,0 +1,749 @@
+<!doctype html>
+<!--
+    Video-ul de prezentare al unui repository (HyperFrames 0.9.29): 1080×1920, 30 de cadre pe secundă,
+    în stilul reel-urilor „gittrend”: tăieturi rapide, text mare care intră cuvânt cu cuvânt, bara de
+    progres ca la Instagram Stories, paleta bleumarin a GitChronicle și logo-ul aplicației.
+
+    Toate textele vin din datele trimise la randare (render --variables-file data.json), citite cu
+    window.__hyperframes.getVariables(). Le punem în pagină doar cu textContent: sunt texte dintr-un
+    repository străin, deci nu au voie să ajungă HTML. Fără date, video-ul rămâne gol: nu există texte de probă.
+
+    Durata totală (data-duration de pe #root) o scrie jobul RenderPresentationVideo în copia de lucru
+    a șablonului: HyperFrames nu o poate schimba din variabile, iar scenele au lungimea vocii.
+    Totul depinde doar de timpul timeline-ului (fără ceas, fără Math.random), deci randarea e mereu aceeași.
+-->
+<html lang="ro">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1080, height=1920">
+    <link rel="stylesheet" href="assets/fonts.css">
+    <style>
+        :root {
+            --navy-0: #060914;
+            --navy-1: #0b1226;
+            --navy-2: #131d3b;
+            --ink: #f3f5fb;
+            --muted: #a3acc2;
+            --silver: #c9cfdd;
+            --accent: #8f9cff;
+            --accent-strong: #5b67e0;
+            --star: #fbbf24;
+            --sans: 'Instrument Sans', sans-serif;
+            --brand: 'Mona Sans', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { width: 1080px; height: 1920px; background: var(--navy-0); overflow: hidden; }
+
+        #root {
+            position: relative;
+            width: 1080px;
+            height: 1920px;
+            overflow: hidden;
+            color: var(--ink);
+            font-family: var(--sans);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Fundalul: un gradient bleumarin, o rețea de puncte care alunecă încet și o lumină care se mută la fiecare scenă. */
+        #bg {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(1200px 900px at 50% 18%, var(--navy-2) 0%, transparent 70%),
+                linear-gradient(180deg, var(--navy-1) 0%, var(--navy-0) 100%);
+        }
+
+        #grid {
+            position: absolute;
+            left: -60px;
+            right: -60px;
+            top: -120px;
+            height: 2200px;
+            background-image: radial-gradient(rgb(201 207 221 / 0.16) 2px, transparent 2.5px);
+            background-size: 48px 48px;
+        }
+
+        #glow {
+            position: absolute;
+            width: 900px;
+            height: 900px;
+            left: 90px;
+            top: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgb(143 156 255 / 0.30) 0%, rgb(91 103 224 / 0.12) 40%, transparent 70%);
+        }
+
+        /* Cadranul de ceas din logo, mare și discret, care se rotește încet în spate. */
+        #ring {
+            position: absolute;
+            width: 1500px;
+            height: 1500px;
+            left: 290px;
+            top: 820px;
+            opacity: 0.10;
+        }
+
+        /* Bara de progres, câte un segment pe scenă, ca la Instagram Stories. */
+        #progress {
+            position: absolute;
+            left: 64px;
+            right: 64px;
+            top: 186px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .segment {
+            position: relative;
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: rgb(243 245 251 / 0.22);
+            overflow: hidden;
+        }
+
+        .segment-fill {
+            position: absolute;
+            inset: 0;
+            background: var(--ink);
+            transform-origin: 0 50%;
+        }
+
+        #brand {
+            position: absolute;
+            left: 64px;
+            top: 226px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        #brand img {
+            width: 76px;
+            height: 76px;
+            border-radius: 18px;
+            box-shadow: 0 0 0 2px rgb(201 207 221 / 0.28);
+        }
+
+        #brand-name {
+            font-family: var(--brand);
+            font-weight: 700;
+            font-size: 40px;
+            letter-spacing: -0.01em;
+        }
+
+        #brand-tag {
+            font-weight: 600;
+            font-size: 30px;
+            color: var(--muted);
+        }
+
+        /* Scenele: toate în aceeași cutie, între 380 și 1310 px (zona în care Instagram nu pune nimic peste). */
+        .scene {
+            position: absolute;
+            left: 72px;
+            right: 132px;
+            top: 380px;
+            height: 930px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .label {
+            align-self: flex-start;
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 26px;
+            border-radius: 999px;
+            background: rgb(143 156 255 / 0.16);
+            box-shadow: inset 0 0 0 2px rgb(143 156 255 / 0.45);
+            color: var(--accent);
+            font-family: var(--brand);
+            font-weight: 700;
+            font-size: 34px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .kicker {
+            font-weight: 600;
+            font-size: 40px;
+            color: var(--muted);
+        }
+
+        .title {
+            font-family: var(--brand);
+            font-weight: 900;
+            line-height: 1.02;
+            letter-spacing: -0.025em;
+            overflow-wrap: anywhere;
+        }
+
+        .headline {
+            font-family: var(--brand);
+            font-weight: 900;
+            line-height: 1.08;
+            letter-spacing: -0.02em;
+        }
+
+        .body {
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--silver);
+        }
+
+        .w { display: inline-block; }
+        .hl { color: var(--accent); }
+
+        .bar {
+            height: 12px;
+            width: 220px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, var(--accent) 0%, var(--accent-strong) 100%);
+            transform-origin: 0 50%;
+        }
+
+        .index {
+            font-family: var(--brand);
+            font-weight: 900;
+            font-size: 220px;
+            line-height: 0.9;
+            color: transparent;
+            -webkit-text-stroke: 3px rgb(143 156 255 / 0.75);
+        }
+
+        .index small {
+            font-size: 64px;
+            -webkit-text-stroke: 2px rgb(163 172 194 / 0.6);
+        }
+
+        .terminal {
+            margin-top: 56px;
+            border-radius: 28px;
+            background: #050811;
+            box-shadow: inset 0 0 0 2px rgb(201 207 221 / 0.22), 0 30px 80px rgb(0 0 0 / 0.45);
+            overflow: hidden;
+        }
+
+        .terminal-bar {
+            display: flex;
+            gap: 12px;
+            padding: 22px 28px;
+            background: rgb(201 207 221 / 0.07);
+        }
+
+        .terminal-bar span {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: rgb(201 207 221 / 0.35);
+        }
+
+        .terminal-body {
+            padding: 34px 32px 40px;
+            font-family: var(--mono);
+            font-weight: 500;
+            font-size: 40px;
+            line-height: 1.35;
+            color: var(--ink);
+            overflow-wrap: anywhere;
+        }
+
+        .prompt { color: var(--accent); }
+
+        .cursor {
+            display: inline-block;
+            width: 22px;
+            height: 44px;
+            margin-left: 6px;
+            vertical-align: -6px;
+            background: var(--accent);
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 48px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            padding: 18px 32px;
+            border-radius: 999px;
+            background: rgb(243 245 251 / 0.08);
+            box-shadow: inset 0 0 0 2px rgb(201 207 221 / 0.28);
+            font-family: var(--brand);
+            font-weight: 700;
+            font-size: 44px;
+        }
+
+        .stars {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+        }
+
+        .stars svg { width: 150px; height: 150px; }
+
+        .stars-count {
+            font-family: var(--brand);
+            font-weight: 900;
+            font-size: 190px;
+            line-height: 1;
+            letter-spacing: -0.03em;
+        }
+
+        .stars-label {
+            margin-top: 10px;
+            font-weight: 600;
+            font-size: 44px;
+            color: var(--muted);
+        }
+
+        .note {
+            margin-top: 44px;
+            font-weight: 600;
+            font-size: 34px;
+            color: var(--muted);
+        }
+
+        .url {
+            position: relative;
+            align-self: flex-start;
+            max-width: 100%;
+            margin-top: 56px;
+            padding: 26px 40px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent-strong) 0%, #3f4bb8 100%);
+            box-shadow: 0 20px 60px rgb(91 103 224 / 0.45);
+            font-family: var(--mono);
+            font-weight: 500;
+            font-size: 40px;
+            color: #ffffff;
+            overflow: hidden;
+            overflow-wrap: anywhere;
+        }
+
+        .shine {
+            position: absolute;
+            top: -20px;
+            bottom: -20px;
+            width: 120px;
+            left: 0;
+            background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+            transform: skewX(-20deg);
+        }
+
+        .footer {
+            margin-top: 64px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-weight: 600;
+            font-size: 30px;
+            color: var(--muted);
+        }
+
+        .footer img { width: 64px; height: 64px; border-radius: 16px; }
+
+        /* Fâșia care trece peste ecran la fiecare tăietură. */
+        #wipe {
+            position: absolute;
+            top: -200px;
+            left: 0;
+            width: 760px;
+            height: 2320px;
+            background: linear-gradient(90deg, transparent 0%, rgb(143 156 255 / 0.95) 18%, var(--accent-strong) 50%, rgb(143 156 255 / 0.95) 82%, transparent 100%);
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root" data-composition-id="root" data-start="0" data-duration="30" data-width="1080" data-height="1920" data-fps="30">
+        <div id="bg"></div>
+        <div id="grid"></div>
+        <div id="glow"></div>
+        <svg id="ring" viewBox="0 0 200 200" aria-hidden="true">
+            <circle cx="100" cy="100" r="92" fill="none" stroke="#c9cfdd" stroke-width="3" />
+            <g id="ticks" stroke="#c9cfdd" stroke-width="3" stroke-linecap="round"></g>
+        </svg>
+
+        <div id="scenes"></div>
+
+        <div id="progress"></div>
+        <div id="brand">
+            <img src="assets/logo.png" alt="">
+            <span id="brand-name">GitChronicle</span>
+            <span id="brand-tag">prezintă</span>
+        </div>
+
+        <div id="wipe"></div>
+    </div>
+
+    <script src="vendor/gsap.min.js"></script>
+    <script>
+        (function () {
+            const data = (window.__hyperframes && window.__hyperframes.getVariables()) || {};
+            const scenes = Array.isArray(data.scenes) ? data.scenes : [];
+
+            const root = document.getElementById('root');
+            const total = Number(root.dataset.duration);
+            const tl = gsap.timeline({ paused: true });
+
+            /* --- Ajutoare mici pentru construirea paginii (doar textContent, niciodată innerHTML cu date). --- */
+
+            function el(tag, className, text) {
+                const node = document.createElement(tag);
+
+                if (className) {
+                    node.className = className;
+                }
+
+                if (text !== undefined && text !== null) {
+                    node.textContent = String(text);
+                }
+
+                return node;
+            }
+
+            /**
+             * Împarte un text în cuvinte (câte un <span class="w">), ca să intre pe rând.
+             * Cuvintele din „accent” (o bucată din același text) primesc culoarea de accent.
+             */
+            function words(className, text, accent) {
+                const node = el('div', className);
+                const value = String(text || '');
+                const start = accent ? value.indexOf(accent) : -1;
+                const end = start === -1 ? -1 : start + accent.length;
+                let position = 0;
+
+                value.split(/\s+/).filter(Boolean).forEach(function (word, index) {
+                    const at = value.indexOf(word, position);
+                    position = at + word.length;
+
+                    if (index > 0) {
+                        node.appendChild(document.createTextNode(' '));
+                    }
+
+                    const span = el('span', 'w', word);
+
+                    if (start !== -1 && at < end && position > start) {
+                        span.classList.add('hl');
+                    }
+
+                    node.appendChild(span);
+                });
+
+                return node;
+            }
+
+            /**
+             * Micșorează fontul până când textul încape în lățimea lui și în înălțimea dată.
+             * Cu oneLine, textul (un nume, o adresă) stă pe un singur rând cât timp se poate; se rupe pe
+             * mai multe rânduri doar dacă nici la mărimea minimă nu încape.
+             */
+            function fit(node, maxSize, minSize, maxHeight, oneLine) {
+                let size = maxSize;
+                node.style.fontSize = size + 'px';
+                node.style.whiteSpace = oneLine ? 'nowrap' : '';
+
+                while (size > minSize && (node.scrollWidth > node.clientWidth + 1 || node.offsetHeight > maxHeight)) {
+                    size -= 2;
+                    node.style.fontSize = size + 'px';
+                }
+
+                if (oneLine && node.scrollWidth > node.clientWidth + 1) {
+                    node.style.whiteSpace = '';
+                }
+            }
+
+            /** Numerele mari ca pe GitHub: 1.234, apoi 12,3k și 82k. */
+            function compact(value) {
+                if (value >= 100000) {
+                    return Math.round(value / 1000) + 'k';
+                }
+
+                if (value >= 10000) {
+                    return (Math.round(value / 100) / 10).toString().replace('.', ',') + 'k';
+                }
+
+                return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+
+            function starIcon() {
+                const ns = 'http://www.w3.org/2000/svg';
+                const svg = document.createElementNS(ns, 'svg');
+                svg.setAttribute('viewBox', '0 0 24 24');
+                const path = document.createElementNS(ns, 'path');
+                path.setAttribute('d', 'M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.52l-5.88 3.09 1.12-6.55L2.48 9.42l6.58-.96z');
+                path.setAttribute('fill', '#fbbf24');
+                svg.appendChild(path);
+
+                return svg;
+            }
+
+            /* Gradațiile cadranului, ca în logo. */
+            const ticks = document.getElementById('ticks');
+
+            for (let i = 0; i < 60; i += 1) {
+                const angle = (i / 60) * Math.PI * 2;
+                const inner = i % 5 === 0 ? 74 : 82;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', String(100 + Math.cos(angle) * inner));
+                line.setAttribute('y1', String(100 + Math.sin(angle) * inner));
+                line.setAttribute('x2', String(100 + Math.cos(angle) * 86));
+                line.setAttribute('y2', String(100 + Math.sin(angle) * 86));
+                ticks.appendChild(line);
+            }
+
+            /* --- Scenele: fiecare tip are construcția lui și intrarea lui. --- */
+
+            const builders = {
+                hook: function (scene, box) {
+                    const kicker = el('div', 'kicker', scene.kicker);
+                    const title = el('div', 'title', scene.title);
+                    const bar = el('div', 'bar');
+                    const text = words('headline', scene.text, scene.accent);
+                    bar.style.margin = '40px 0 48px';
+                    box.append(kicker, title, bar, text);
+                    fit(title, 170, 84, 400, true);
+                    fit(text, 92, 56, 440);
+
+                    return function (t) {
+                        // Pe primul cadru numele e deja pe ecran: e și miniatura video-ului.
+                        tl.fromTo(title, { scale: 1.06, transformOrigin: '0% 50%' }, { scale: 1, duration: 0.8, ease: 'expo.out' }, t);
+                        tl.fromTo(kicker, { opacity: 0.4 }, { opacity: 1, duration: 0.4, ease: 'power2.out' }, t);
+                        tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: 'expo.out' }, t + 0.2);
+                        slamWords(text, t + 0.45);
+                    };
+                },
+
+                problem: function (scene, box) {
+                    const label = el('div', 'label', scene.label || 'Ce rezolvă');
+                    const text = words('headline', scene.text, scene.accent);
+                    text.style.marginTop = '48px';
+                    box.append(label, text);
+                    fit(text, 96, 54, 720);
+
+                    return function (t) {
+                        popIn(label, t + 0.05);
+                        blurWords(text, t + 0.3);
+                    };
+                },
+
+                feature: function (scene, box) {
+                    const index = el('div', 'index', String(scene.index).padStart(2, '0'));
+                    index.appendChild(el('small', null, ' / ' + String(scene.count).padStart(2, '0')));
+                    const title = words('headline', scene.title, scene.accent);
+                    const text = el('div', 'body', scene.text);
+                    title.style.marginTop = '24px';
+                    text.style.marginTop = '36px';
+                    box.append(index, title, text);
+                    fit(title, 108, 64, 380);
+                    fit(text, 50, 36, 300);
+
+                    return function (t) {
+                        tl.fromTo(index, { x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: 'expo.out' }, t);
+                        slamWords(title, t + 0.15);
+                        tl.fromTo(text, { y: 30, opacity: 0, filter: 'blur(8px)' }, { y: 0, opacity: 1, filter: 'blur(0px)', duration: 0.45, ease: 'power3.out' }, t + 0.6);
+                    };
+                },
+
+                start: function (scene, box) {
+                    const label = el('div', 'label', scene.label || 'Cum începi');
+                    const text = words('headline', scene.text, scene.accent);
+                    text.style.marginTop = '40px';
+                    const terminal = el('div', 'terminal');
+                    const bar = el('div', 'terminal-bar');
+                    bar.append(el('span'), el('span'), el('span'));
+                    const body = el('div', 'terminal-body');
+                    const typed = el('span');
+                    const cursor = el('span', 'cursor');
+                    body.append(el('span', 'prompt', '$ '), typed, cursor);
+                    terminal.append(bar, body);
+                    box.append(label, text, terminal);
+                    fit(text, 84, 52, 340);
+                    // Încercăm toată comanda, ca fontul să se potrivească textului final.
+                    typed.textContent = scene.command;
+                    fit(body, 42, 28, 320);
+                    typed.textContent = '';
+
+                    return function (t, duration) {
+                        const command = String(scene.command || '');
+                        const typing = { count: 0 };
+
+                        popIn(label, t + 0.05);
+                        slamWords(text, t + 0.25);
+                        tl.fromTo(terminal, { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'expo.out' }, t + 0.55);
+                        tl.fromTo(typing, { count: 0 }, {
+                            count: command.length,
+                            duration: Math.min(1.4, 0.04 * command.length + 0.2),
+                            ease: 'none',
+                            onUpdate: function () { typed.textContent = command.slice(0, Math.round(typing.count)); },
+                        }, t + 0.9);
+                        // Cursorul clipește de un număr fix de ori (fără repetare la infinit).
+                        tl.fromTo(cursor, { opacity: 1 }, { opacity: 0, duration: 0.01, repeat: Math.max(1, Math.floor(duration / 0.45)), yoyo: true, repeatDelay: 0.44 }, t + 0.6);
+                    };
+                },
+
+                proof: function (scene, box) {
+                    const label = el('div', 'label', scene.label || 'Pe GitHub');
+                    box.append(label);
+                    let count = null;
+
+                    if (typeof scene.stars === 'number') {
+                        const stars = el('div', 'stars');
+                        count = el('div', 'stars-count', '0');
+                        stars.style.marginTop = '48px';
+                        stars.append(starIcon(), count);
+                        box.append(stars, el('div', 'stars-label', scene.stars === 1 ? 'stea pe GitHub' : 'stele pe GitHub'));
+                    }
+
+                    const chips = el('div', 'chips');
+                    (scene.chips || []).forEach(function (chip) { chips.appendChild(el('div', 'chip', chip)); });
+                    box.append(chips);
+
+                    const note = scene.note ? el('div', 'note', scene.note) : null;
+
+                    if (note) {
+                        box.append(note);
+                    }
+
+                    return function (t) {
+                        popIn(label, t + 0.05);
+
+                        if (count) {
+                            const counter = { value: 0 };
+                            tl.fromTo(counter, { value: 0 }, {
+                                value: scene.stars,
+                                duration: 1.1,
+                                ease: 'power3.out',
+                                onUpdate: function () { count.textContent = compact(counter.value); },
+                            }, t + 0.2);
+                            tl.fromTo(count.parentNode, { scale: 0.7, opacity: 0, transformOrigin: '0% 50%' }, { scale: 1, opacity: 1, duration: 0.6, ease: 'back.out(1.6)' }, t + 0.15);
+                        }
+
+                        tl.fromTo(chips.children, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: 'back.out(1.5)', stagger: 0.09 }, t + 0.55);
+
+                        if (note) {
+                            tl.fromTo(note, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' }, t + 0.95);
+                        }
+                    };
+                },
+
+                cta: function (scene, box) {
+                    const text = words('headline', scene.text, scene.accent);
+                    const url = el('div', 'url', scene.url);
+                    const shine = el('div', 'shine');
+                    url.appendChild(shine);
+                    const footer = el('div', 'footer');
+                    const logo = document.createElement('img');
+                    logo.src = 'assets/logo.png';
+                    logo.alt = '';
+                    footer.append(logo, el('span', null, 'Video făcut de GitChronicle din datele reale ale repository-ului.'));
+                    box.append(text, url, footer);
+                    fit(text, 104, 60, 420);
+                    fit(url, 40, 28, 220, true);
+
+                    return function (t) {
+                        slamWords(text, t + 0.1);
+                        tl.fromTo(url, { scale: 0.85, opacity: 0, transformOrigin: '0% 50%' }, { scale: 1, opacity: 1, duration: 0.55, ease: 'back.out(1.7)' }, t + 0.7);
+                        tl.fromTo(shine, { x: -160 }, { x: url.offsetWidth + 160, duration: 0.9, ease: 'power2.inOut' }, t + 1.25);
+                        tl.fromTo(footer, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, t + 1.1);
+                    };
+                },
+            };
+
+            /** Cuvintele „trântite” pe ecran: vin de sus, mari și estompate, și se așază unul după altul. */
+            function slamWords(node, at) {
+                const items = node.querySelectorAll('.w');
+                tl.fromTo(items, { y: -40, scale: 1.25, opacity: 0, filter: 'blur(6px)' }, {
+                    y: 0, scale: 1, opacity: 1, filter: 'blur(0px)', duration: 0.32, ease: 'power4.out', stagger: 0.075,
+                }, at);
+            }
+
+            /** Cuvintele care apar din ceață, fără mișcare (altă intrare, ca scenele să nu semene toate). */
+            function blurWords(node, at) {
+                const items = node.querySelectorAll('.w');
+                tl.fromTo(items, { opacity: 0, filter: 'blur(10px)' }, {
+                    opacity: 1, filter: 'blur(0px)', duration: 0.18, ease: 'power2.out', stagger: 0.07,
+                }, at);
+            }
+
+            function popIn(node, at) {
+                tl.fromTo(node, { scale: 0.6, opacity: 0, transformOrigin: '0% 50%' }, { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(1.8)' }, at);
+            }
+
+            /* --- Construirea video-ului, după ce s-au încărcat fonturile (măsurăm textele cu fontul lor). --- */
+
+            const fontsToLoad = [
+                '900 100px "Mona Sans"', '700 100px "Mona Sans"',
+                '600 100px "Instrument Sans"', '400 100px "Instrument Sans"', '500 100px "JetBrains Mono"',
+            ];
+
+            Promise.all(fontsToLoad.map(function (font) { return document.fonts.load(font, 'AaĂăÂâÎîȘșȚț'); })).then(function () {
+                const container = document.getElementById('scenes');
+                const progress = document.getElementById('progress');
+                const glow = document.getElementById('glow');
+                const wipe = document.getElementById('wipe');
+                const glowSpots = [[90, 300], [-260, 760], [420, 520], [-120, 980], [360, 260], [80, 640]];
+
+                scenes.forEach(function (scene, position) {
+                    const build = builders[scene.key];
+
+                    if (!build) {
+                        return;
+                    }
+
+                    const box = el('section', 'scene');
+                    container.appendChild(box);
+                    const animate = build(scene, box);
+
+                    const start = Number(scene.start);
+                    const duration = Number(scene.duration);
+
+                    // Scena e vizibilă doar în intervalul ei; prima e pe ecran din primul cadru.
+                    tl.set(box, { autoAlpha: 1 }, start);
+                    tl.set(box, { autoAlpha: 0 }, start + duration);
+                    tl.fromTo(box, { scale: position === 0 ? 1 : 1.07 }, { scale: 1, duration: 0.55, ease: 'expo.out' }, start);
+                    animate(start, duration);
+
+                    // Segmentul ei din bara de progres se umple pe durata scenei.
+                    const segment = el('div', 'segment');
+                    const fill = el('div', 'segment-fill');
+                    segment.appendChild(fill);
+                    progress.appendChild(segment);
+                    tl.fromTo(fill, { scaleX: 0 }, { scaleX: 1, duration: duration, ease: 'none' }, start);
+
+                    // Lumina din spate se mută la fiecare scenă.
+                    const spot = glowSpots[position % glowSpots.length];
+                    tl.to(glow, { x: spot[0] - 90, y: spot[1] - 300, duration: 0.9, ease: 'power2.inOut' }, Math.max(0, start - 0.2));
+
+                    // Tăietura dintre scene: fâșia de accent trece peste ecran exact pe tăietură.
+                    if (position > 0) {
+                        tl.fromTo(wipe, { x: -900, opacity: 1, skewX: -14 }, { x: 1300, opacity: 1, duration: 0.36, ease: 'power2.inOut' }, start - 0.18);
+                        tl.set(wipe, { opacity: 0 }, start + 0.18);
+                    }
+                });
+
+                // Mișcarea continuă din fundal: rețeaua coboară și cadranul se rotește, liniar, pe toată durata.
+                tl.fromTo('#grid', { y: 0 }, { y: 96, duration: total, ease: 'none' }, 0);
+                tl.fromTo('#ring', { rotation: 0 }, { rotation: 40, duration: total, ease: 'none' }, 0);
+
+                window.__timelines = window.__timelines || {};
+                window.__timelines.root = tl;
+            });
+        })();
+    </script>
+</body>
+</html>

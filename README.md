@@ -62,8 +62,9 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | pgvector + Voyage AI | Embedding-uri și căutare semantică pentru asistent (opțional, comparată cu FTS5) | 8 | ⏳ |
 | GitHub webhooks | Pornesc actualizarea incrementală la fiecare push | 9 | ⏳ |
 | Semgrep, OSV-Scanner, scc | Consultanța: bug-uri, vulnerabilități, statistici despre cod | bonus | ⏳ |
-| Marp | Prezentarea repository-ului ca slide-uri | 7 | ⏳ |
-| HyperFrames + FFmpeg | Video-urile scurte despre repository | bonus | ⏳ |
+| Marp | Prezentarea repository-ului ca slide-uri (PDF și PPTX) | 7 | ✅ |
+| HyperFrames + FFmpeg | Video-urile scurte despre repository (HTML + GSAP → MP4) | bonus | ✅ |
+| Piper TTS | Vocea românească a video-ului, generată local, fără internet | bonus | ✅ |
 | GitHub Search API + Laravel Scheduler | Leaderboard: notează zilnic stelele repo-urilor și calculează cine crește cel mai repede | bonus | ⏳ |
 | Instagram Graph API | Postarea automată a Reel-ului „repo-ul zilei” | bonus | ⏳ |
 | k3s + KEDA | Deploy pe VPS; workerii se scalează după lungimea cozii | 10 | ⏳ |
@@ -106,6 +107,7 @@ php artisan key:generate
 php artisan migrate
 npm install
 composer analyzer:install   # analizorul de cod: analyzer/.venv + gramaticile tree-sitter
+composer media:install      # opțional, pentru video și slide-uri: renderers/node_modules + vocea Piper
 ```
 
 Apoi, în trei terminale:
@@ -117,6 +119,8 @@ php artisan queue:work  # workerul care rulează joburile (clonarea, analiza cod
 ```
 
 Sau totul într-un singur terminal: `composer run dev`. Fără worker, repository-urile adăugate rămân „În așteptare”. Pentru cele adăugate înainte de Faza 3: `php artisan repositories:process --all-pending`.
+
+Video-ul de prezentare și slide-urile (PDF, PPTX) se fac după ce repository-ul e gata, pe coada separată `media`: `composer run dev` pornește și workerul ei, iar de mână e `php artisan queue:work --queue=media`. Au nevoie de `composer media:install`, de Google Chrome și de FFmpeg (căile lor: `MEDIA_BROWSER_PATH`, `MEDIA_FFMPEG_PATH`, `MEDIA_FFPROBE_PATH` în `.env`); `MEDIA_AUTO_GENERATE=false` le oprește. De mână: `php artisan repositories:media {id}` (`--force` le reface și pentru același commit, `--now` le randează direct în terminal). Uneltele și licențele lor sunt în [renderers/README.md](renderers/README.md).
 
 Documentația unui repository deja analizat se poate scrie și direct din terminal: `php artisan repositories:document {id}` (`--force` rescrie și paginile neschimbate, `--page=overview` scrie doar paginile date).
 

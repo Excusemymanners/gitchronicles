@@ -48,3 +48,19 @@ export function countLabel(count: number, singular: string, plural: string): str
 
     return `${formatNumber(count)} ${needsDe ? 'de ' : ''}${plural}`;
 }
+
+/** Mărimea unui fișier: „197 KB”, „8,2 MB”. */
+export function formatFileSize(bytes: number): string {
+    if (bytes < 1024 * 1024) {
+        return `${formatNumber(Math.max(1, Math.round(bytes / 1024)))} KB`;
+    }
+
+    return `${new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;
+}
+
+/** O poziție într-un video, ca pe un player: 3500 → „0:03”, 71000 → „1:11”. */
+export function formatTimecode(milliseconds: number): string {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+
+    return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+}

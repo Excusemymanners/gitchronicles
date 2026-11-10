@@ -60,4 +60,38 @@ return [
         'max_module_pages' => (int) env('DOCS_MAX_MODULE_PAGES', 40),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Presentation video and slides (bonus)
+    |--------------------------------------------------------------------------
+    |
+    | Made on the "media" queue after a repository is ready (GenerateMedia), with the Node tools of
+    | renderers/ (composer media:install): HyperFrames for the video, Marp for the slides, Piper
+    | for the Romanian voice. Chrome and FFmpeg come from this computer (paths below).
+    |
+    | - auto_generate: start the media after every processing run (tests: false, phpunit.xml);
+    | - hyperframes_home: where HyperFrames and Chrome keep their cache and settings (it becomes
+    |   HOME for them), so nothing is written to the home folder of the user running the worker;
+    | - workers: how many Chrome pages capture the frames in parallel;
+    | - voice: the Piper model and its speed (length_scale below 1 speaks faster).
+    |
+    */
+
+    'media' => [
+        'auto_generate' => (bool) env('MEDIA_AUTO_GENERATE', true),
+        'queue' => env('MEDIA_QUEUE', 'media'),
+        'renderers_path' => base_path('renderers'),
+        'node_bin' => env('MEDIA_NODE_BIN', 'node'),
+        'browser_path' => env('MEDIA_BROWSER_PATH', '/usr/bin/google-chrome'),
+        'ffmpeg_path' => env('MEDIA_FFMPEG_PATH', '/usr/bin/ffmpeg'),
+        'ffprobe_path' => env('MEDIA_FFPROBE_PATH', '/usr/bin/ffprobe'),
+        'hyperframes_home' => env('MEDIA_HYPERFRAMES_HOME', storage_path('app/hyperframes')),
+        'workers' => (int) env('MEDIA_RENDER_WORKERS', 4),
+        'voice' => [
+            'python' => env('MEDIA_PIPER_PYTHON', base_path('renderers/tts/.venv/bin/python')),
+            'model' => env('MEDIA_PIPER_MODEL', base_path('renderers/tts/voices/ro_RO-mihai-medium.onnx')),
+            'length_scale' => (float) env('MEDIA_VOICE_LENGTH_SCALE', 0.85),
+        ],
+    ],
+
 ];
