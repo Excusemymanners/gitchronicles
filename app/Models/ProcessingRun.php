@@ -6,6 +6,7 @@ use App\Enums\ProcessingMode;
 use App\Enums\ProcessingRunStatus;
 use App\Enums\ProcessingTrigger;
 use Database\Factories\ProcessingRunFactory;
+use Illuminate\Database\Eloquent\Attributes\DateFormat;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * ProcessRepository creates it as "running", each pipeline step fills its own counters
  * (for example CloneRepository sets to_sha and files_total), and finish() closes it.
+ *
+ * Its times are saved with milliseconds (DateFormat), so duration_ms is exact.
  */
+#[DateFormat('Y-m-d H:i:s.v')]
 #[Fillable([
     'mode', 'trigger', 'from_sha', 'to_sha', 'status',
     'files_total', 'files_changed', 'files_analyzed', 'modules_total', 'modules_affected',

@@ -77,29 +77,41 @@ const flashDotClasses: Record<FlashKind, string> = {
     success: 'bg-green-500',
 };
 
+type VisibleFlash = {
+    kind: FlashKind;
+    text: string;
+};
+
 /**
  * Mesajul trimis de server cu Inertia::flash('success' | 'info' | 'error', '…') înainte de un redirect.
- * Fiecare răspuns nou de la server aduce un obiect `flash` nou, deci efectul rulează o dată pentru
- * fiecare răspuns: afișează mesajul și îl ascunde singur după 5 secunde. Se poate închide și cu „×”.
+ * Fiecare răspuns nou de la server aduce un obiect `flash` nou. Când el conține un mesaj, îl păstrăm
+ * în state și îl ascundem singuri după 5 secunde (sau la „×”). Un răspuns fără mesaj nu îl ascunde:
+ * altfel reîmprospătarea automată a paginii (la 2 secunde, cât se procesează un repository)
+ * l-ar șterge aproape imediat.
  */
 function FlashMessage() {
     const { flash } = usePage();
-    const [isVisible, setIsVisible] = useState(false);
-
-    const kind = flashKindsByPriority.find((key) => flash[key]);
+    const [visibleFlash, setVisibleFlash] = useState<VisibleFlash | null>(null);
 
     useEffect(() => {
-        // Un răspuns fără mesaj (de exemplu o eroare de validare) ascunde mesajul rămas de dinainte.
-        if (!kind) {
-            setIsVisible(false);
+        const kind = flashKindsByPriority.find((key) => flash[key]);
+        const text = kind ? flash[kind] : undefined;
+
+        if (kind && text) {
+            setVisibleFlash({ kind, text });
+        }
+    }, [flash]);
+
+    // Fiecare mesaj nou repornește numărătoarea de 5 secunde.
+    useEffect(() => {
+        if (!visibleFlash) {
             return;
         }
 
-        setIsVisible(true);
-        const timer = window.setTimeout(() => setIsVisible(false), 5000);
+        const timer = window.setTimeout(() => setVisibleFlash(null), 5000);
 
         return () => window.clearTimeout(timer);
-    }, [flash]);
+    }, [visibleFlash]);
 
     // Zona aria-live există mereu, ca cititoarele de ecran să anunțe mesajul când apare în ea.
     return (
@@ -107,15 +119,15 @@ function FlashMessage() {
             aria-live="polite"
             className="pointer-events-none fixed right-4 bottom-4 left-4 z-50 flex justify-center sm:right-6 sm:bottom-6 sm:left-auto"
         >
-            {isVisible && kind && (
+            {visibleFlash && (
                 <div
-                    className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-white p-4 text-sm shadow-lg ${flashBoxClasses[kind]}`}
+                    className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-white p-4 text-sm shadow-lg ${flashBoxClasses[visibleFlash.kind]}`}
                 >
-                    <span aria-hidden="true" className={`mt-1.5 size-2 shrink-0 rounded-full ${flashDotClasses[kind]}`} />
-                    <p className="flex-1">{flash[kind]}</p>
+                    <span aria-hidden="true" className={`mt-1.5 size-2 shrink-0 rounded-full ${flashDotClasses[visibleFlash.kind]}`} />
+                    <p className="flex-1">{visibleFlash.text}</p>
                     <button
                         type="button"
-                        onClick={() => setIsVisible(false)}
+                        onClick={() => setVisibleFlash(null)}
                         aria-label="Închide mesajul"
                         className={`-my-1 cursor-pointer rounded-md px-1.5 text-lg leading-none text-gray-400 hover:text-gray-600 ${focusRing}`}
                     >

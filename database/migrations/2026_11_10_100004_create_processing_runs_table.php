@@ -15,6 +15,9 @@ return new class extends Migration
      *
      * The counters start at 0 and each pipeline step fills its own (files in Faza 3 and 5,
      * modules in Faza 5, documents and tokens in Faza 6). duration_ms stays null while running.
+     *
+     * The times keep milliseconds (precision 3): with whole seconds, duration_ms could be
+     * off by up to one second, too much for runs that take only a few seconds.
      */
     public function up(): void
     {
@@ -35,10 +38,10 @@ return new class extends Migration
             $table->unsignedInteger('input_tokens')->default(0);
             $table->unsignedInteger('output_tokens')->default(0);
             $table->unsignedInteger('duration_ms')->nullable();
-            $table->timestamp('started_at');
-            $table->timestamp('finished_at')->nullable();
+            $table->timestamp('started_at', precision: 3);
+            $table->timestamp('finished_at', precision: 3)->nullable();
             $table->text('error')->nullable();
-            $table->timestamps();
+            $table->timestamps(precision: 3);
 
             $table->index(['repository_id', 'status']);
         });

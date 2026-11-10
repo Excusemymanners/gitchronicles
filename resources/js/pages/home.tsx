@@ -1,4 +1,5 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, usePage, usePoll } from '@inertiajs/react';
+import { useEffect } from 'react';
 import { AppLogoMark } from '@/components/app-logo';
 import PrimaryButton from '@/components/primary-button';
 import StatusBadge from '@/components/status-badge';
@@ -15,6 +16,19 @@ type Props = {
 
 export default function Home({ mesaj, repositories }: Props) {
     const { auth } = usePage().props;
+    const hasProcessingRepository = repositories.some((repository) => repository.is_processing);
+
+    // Cât timp măcar un repository se mai procesează, cerem lista din nou la fiecare 2 secunde
+    // (doar prop-ul „repositories”); când toate sunt gata sau au eșuat, ne oprim.
+    const { start, stop } = usePoll(2000, { only: ['repositories'] }, { autoStart: false });
+
+    useEffect(() => {
+        if (hasProcessingRepository) {
+            start();
+        } else {
+            stop();
+        }
+    }, [hasProcessingRepository, start, stop]);
 
     return (
         <AppLayout>

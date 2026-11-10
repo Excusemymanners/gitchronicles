@@ -24,7 +24,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 
 ## Stare
 
-**Faza curentă:** Faza 3 — Joburi: clonarea (Faza 2 gata, verificată și în browser). Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+**Faza curentă:** Faza 3 — Joburi: clonarea. Clonarea în fundal e gata (lanț de joburi, rulări măsurate în `processing_runs`, pagina se actualizează singură, „Reîncearcă” după o eroare); Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
 
 ## Tehnologii
 
@@ -45,7 +45,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | PHPUnit | Teste pentru fiecare funcționalitate | 1+ | ✅ |
 | SQLite | Baza de date locală la început | 2 | ✅ |
 | Eloquent + migrații | Tabelele `users`, `repositories` și accesul la ele | 2 | ✅ |
-| Cozi Laravel + Process | Joburile care rulează `git clone` / `git diff` în fundal | 3 | ⏳ |
+| Cozi Laravel + Process | Joburile care rulează `git clone` / `git diff` în fundal | 3 | ✅ |
 | Podman | Containere pentru Postgres și Redis; mai târziu imaginea aplicației | 3, 4 | ⏳ |
 | PostgreSQL | Baza de date principală | 3 | ⏳ |
 | Redis + Horizon | Coada de joburi și monitorizarea workerilor | 3 | ⏳ |
@@ -73,7 +73,7 @@ Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; pân
 |---|---|---|---|
 | 28 oct – 3 nov 2026 | 1. Inertia + React + TypeScript | Pagina de start în React, cu test | ✅ |
 | 4 – 10 nov | 2. Utilizatori și repository-uri | Aplicație publică; login doar ca să adaugi un repo, apoi se adaugă singur | ✅ |
-| 11 – 17 nov | 3. Joburi + Postgres, Redis, Horizon | 🏁 Aplicația clonează un repo și afișează SHA-ul | ⏳ |
+| 11 – 17 nov | 3. Joburi + Postgres, Redis, Horizon | 🏁 Aplicația clonează un repo și afișează SHA-ul | 🔄 |
 | 18 – 24 nov | 5. Analiza codului (tree-sitter) | Modulele și dependențele unui repo | ⏳ |
 | 25 nov – 1 dec | 6. Documentația generată cu AI | 🏁 Documentație completă pentru un repo mic | ⏳ |
 | 2 – 8 dec | 7. Diagrame C4 + prezentare (Marp) | Diagrame și slide-uri pentru repo | ⏳ |
@@ -102,9 +102,12 @@ php artisan migrate
 npm install
 ```
 
-Apoi, în două terminale:
+Apoi, în trei terminale:
 
 ```bash
-php artisan serve   # aplicația, pe http://127.0.0.1:8000
-npm run dev         # Vite: CSS/JS și reîncărcare automată
+php artisan serve       # aplicația, pe http://127.0.0.1:8000
+npm run dev             # Vite: CSS/JS și reîncărcare automată
+php artisan queue:work  # workerul care rulează joburile (clonarea)
 ```
+
+Sau totul într-un singur terminal: `composer run dev`. Fără worker, repository-urile adăugate rămân „În așteptare”. Pentru cele adăugate înainte de Faza 3: `php artisan repositories:process --all-pending`.

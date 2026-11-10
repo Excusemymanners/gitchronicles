@@ -66,6 +66,28 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Fac:** pornesc Postgres (cu pgvector) și Redis în containere Podman și instalez Horizon. Apoi un job care face `git clone`, salvează SHA-ul ultimului commit și schimbă statusul (în așteptare → clonat / eroare).
 - **Gata când:** adaug un repository, jobul îl clonează și pe pagină văd SHA-ul.
 
+**Progres:**
+- [x] 3.1 statusurile pipeline-ului (`RepositoryStatus`: în așteptare → se clonează → se analizează → se scrie documentația → gata / eroare) și tabelul `processing_runs`
+- [x] 3.2 jobul `CloneRepository`: `git clone` fără parole, maximum 4 minute, mesaje de eroare clare
+- [x] 3.3 lanțul `ProcessRepository` → `CloneRepository` → `FinishProcessing`, pornit automat când se adaugă un repository
+- [x] 3.4 „Reîncearcă” după o eroare + comanda `php artisan repositories:process {id}` / `--all-pending`
+- [x] 3.5 pagina se actualizează singură la 2 secunde cât se procesează; arată commitul (link la GitHub), ramura principală și data clonării
+- [x] 3.6 teste fără internet (un repository git local ține locul GitHub-ului): 112 trec; verificat pe bune: `octocat/hello-world` are SHA-ul `7fd1a60`, același ca `git ls-remote`
+- [ ] 3.7 Postgres + Redis + Horizon în Podman — amânat: PHP-ul de pe laptop nu are `pdo_pgsql` și `phpredis` (se instalează doar cu sudo); până atunci coada merge pe `database` (SQLite)
+
+**Jurnal:**
+- 2026-11-10 — Faza 3 implementată cu Claude Code. Decizii și motivele lor:
+  - Un lanț de joburi (`Bus::chain`) pornit dintr-un singur loc, `ProcessRepository`: fiecare etapă pornește doar dacă cea dinainte a reușit, iar fazele următoare își pun pasul în lanț. `catch`-ul lanțului pune repository-ul pe „Eroare” și închide rularea.
+  - Fiecare rulare e un rând în `processing_runs` (cine a pornit-o, commitul, durata în ms, contoare): sunt măsurătorile pentru lucrare. Orele păstrează milisecundele, altfel durata putea greși cu până la o secundă.
+  - git pornit cu `Process`, cu comanda ca listă (nu ca text pentru shell) și cu `--` înaintea URL-ului, ca nimic din URL să nu devină comandă sau opțiune. Fără parole (`credential.helper=`, `GIT_ASKPASS=''`, `GIT_TERMINAL_PROMPT=0`): se clonează doar repository-uri publice, chiar dacă workerul pornește din terminalul VS Code, care știe contul meu de GitHub. `--filter=blob:none --no-tags`: clona e mică, dar are tot istoricul de commituri.
+  - Erori: pe pagină apare un mesaj scurt în română, iar detaliile (ce a spus git) merg în log. „Nu există sau e privat”, „durează peste 4 minute” și „nu are commituri” opresc jobul imediat, fiindcă nu trec singure; orice altă eroare git se mai încearcă o dată, după 30 de secunde.
+  - Un singur pipeline pe repository: `ShouldBeUnique` pe `ProcessRepository` și verificarea „există o rulare în curs?”, pentru că două clone în același folder s-ar strica una pe alta.
+  - `retry_after` al cozii `database` e acum 360 s (clonarea are voie 300 s); altfel un al doilea worker ar lua același job cât timp primul încă lucrează.
+  - „Reîncearcă” îl poate apăsa orice utilizator logat, dar doar când statusul e „Eroare”: repository-urile sunt publice și o clonare nouă nu strică nimic. Împarte limita de 10 pe minut cu adăugarea.
+  - Ștergerea unui repository îi șterge și clona (evenimentul `deleted` din model). În teste discul `local` e mereu fals (`TestCase`): un test care ștergea repository-ul 1 a șters o dată clona reală a repository-ului 1 din aplicația locală (am refăcut-o cu comanda).
+  - Mesajele flash nu mai dispar la reîmprospătarea automată: un răspuns fără mesaj nu mai ascunde mesajul afișat.
+- 2026-11-10 — Lecție: `php artisan serve` doar pune joburile în coadă; le rulează un worker (`php artisan queue:work` sau `composer run dev`, care pornește și `queue:listen`).
+
 ## Faza 4 — Kubernetes (se face la final, după Faza 9)
 - **Învăț:** imagini de container (Podman), Pods, Deployments, Services, StatefulSets, Kustomize.
 - **Fac:** imaginea aplicației, un cluster `kind`, Postgres + pgvector, Redis, aplicația și workerii Horizon, toate în cluster.

@@ -4,15 +4,21 @@ import type { RepositoryStatus } from '@/types';
 const badgeClasses: Record<RepositoryStatus, string> = {
     pending: 'bg-amber-50 text-amber-800 ring-amber-600/20',
     cloning: 'bg-sky-50 text-sky-800 ring-sky-600/20',
-    cloned: 'bg-green-50 text-green-800 ring-green-600/20',
+    analyzing: 'bg-indigo-50 text-indigo-800 ring-indigo-600/20',
+    documenting: 'bg-violet-50 text-violet-800 ring-violet-600/20',
+    ready: 'bg-green-50 text-green-800 ring-green-600/20',
+    updating: 'bg-sky-50 text-sky-800 ring-sky-600/20',
     failed: 'bg-red-50 text-red-800 ring-red-600/20',
 };
 
-/** Culoarea punctului din fața textului; la clonare punctul pulsează ușor. */
+/** Culoarea punctului din fața textului; cât timp o etapă lucrează, punctul pulsează ușor. */
 const dotClasses: Record<RepositoryStatus, string> = {
     pending: 'bg-amber-500',
     cloning: 'bg-sky-500 motion-safe:animate-pulse',
-    cloned: 'bg-green-500',
+    analyzing: 'bg-indigo-500 motion-safe:animate-pulse',
+    documenting: 'bg-violet-500 motion-safe:animate-pulse',
+    ready: 'bg-green-500',
+    updating: 'bg-sky-500 motion-safe:animate-pulse',
     failed: 'bg-red-500',
 };
 

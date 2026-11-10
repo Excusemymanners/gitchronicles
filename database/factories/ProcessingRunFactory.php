@@ -30,17 +30,4 @@ class ProcessingRunFactory extends Factory
             'started_at' => now(),
         ];
     }
-
-    /**
-     * Indicate that the run ended with an error.
-     */
-    public function failed(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => ProcessingRunStatus::Failed,
-            'finished_at' => now(),
-            'duration_ms' => 1200,
-            'error' => 'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.',
-        ]);
-    }
 }

@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Actions\AddRepository;
+use App\Enums\ProcessingTrigger;
+use App\Jobs\ProcessRepository;
 use App\Models\Repository;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -26,7 +30,7 @@ class RepositoryTest extends TestCase
     public function test_guest_sees_a_repository_page_without_the_user_who_added_it(): void
     {
         $this->travelTo('2026-11-09 10:00:00');
-        $repository = Repository::factory()->cloned()->create([
+        $repository = Repository::factory()->ready()->create([
             ...self::LARAVEL_FRAMEWORK,
             'last_sha' => '0a1b2c3d4e5f60718293a4b5c6d7e8f901234567',
         ]);
@@ -42,12 +46,20 @@ class RepositoryTest extends TestCase
                 'owner' => 'laravel',
                 'name' => 'framework',
                 'full_name' => 'laravel/framework',
-                'status' => 'cloned',
-                'status_label' => 'Clonat',
+                'description' => null,
+                'status' => 'ready',
+                'status_label' => 'Gata',
+                'is_processing' => false,
+                'default_branch' => 'main',
                 'last_sha' => '0a1b2c3d4e5f60718293a4b5c6d7e8f901234567',
+                'error' => null,
+                'cloned_at' => '2026-11-09T10:00:00+00:00',
+                'analyzed_at' => null,
+                'documented_at' => null,
                 'created_at' => '2026-11-09T10:00:00+00:00',
             ])
             ->where('can_delete', false)
+            ->where('can_retry', false)
         );
     }
 
@@ -132,6 +144,7 @@ class RepositoryTest extends TestCase
         $adder = User::factory()->create();
         $repository = Repository::factory()->for($adder)->create(self::LARAVEL_FRAMEWORK);
         $user = User::factory()->create();
+        Bus::fake([ProcessRepository::class]);
 
         $response = $this->actingAs($user)->post('/repositories', [
             'url' => 'https://www.GitHub.com/Laravel/Framework/tree/13.x',
@@ -140,6 +153,7 @@ class RepositoryTest extends TestCase
         $response->assertRedirect("/repositories/{$repository->id}");
         $this->assertDatabaseCount('repositories', 1);
         $this->assertDatabaseHas('repositories', ['id' => $repository->id, 'user_id' => $adder->id]);
+        Bus::assertNotDispatched(ProcessRepository::class);
     }
 
     /**
@@ -158,6 +172,7 @@ class RepositoryTest extends TestCase
     public function test_user_adding_a_new_repository_creates_it_as_pending_and_opens_its_page(string $url): void
     {
         $user = User::factory()->create();
+        Bus::fake([ProcessRepository::class]);
 
         $response = $this->actingAs($user)->post('/repositories', ['url' => $url]);
 
@@ -173,11 +188,13 @@ class RepositoryTest extends TestCase
             'status' => 'pending',
             'last_sha' => null,
         ]);
+        $this->assertPipelineDispatchedOnceFor($repository, ProcessingTrigger::Add);
     }
 
     public function test_login_adds_the_repository_the_guest_asked_for_and_opens_its_page(): void
     {
         $user = User::factory()->create();
+        Bus::fake([ProcessRepository::class]);
 
         $response = $this->withSession([AddRepository::PENDING_URL_SESSION_KEY => 'https://github.com/laravel/framework'])
             ->post('/login', ['email' => $user->email, 'password' => 'password']);
@@ -192,10 +209,13 @@ class RepositoryTest extends TestCase
             ...self::LARAVEL_FRAMEWORK,
             'status' => 'pending',
         ]);
+        $this->assertPipelineDispatchedOnceFor($repository, ProcessingTrigger::Add);
     }
 
     public function test_registration_adds_the_repository_the_guest_asked_for_and_opens_its_page(): void
     {
+        Bus::fake([ProcessRepository::class]);
+
         $response = $this->withSession([AddRepository::PENDING_URL_SESSION_KEY => 'https://github.com/laravel/framework'])
             ->post('/register', [
                 'name' => 'Ana Popescu',
@@ -215,6 +235,7 @@ class RepositoryTest extends TestCase
             ...self::LARAVEL_FRAMEWORK,
             'status' => 'pending',
         ]);
+        $this->assertPipelineDispatchedOnceFor($repository, ProcessingTrigger::Add);
     }
 
     public function test_login_opens_the_pending_repository_without_a_duplicate_when_someone_added_it_meanwhile(): void
@@ -222,6 +243,7 @@ class RepositoryTest extends TestCase
         $adder = User::factory()->create();
         $repository = Repository::factory()->for($adder)->create(self::LARAVEL_FRAMEWORK);
         $user = User::factory()->create();
+        Bus::fake([ProcessRepository::class]);
 
         $response = $this->withSession([AddRepository::PENDING_URL_SESSION_KEY => 'https://github.com/laravel/framework'])
             ->post('/login', ['email' => $user->email, 'password' => 'password']);
@@ -231,6 +253,7 @@ class RepositoryTest extends TestCase
         $response->assertSessionMissing(AddRepository::PENDING_URL_SESSION_KEY);
         $this->assertDatabaseCount('repositories', 1);
         $this->assertDatabaseHas('repositories', ['id' => $repository->id, 'user_id' => $adder->id]);
+        Bus::assertNotDispatched(ProcessRepository::class);
     }
 
     public function test_failed_login_keeps_the_pending_repository_waiting_in_the_session(): void
@@ -249,6 +272,7 @@ class RepositoryTest extends TestCase
 
     public function test_store_allows_each_user_ten_requests_per_minute(): void
     {
+        Bus::fake([ProcessRepository::class]);
         $this->actingAs(User::factory()->create());
         $this->postNewRepositories(10);
 
@@ -256,10 +280,12 @@ class RepositoryTest extends TestCase
 
         $response->assertTooManyRequests();
         $this->assertDatabaseCount('repositories', 10);
+        Bus::assertDispatchedTimes(ProcessRepository::class, 10);
     }
 
     public function test_store_limit_of_one_user_does_not_block_another_user(): void
     {
+        Bus::fake([ProcessRepository::class]);
         $this->actingAs(User::factory()->create());
         $this->postNewRepositories(10);
         $otherUser = User::factory()->create();
@@ -271,6 +297,7 @@ class RepositoryTest extends TestCase
             'user_id' => $otherUser->id,
             'url' => 'https://github.com/laravel/framework',
         ]);
+        Bus::assertDispatchedTimes(ProcessRepository::class, 11);
     }
 
     public function test_store_allows_each_guest_ten_requests_per_minute(): void
@@ -337,6 +364,91 @@ class RepositoryTest extends TestCase
 
         $response->assertForbidden();
         $this->assertModelExists($repository);
+    }
+
+    public function test_destroy_also_deletes_the_clone_folder_of_that_repository_only(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $repository = Repository::factory()->for($user)->create();
+        $otherRepository = Repository::factory()->create();
+        Storage::disk('local')->put("repositories/{$repository->id}/README.md", '# Clonă');
+        Storage::disk('local')->put("repositories/{$otherRepository->id}/README.md", '# Altă clonă');
+
+        $response = $this->actingAs($user)->delete("/repositories/{$repository->id}");
+
+        $response->assertRedirect('/');
+        Storage::disk('local')->assertMissing("repositories/{$repository->id}");
+        Storage::disk('local')->assertExists("repositories/{$otherRepository->id}/README.md");
+    }
+
+    public function test_show_offers_retry_to_a_logged_in_user_when_the_processing_failed(): void
+    {
+        $repository = Repository::factory()->failed()->create();
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get("/repositories/{$repository->id}");
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('repositories/show')
+            ->where('repository.status', 'failed')
+            ->where('repository.error', 'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.')
+            ->where('can_retry', true)
+        );
+    }
+
+    public function test_retry_lets_any_logged_in_user_restart_a_failed_repository_and_opens_its_page(): void
+    {
+        $repository = Repository::factory()->failed()->create();
+        $user = User::factory()->create();
+        Bus::fake([ProcessRepository::class]);
+
+        $response = $this->actingAs($user)->post("/repositories/{$repository->id}/retry");
+
+        $response->assertRedirect("/repositories/{$repository->id}");
+        $response->assertInertiaFlash('success', 'Am pornit din nou procesarea.');
+        $this->assertDatabaseHas('repositories', [
+            'id' => $repository->id,
+            'status' => 'pending',
+            'error' => null,
+        ]);
+        $this->assertPipelineDispatchedOnceFor($repository, ProcessingTrigger::Manual);
+    }
+
+    public function test_retry_forbids_a_repository_whose_processing_did_not_fail(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        $user = User::factory()->create();
+        Bus::fake([ProcessRepository::class]);
+
+        $response = $this->actingAs($user)->post("/repositories/{$repository->id}/retry");
+
+        $response->assertForbidden();
+        $this->assertDatabaseHas('repositories', ['id' => $repository->id, 'status' => 'ready']);
+        Bus::assertNotDispatched(ProcessRepository::class);
+    }
+
+    public function test_retry_sends_a_guest_to_login_and_keeps_the_repository_failed(): void
+    {
+        $repository = Repository::factory()->failed()->create();
+        Bus::fake([ProcessRepository::class]);
+
+        $response = $this->post("/repositories/{$repository->id}/retry");
+
+        $response->assertRedirect('/login');
+        $this->assertDatabaseHas('repositories', ['id' => $repository->id, 'status' => 'failed']);
+        Bus::assertNotDispatched(ProcessRepository::class);
+    }
+
+    /**
+     * Assert that exactly one pipeline was sent to the queue, for this repository and with this trigger.
+     */
+    private function assertPipelineDispatchedOnceFor(Repository $repository, ProcessingTrigger $trigger): void
+    {
+        Bus::assertDispatchedTimes(ProcessRepository::class, 1);
+        Bus::assertDispatched(ProcessRepository::class, fn (ProcessRepository $job) => $job->repository->is($repository)
+            && $job->trigger === $trigger);
     }
 
     /**

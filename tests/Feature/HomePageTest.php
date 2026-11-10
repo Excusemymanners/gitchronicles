@@ -63,9 +63,16 @@ class HomePageTest extends TestCase
                 'owner' => 'laravel',
                 'name' => 'framework',
                 'full_name' => 'laravel/framework',
+                'description' => null,
                 'status' => 'pending',
                 'status_label' => 'În așteptare',
+                'is_processing' => true,
+                'default_branch' => null,
                 'last_sha' => null,
+                'error' => null,
+                'cloned_at' => null,
+                'analyzed_at' => null,
+                'documented_at' => null,
                 'created_at' => '2026-11-09T10:00:00+00:00',
             ]])
         );
