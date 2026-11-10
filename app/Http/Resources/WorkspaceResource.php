@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Schema;
  * - "elements": the cards of the „Elemente” panel on the right; each one is null until its data exists.
  * - "assistant": whether the code is indexed for questions, and up to three starter questions about real modules.
  *
- * The documents, diagrams and code_chunks tables come with later phases, so every query on them first
+ * The diagrams and code_chunks tables come with later phases, so every query on them first
  * checks that the table exists. The git history is counted by HistoryStatistics, the same service as the
  * „Istoric” tab, so the panel and the tab always show the same numbers (lock files and libraries left out).
  * The number of queries is fixed, whatever the size of the repository: nothing is queried once per module.
@@ -139,15 +139,16 @@ class WorkspaceResource extends JsonResource
     }
 
     /**
-     * The page of one generated document: /repositories/{id}/docs/{slug} (the docs feature of Faza 6 adds the slug to the route).
+     * The page of one generated document: /repositories/{id}/docs/{slug}.
      */
     private function documentUrl(string $slug): string
     {
-        return route('repositories.docs', $this->resource, absolute: false).'/'.rawurlencode($slug);
+        return route('repositories.docs', ['repository' => $this->resource, 'slug' => $slug], absolute: false);
     }
 
     /**
-     * „Prezentare generală” is always there; „README generat” only after the docs stage wrote it (Faza 6).
+     * „Prezentare generală” is always there; „Despre proiect” (the overview page, opened at /docs) and
+     * „README generat” only after the docs stage wrote them (Faza 6).
      *
      * @param  Collection<int, object{module_id: int|null, slug: string}>  $documents
      * @return list<array{label: string, href: string, count: int|null}>
@@ -155,6 +156,10 @@ class WorkspaceResource extends JsonResource
     private function documentationChapters(Collection $documents): array
     {
         $chapters = [$this->chapter('Prezentare generală', $this->pageUrl('repositories.show'))];
+
+        if ($documents->contains('slug', 'overview')) {
+            $chapters[] = $this->chapter('Despre proiect', $this->pageUrl('repositories.docs'));
+        }
 
         if ($documents->contains('slug', 'readme')) {
             $chapters[] = $this->chapter('README generat', $this->documentUrl('readme'));
@@ -290,10 +295,6 @@ class WorkspaceResource extends JsonResource
      */
     private function generatedDocuments(): Collection
     {
-        if (! Schema::hasTable('documents')) {
-            return collect();
-        }
-
         return DB::table('documents')
             ->where('repository_id', $this->id)
             ->get(['module_id', 'slug']);

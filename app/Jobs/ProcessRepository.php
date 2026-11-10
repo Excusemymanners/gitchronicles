@@ -45,7 +45,7 @@ class ProcessRepository implements ShouldBeUnique, ShouldQueue
 
         ImportCommits::class,
 
-        // Faza 6: GenerateDocumentation::class,
+        GenerateDocumentation::class,
 
         // Faza 7: BuildDiagrams::class,
 

@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'mode', 'trigger', 'from_sha', 'to_sha', 'status',
     'files_total', 'files_changed', 'files_analyzed', 'modules_total', 'modules_affected',
-    'documents_regenerated', 'input_tokens', 'output_tokens',
+    'documents_regenerated', 'input_tokens', 'output_tokens', 'cost_usd_equivalent',
     'duration_ms', 'started_at', 'finished_at', 'error',
 ])]
 class ProcessingRun extends Model
@@ -45,6 +45,7 @@ class ProcessingRun extends Model
             'status' => ProcessingRunStatus::class,
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'cost_usd_equivalent' => 'decimal:6',
         ];
     }
 

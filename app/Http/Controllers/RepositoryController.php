@@ -8,7 +8,9 @@ use App\Git\HistoryStatistics;
 use App\Http\Controllers\Repository\RendersRepositoryPage;
 use App\Http\Requests\StoreRepositoryRequest;
 use App\Http\Resources\CodeStructureResource;
+use App\Http\Resources\OverviewSummaryResource;
 use App\Http\Resources\RepositoryResource;
+use App\Models\Document;
 use App\Models\Repository;
 use App\Support\GitHubUrl;
 use Illuminate\Http\RedirectResponse;
@@ -92,8 +94,12 @@ class RepositoryController extends Controller
     public function show(Request $request, Repository $repository, HistoryStatistics $statistics): Response
     {
         return $this->renderRepositoryPage($request, $repository, 'repositories/show', [
-            // „Despre proiect”: what the project does, from the generated overview page (Faza 6).
-            'overview' => null,
+            // „Despre proiect”: the first sections of the generated overview page (Faza 6), null until it is written.
+            'overview' => function () use ($repository): ?array {
+                $overview = Document::whereBelongsTo($repository)->firstWhere('slug', Document::OVERVIEW);
+
+                return $overview === null ? null : OverviewSummaryResource::make($overview)->resolve();
+            },
 
             // „Activitate”: the commits of the last 12 months and the contributors (Istoric), null until the first import.
             'activity' => fn () => $statistics->activity($repository),

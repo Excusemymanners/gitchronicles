@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Repository\AssistantController;
 use App\Http\Controllers\Repository\DiagramsController;
 use App\Http\Controllers\Repository\DocsController;
+use App\Http\Controllers\Repository\DownloadReadmeController;
 use App\Http\Controllers\Repository\MediaController;
 use App\Http\Controllers\Repository\TimelineController;
 use App\Http\Controllers\RepositoryController;
@@ -21,8 +22,10 @@ Route::resource('repositories', RepositoryController::class)
 
 // The other tabs of a repository page („Prezentare” is repositories.show above). All public, like the catalog.
 Route::prefix('repositories/{repository}')->name('repositories.')->group(function () {
-    // „Documentație”: the overview and one page per module (Faza 6).
-    Route::get('docs', DocsController::class)->name('docs');
+    // „Documentație”: the overview, the generated README and one page per module (Faza 6),
+    // plus the generated README as a file. A slug has no dot, so "readme.md" never reaches DocsController.
+    Route::get('docs/readme.md', DownloadReadmeController::class)->name('docs.readme');
+    Route::get('docs/{slug?}', DocsController::class)->where('slug', '[a-z0-9-]+')->name('docs');
 
     // „Diagrame”: the C4 architecture diagrams (Faza 7).
     Route::get('diagrams', DiagramsController::class)->name('diagrams');

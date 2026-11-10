@@ -159,6 +159,7 @@ class RepositoryWorkspaceTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->where('workspace.chapters.0.chapters', [
                 ['label' => 'Prezentare generală', 'href' => $base, 'count' => null],
+                ['label' => 'Despre proiect', 'href' => "{$base}/docs", 'count' => null],
                 ['label' => 'README generat', 'href' => "{$base}/docs/readme", 'count' => null],
             ])
             ->where('workspace.chapters.1.key', 'architecture')

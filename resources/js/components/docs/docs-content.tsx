@@ -1,0 +1,131 @@
+import { useEffect, useState } from 'react';
+import Markdown from '@/components/docs/markdown';
+import { countLabel, formatDate, shortSha } from '@/lib/format';
+import type { DocumentPage } from '@/types/docs';
+
+type Props = {
+    document: DocumentPage;
+    /** „owner/name”, pentru legătura spre commitul din care e scrisă pagina. */
+    repositoryFullName: string;
+};
+
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+
+const secondaryButtonClasses = `inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-ink shadow-xs ring-1 ring-line-strong ring-inset hover:bg-surface-2 ${focusRing}`;
+
+/** Cine a scris pagina, pe scurt: Claude (cu modelul și calea, abonament sau API) sau analiza codului. */
+function authorLabel(document: DocumentPage): string {
+    if (document.writer === 'template') {
+        return 'Scris automat din analiza codului (fără AI)';
+    }
+
+    const model = document.model ? ` (${document.model})` : '';
+
+    if (document.ai_driver === 'claude-code') {
+        return `Scris de Claude${model} prin abonament`;
+    }
+
+    if (document.ai_driver === 'claude') {
+        return `Scris de Claude${model} prin API`;
+    }
+
+    return `Scris de Claude${model}`;
+}
+
+/**
+ * O pagină de documentație: avertismentul când e scrisă automat în locul variantei cu AI, cine a scris-o
+ * (și câți tokeni a folosit), butoanele README-ului („Copiază”, „Descarcă README.md”) și textul Markdown.
+ * Componenta e de sine stătătoare, ca s-o poată folosi și alte ecrane (de exemplu spațiul de lucru al repository-ului).
+ */
+export default function DocsContent({ document, repositoryFullName }: Props) {
+    return (
+        <article className="min-w-0">
+            {document.is_stale && (
+                <div className="mb-6 rounded-lg border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning-ink">
+                    <p className="font-semibold">Pagina e scrisă automat, fără AI.</p>
+                    {document.stale_reason && <p className="mt-1">{document.stale_reason}</p>}
+                </div>
+            )}
+
+            <div className="mb-6 flex flex-col gap-3 border-b border-line pb-4">
+                <p className="text-sm text-ink-subtle">
+                    {authorLabel(document)}
+                    {document.writer === 'ai' && (
+                        <>
+                            {' · '}
+                            {countLabel(document.input_tokens, 'token', 'tokeni')} la intrare,{' '}
+                            {countLabel(document.output_tokens, 'token', 'tokeni')} la ieșire
+                        </>
+                    )}
+                    {document.source_sha && (
+                        <>
+                            {' · commit '}
+                            <a
+                                href={`https://github.com/${repositoryFullName}/commit/${document.source_sha}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={document.source_sha}
+                                className={`rounded-sm font-mono text-accent hover:text-accent-hover hover:underline ${focusRing}`}
+                            >
+                                {shortSha(document.source_sha)}
+                                <span className="sr-only"> (commitul pe GitHub, se deschide într-o filă nouă)</span>
+                            </a>
+                        </>
+                    )}
+                    {document.generated_at && (
+                        <>
+                            {' · '}
+                            <time dateTime={document.generated_at}>{formatDate(document.generated_at)}</time>
+                        </>
+                    )}
+                </p>
+
+                {document.kind === 'readme' && document.download_url && (
+                    <div className="flex flex-wrap gap-2">
+                        <CopyButton text={document.markdown} />
+                        <a href={document.download_url} download="README.md" className={secondaryButtonClasses}>
+                            Descarcă README.md
+                        </a>
+                    </div>
+                )}
+            </div>
+
+            <Markdown>{document.markdown}</Markdown>
+        </article>
+    );
+}
+
+type CopyState = 'idle' | 'copied' | 'failed';
+
+/**
+ * „Copiază”: pune textul în clipboard și spune 2 secunde dacă a mers. Mesajul e într-o zonă aria-live,
+ * ca să-l audă și cititoarele de ecran.
+ */
+function CopyButton({ text }: { text: string }) {
+    const [state, setState] = useState<CopyState>('idle');
+
+    useEffect(() => {
+        if (state === 'idle') {
+            return;
+        }
+
+        const timer = window.setTimeout(() => setState('idle'), 2000);
+
+        return () => window.clearTimeout(timer);
+    }, [state]);
+
+    async function copy() {
+        try {
+            await navigator.clipboard.writeText(text);
+            setState('copied');
+        } catch {
+            setState('failed');
+        }
+    }
+
+    return (
+        <button type="button" onClick={copy} className={secondaryButtonClasses}>
+            <span aria-live="polite">{state === 'copied' ? 'Copiat' : state === 'failed' ? 'Nu am putut copia' : 'Copiază'}</span>
+        </button>
+    );
+}
