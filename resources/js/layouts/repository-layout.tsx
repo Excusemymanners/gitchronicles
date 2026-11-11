@@ -32,7 +32,7 @@ const pageTitles: Record<string, string> = {
  */
 export default function RepositoryLayout({ children }: Props) {
     const { props, component } = usePage<RepositoryPageProps>();
-    const { auth, repository, can_retry, can_check_updates, last_update } = props;
+    const { auth, repository, can_retry, can_check_updates, can_regenerate, last_update } = props;
     const activeChapter = useActiveChapter();
 
     const breadcrumb = activeChapter ? `${activeChapter.groupTitle} · ${activeChapter.label}` : (pageTitles[component] ?? null);
@@ -41,8 +41,14 @@ export default function RepositoryLayout({ children }: Props) {
         <div className="mx-auto w-full max-w-190 px-4 pt-6 sm:px-8 sm:pt-8">
             {breadcrumb && <p className="text-xs text-ink-subtle">{breadcrumb}</p>}
 
-            {/* Pe ecranele late, „Actualizat la commitul …” și „Verifică actualizări” sunt în bara de sus. */}
-            <LastUpdateLine repository={repository} lastUpdate={last_update} canCheckUpdates={can_check_updates} className="mt-2 lg:hidden" />
+            {/* Pe ecranele late, „Actualizat la commitul …”, „Verifică actualizări” și „Regenerează tot” sunt în bara de sus. */}
+            <LastUpdateLine
+                repository={repository}
+                lastUpdate={last_update}
+                canCheckUpdates={can_check_updates}
+                canRegenerate={can_regenerate}
+                className="mt-2 lg:hidden"
+            />
 
             {repository.is_processing && (
                 <p

@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Enums\ProcessingRunStatus;
 use App\Enums\ProcessingTrigger;
 use App\Enums\RepositoryStatus;
+use App\Incremental\RepositoryCompleteness;
 use App\Jobs\ProcessRepository;
 use App\Models\Repository;
 
@@ -19,6 +20,11 @@ use App\Models\Repository;
  * most once in that interval, however many pushes arrive. A commit that comes in between is not lost:
  * the next scheduled check (or the next push after the interval) sees it is newer than last_sha.
  * The button is not limited here: it needs a logged-in user and has its own rate limit (the route's throttle).
+ *
+ * An incomplete repository (RepositoryCompleteness: an artifact of the pipeline is missing, for example
+ * because an older version of the pipeline processed it) gets a full run instead of an incremental one,
+ * so it never answers „nimic nou”: a full run does not stop at an unchanged commit (CloneRepository) and
+ * makes every artifact again.
  */
 final class UpdateRepository
 {
@@ -27,6 +33,7 @@ final class UpdateRepository
      * so its page starts following the run. ProcessRepository lets only one run work at a time.
      *
      * Returns false, and starts nothing, when an automatic trigger comes too soon after the last run.
+     * The run is full when the repository is incomplete (see above), incremental otherwise.
      */
     public function handle(Repository $repository, ProcessingTrigger $trigger): bool
     {
@@ -34,12 +41,14 @@ final class UpdateRepository
             return false;
         }
 
+        $isIncomplete = RepositoryCompleteness::of($repository)->isIncomplete();
+
         $repository->update([
             'status' => RepositoryStatus::Updating,
             'error' => null,
         ]);
 
-        ProcessRepository::dispatch($repository, $trigger);
+        ProcessRepository::dispatch($repository, $trigger, full: $isIncomplete);
 
         return true;
     }

@@ -65,6 +65,7 @@ export default function AppLayout({ children }: Props) {
                         {auth.user ? (
                             <>
                                 <span className="max-w-40 truncate px-2 text-ink-subtle max-sm:hidden">{auth.user.name}</span>
+                                {auth.user.is_admin && <span className="rounded-sm bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-ink-muted max-sm:hidden">admin</span>}
                                 <Link href="/logout" method="post" as="button" className={`cursor-pointer ${navLinkClasses}`}>
                                     Ieșire
                                 </Link>

@@ -3,10 +3,11 @@ import { useEffect } from 'react';
 import DocsContent from '@/components/docs/docs-content';
 import DocsPager from '@/components/docs/docs-pager';
 import Markdown from '@/components/docs/markdown';
+import ChapterEmptyState from '@/components/repository/chapter-empty-state';
 import TimeTravelBar from '@/components/time-travel/time-travel-bar';
 import RepositoryLayout from '@/layouts/repository-layout';
 import { formatDate, shortSha } from '@/lib/format';
-import type { RepositoryItem, RepositoryPageProps } from '@/types';
+import type { Completeness, RepositoryItem, RepositoryPageProps } from '@/types';
 import type { DocumentLink, DocumentPage } from '@/types/docs';
 import type { DocumentTimeTravel } from '@/types/history';
 
@@ -26,7 +27,7 @@ type Props = RepositoryPageProps & {
  * Cât timp repository-ul se procesează, pagina se reîmprospătează singură, ca textele să apară pe măsură ce sunt scrise.
  * Cu „Călătorie în timp” alegi un commit procesat și vezi textul paginii de atunci.
  */
-export default function RepositoriesDocs({ repository, navigation, document, time_travel }: Props) {
+export default function RepositoriesDocs({ repository, completeness, navigation, document, time_travel }: Props) {
     const { start, stop } = usePoll(4000, { only: ['navigation', 'document', 'time_travel'] }, { autoStart: false });
 
     useEffect(() => {
@@ -45,7 +46,7 @@ export default function RepositoriesDocs({ repository, navigation, document, tim
 
             <div className="mt-6">
                 {navigation.length === 0 ? (
-                    <EmptyState repository={repository} />
+                    <EmptyState repository={repository} completeness={completeness} />
                 ) : document ? (
                     <>
                         <TimeTravelBar commits={time_travel.commits} selected={time_travel.selected} />
@@ -115,9 +116,10 @@ function OldVersion({ document, timeTravel }: { document: DocumentPage; timeTrav
 
 /**
  * Ce arată pagina înainte să existe vreo pagină de documentație: se scrie acum, procesarea a eșuat
- * (motivul e deja deasupra) sau repository-ul a fost procesat înainte să existe documentația.
+ * (motivul e deja deasupra) sau repository-ul a fost procesat fără etapa documentației (de exemplu de o
+ * versiune mai veche); atunci oferim „Regenerează tot”.
  */
-function EmptyState({ repository }: { repository: RepositoryItem }) {
+function EmptyState({ repository, completeness }: { repository: RepositoryItem; completeness: Completeness }) {
     if (repository.is_processing) {
         return (
             <p
@@ -132,11 +134,18 @@ function EmptyState({ repository }: { repository: RepositoryItem }) {
         );
     }
 
+    if (repository.status === 'failed') {
+        return (
+            <ChapterEmptyState title="Documentația nu a fost scrisă.">
+                Procesarea s-a oprit înainte de etapa documentației. Motivul e mai sus.
+            </ChapterEmptyState>
+        );
+    }
+
     return (
-        <p className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-muted">
-            {repository.status === 'failed'
-                ? 'Procesarea s-a oprit înainte să fie scrisă documentația.'
-                : 'Documentația acestui repository nu a fost scrisă încă. Apare după următoarea procesare.'}
-        </p>
+        <ChapterEmptyState title="Documentația nu a fost generată încă." offerRegenerate={completeness.artifacts.documentation.state === 'missing'}>
+            Repository-ul a fost procesat fără etapa care scrie documentația. O procesare completă scrie pagina „Despre proiect”, un README
+            și câte o pagină pentru fiecare modul, din codul și fișierele lui.
+        </ChapterEmptyState>
     );
 }

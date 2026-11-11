@@ -3,7 +3,13 @@
 namespace Database\Factories;
 
 use App\Enums\RepositoryStatus;
+use App\Models\CodeChunk;
+use App\Models\Commit;
+use App\Models\Diagram;
+use App\Models\Document;
+use App\Models\Module;
 use App\Models\Repository;
+use App\Models\RepositoryFile;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -57,6 +63,23 @@ class RepositoryFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'analyzed_at' => now(),
         ]);
+    }
+
+    /**
+     * Indicate that every step of the pipeline ran: the repository has every artifact RepositoryCompleteness
+     * expects (a module with a PHP file, the current commit, the overview page, a diagram and a code chunk).
+     */
+    public function complete(): static
+    {
+        return $this->ready()->analyzed()->afterCreating(function (Repository $repository): void {
+            $module = Module::factory()->for($repository)->create(['path' => 'app/Http', 'name' => 'app/Http']);
+            $file = RepositoryFile::factory()->for($repository)->create(['module_id' => $module->id, 'path' => 'app/Http/Kernel.php']);
+
+            Commit::factory()->for($repository)->create(['sha' => $repository->last_sha]);
+            Document::factory()->for($repository)->create(['slug' => Document::OVERVIEW, 'title' => 'Despre proiect', 'source_sha' => $repository->last_sha]);
+            Diagram::factory()->for($repository)->create(['source_sha' => $repository->last_sha]);
+            CodeChunk::factory()->create(['repository_file_id' => $file->id]);
+        });
     }
 
     /**

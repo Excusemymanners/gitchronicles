@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Repository;
 use App\Enums\ProcessingRunStatus;
 use App\Http\Resources\RepositoryResource;
 use App\Http\Resources\WorkspaceResource;
+use App\Incremental\RepositoryCompleteness;
 use App\Models\Repository;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,6 +20,10 @@ use Inertia\Response;
  * - "can_retry": any logged-in user sees „Reîncearcă” after a failure (RepositoryPolicy::retry);
  * - "can_check_updates": any logged-in user sees „Verifică actualizări” on a ready repository
  *   (RepositoryPolicy::checkUpdates);
+ * - "can_regenerate": any logged-in user sees „Regenerează tot” on a ready or failed repository
+ *   (RepositoryPolicy::regenerate);
+ * - "completeness": which artifacts exist and which are missing (RepositoryCompleteness), for the
+ *   empty states of the chapters; a closure, like "workspace", so the status poll does not build it;
  * - "last_update": the commit and the time of the newest run that ended well, for „Actualizat la
  *   commitul … · acum 5 min” in the top bar (Faza 9); null until the first one;
  * - "workspace": the chapters on the left, the „Elemente” cards on the right and the assistant's
@@ -41,8 +46,10 @@ trait RendersRepositoryPage
             'can_delete' => $request->user()?->can('delete', $repository) ?? false,
             'can_retry' => $request->user()?->can('retry', $repository) ?? false,
             'can_check_updates' => $request->user()?->can('checkUpdates', $repository) ?? false,
+            'can_regenerate' => $request->user()?->can('regenerate', $repository) ?? false,
             'last_update' => fn () => $this->lastUpdateOf($repository),
             'workspace' => fn () => WorkspaceResource::make($repository)->resolve(),
+            'completeness' => fn () => RepositoryCompleteness::of($repository)->toArray(),
             ...$props,
         ]);
     }

@@ -13,6 +13,7 @@ type Props = {
     canDelete: boolean;
     canRetry: boolean;
     canCheckUpdates: boolean;
+    canRegenerate: boolean;
     /** Ultima rulare terminată cu bine; `null` până la prima. */
     lastUpdate: LastUpdate | null;
     /** Deschide cuprinsul pe ecranele înguste; `null` pe ecranele late, unde cuprinsul e mereu vizibil. */
@@ -26,12 +27,21 @@ const iconButtonClasses = `inline-flex size-9 shrink-0 cursor-pointer items-cent
 
 /**
  * Bara de sus a spațiului de lucru: logo-ul (spre lista tuturor repository-urilor), numele repository-ului
- * și statusul lui; în dreapta ramura, „Actualizat la commitul … · acum 5 min.” cu „Verifică actualizări”,
+ * și statusul lui; în dreapta ramura, „Actualizat la commitul … · acum 5 min.” cu „Verifică actualizări” și „Regenerează tot”,
  * GitHub, „Reîncearcă” după o eroare, „Șterge” pentru cine l-a adăugat și comutatorul de temă.
  * Pe telefon rămân doar butonul cuprinsului, numele, statusul și tema; restul apare sus în cuprins
  * (ChaptersDrawer), iar actualizarea deasupra capitolului (RepositoryLayout).
  */
-export default function WorkspaceTopBar({ repository, canDelete, canRetry, canCheckUpdates, lastUpdate, onOpenChapters, isChaptersOpen }: Props) {
+export default function WorkspaceTopBar({
+    repository,
+    canDelete,
+    canRetry,
+    canCheckUpdates,
+    canRegenerate,
+    lastUpdate,
+    onOpenChapters,
+    isChaptersOpen,
+}: Props) {
     return (
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-2 sm:gap-3 sm:px-4">
             {onOpenChapters && (
@@ -75,8 +85,8 @@ export default function WorkspaceTopBar({ repository, canDelete, canRetry, canCh
                     )}
 
                     {/* După prima rulare reușită: până la ce commit e documentat și de când. Înainte, doar commitul clonat. */}
-                    {lastUpdate || canCheckUpdates ? (
-                        <LastUpdateLine repository={repository} lastUpdate={lastUpdate} canCheckUpdates={canCheckUpdates} />
+                    {lastUpdate || canCheckUpdates || canRegenerate ? (
+                        <LastUpdateLine repository={repository} lastUpdate={lastUpdate} canCheckUpdates={canCheckUpdates} canRegenerate={canRegenerate} />
                     ) : (
                         repository.last_sha && (
                             <span>

@@ -29,7 +29,7 @@ class CheckRepositoryUpdatesTest extends TestCase
         Queue::fake();
         Process::preventStrayProcesses();
         Process::fake(['*' => Process::result(output: self::NEW_SHA."\tHEAD\n")]);
-        $repository = Repository::factory()->ready()->create(['url' => 'https://github.com/acme/magazin', 'owner' => 'acme', 'name' => 'magazin', 'last_sha' => self::OLD_SHA]);
+        $repository = Repository::factory()->complete()->create(['url' => 'https://github.com/acme/magazin', 'owner' => 'acme', 'name' => 'magazin', 'last_sha' => self::OLD_SHA]);
 
         $this->artisan('repositories:check-updates')
             ->expectsOutputToContain("#{$repository->id} acme/magazin: commit nou (bbbbbbb), am pornit actualizarea.")
@@ -66,7 +66,7 @@ class CheckRepositoryUpdatesTest extends TestCase
     {
         Queue::fake();
         Process::fake(['*' => Process::result(output: self::OLD_SHA."\tHEAD\n")]);
-        $repository = Repository::factory()->ready()->create(['owner' => 'acme', 'name' => 'magazin', 'last_sha' => self::OLD_SHA]);
+        $repository = Repository::factory()->complete()->create(['owner' => 'acme', 'name' => 'magazin', 'last_sha' => self::OLD_SHA]);
 
         $this->artisan('repositories:check-updates')
             ->expectsOutputToContain("#{$repository->id} acme/magazin: la zi (commitul aaaaaaa).")

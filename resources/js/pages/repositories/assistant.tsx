@@ -1,16 +1,17 @@
 import { Head } from '@inertiajs/react';
 import { useAssistantConversation } from '@/components/assistant/assistant-provider';
 import AssistantThread from '@/components/assistant/assistant-thread';
+import ChapterEmptyState from '@/components/repository/chapter-empty-state';
 import RepositoryLayout from '@/layouts/repository-layout';
 import { shortSha } from '@/lib/format';
-import type { RepositoryPageProps } from '@/types';
+import type { Completeness, RepositoryPageProps } from '@/types';
 
 /**
  * Pagina „Asistent”: aceeași conversație ca în bara de jos a spațiului de lucru (AssistantProvider),
  * pe toată înălțimea capitolului, ca un răspuns lung să se citească ușor. Întrebările se pun tot din
  * bara de jos (AssistantDock), care pe pagina asta nu mai deschide panoul ei.
  */
-export default function RepositoriesAssistant({ repository, workspace }: RepositoryPageProps) {
+export default function RepositoriesAssistant({ repository, workspace, completeness }: RepositoryPageProps) {
     const conversation = useAssistantConversation();
     const hasConversation = conversation.messages.length > 0;
 
@@ -47,6 +48,8 @@ export default function RepositoriesAssistant({ repository, workspace }: Reposit
             <div className="mt-6">
                 {hasConversation ? (
                     <AssistantThread assistant={conversation} />
+                ) : !workspace.assistant.is_indexed && repository.status === 'ready' ? (
+                    <NotIndexed completeness={completeness} />
                 ) : (
                     <div className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-muted">
                         <p className="font-medium text-ink">
@@ -61,5 +64,26 @@ export default function RepositoriesAssistant({ repository, workspace }: Reposit
                 )}
             </div>
         </RepositoryLayout>
+    );
+}
+
+/**
+ * Un repository gata al cărui cod nu e indexat: fie nu are fișiere cu cod sursă (asistentul răspunde doar
+ * din cod), fie a fost procesat fără etapa indexării și o procesare completă o face.
+ */
+function NotIndexed({ completeness }: { completeness: Completeness }) {
+    if (completeness.artifacts.assistant.state === 'not_applicable') {
+        return (
+            <ChapterEmptyState title="Asistentul nu are cod în care să caute.">
+                Repository-ul nu are fișiere cu cod sursă, iar asistentul răspunde doar din codul lui, cu trimiteri la fișiere și linii.
+            </ChapterEmptyState>
+        );
+    }
+
+    return (
+        <ChapterEmptyState title="Codul nu a fost indexat încă pentru asistent." offerRegenerate>
+            Repository-ul a fost procesat fără etapa care împarte codul în fragmente căutabile. După o procesare completă poți întreba
+            orice despre cod din bara de jos, iar fiecare răspuns arată sursele.
+        </ChapterEmptyState>
     );
 }

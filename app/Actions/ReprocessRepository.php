@@ -8,8 +8,8 @@ use App\Jobs\ProcessRepository;
 use App\Models\Repository;
 
 /**
- * Starts the processing pipeline again, by hand: the „Reîncearcă” button
- * (RepositoryController::retry) and the `repositories:process` command use it.
+ * Starts the processing pipeline again, by hand: the „Reîncearcă” and „Regenerează tot” buttons
+ * (RepositoryController::retry and ::regenerate) and the `repositories:process` command use it.
  */
 final class ReprocessRepository
 {

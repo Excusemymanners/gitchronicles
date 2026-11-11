@@ -159,6 +159,22 @@ class RepositoryController extends Controller
     }
 
     /**
+     * „Regenerează tot” (RepositoryPolicy::regenerate): a full processing with the "manual" trigger, every
+     * step and every chapter made again, then back to the page the button was pressed on, which follows
+     * the run. It is the pair of „Verifică actualizări”, which redoes only what the new commits changed.
+     */
+    public function regenerate(Repository $repository, ReprocessRepository $reprocessRepository): RedirectResponse
+    {
+        Gate::authorize('regenerate', $repository);
+
+        $reprocessRepository->handle($repository, full: true);
+
+        Inertia::flash('success', 'Am pornit procesarea completă: toate capitolele se fac din nou.');
+
+        return redirect()->back(fallback: route('repositories.show', $repository));
+    }
+
+    /**
      * Delete a repository: only the user who added it may do this (RepositoryPolicy).
      * Its clone folder is deleted with it (see Repository::booted()).
      */

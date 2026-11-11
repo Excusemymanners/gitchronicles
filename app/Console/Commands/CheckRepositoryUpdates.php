@@ -6,6 +6,7 @@ use App\Actions\UpdateRepository;
 use App\Enums\ProcessingTrigger;
 use App\Enums\RepositoryStatus;
 use App\Git\RemoteHead;
+use App\Incremental\RepositoryCompleteness;
 use App\Models\Repository;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -24,9 +25,13 @@ use Illuminate\Console\Command;
  * Repositories that are being processed or have failed are left alone: the first are already
  * working, the others wait for someone to press „Reîncearcă”. A repository whose last update started
  * less than the minimum interval ago waits for a later check (see UpdateRepository).
+ *
+ * Self-healing: an incomplete repository (RepositoryCompleteness) gets a full processing even when
+ * GitHub has no new commit, so the artifacts an older pipeline did not make appear by themselves.
+ * At an unchanged commit this happens only once (RepositoryCompleteness::healsAutomatically()).
  */
 #[Signature('repositories:check-updates {repository? : Check only the repository with this id}')]
-#[Description('Start an incremental update for the ready repositories that have new commits on GitHub')]
+#[Description('Start an update for the ready repositories that have new commits on GitHub, or a full processing for the incomplete ones')]
 class CheckRepositoryUpdates extends Command
 {
     /**
@@ -52,19 +57,29 @@ class CheckRepositoryUpdates extends Command
                 continue;
             }
 
-            if ($remoteSha === $repository->last_sha) {
-                $this->line("{$name}: la zi (commitul ".substr($remoteSha, 0, 7).').');
+            $shortSha = substr($remoteSha, 0, 7);
+            $completeness = RepositoryCompleteness::of($repository);
+            $isHealing = $remoteSha === $repository->last_sha;
+
+            if ($isHealing && ! $completeness->healsAutomatically()) {
+                $this->line($completeness->isIncomplete()
+                    ? "{$name}: la zi (commitul {$shortSha}), dar lipsesc {$completeness->missingText()}; o procesare completă la acest commit nu le-a făcut, așa că nu o repet."
+                    : "{$name}: la zi (commitul {$shortSha}).");
 
                 continue;
             }
+
+            $reason = $isHealing ? "lipsesc {$completeness->missingText()}" : "commit nou ({$shortSha})";
 
             if (! $updateRepository->handle($repository, ProcessingTrigger::Schedule)) {
-                $this->line("{$name}: commit nou (".substr($remoteSha, 0, 7).'), dar ultima actualizare a pornit de curând; îl iau la verificarea următoare.');
+                $this->line("{$name}: {$reason}, dar ultima actualizare a pornit de curând; îl iau la verificarea următoare.");
 
                 continue;
             }
 
-            $this->info("{$name}: commit nou (".substr($remoteSha, 0, 7).'), am pornit actualizarea.');
+            $this->info($completeness->isIncomplete()
+                ? "{$name}: {$reason}, am pornit o procesare completă."
+                : "{$name}: {$reason}, am pornit actualizarea.");
             $started++;
         }
 

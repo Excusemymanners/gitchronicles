@@ -4,6 +4,7 @@ import ActivitySection from '@/components/repository/activity-section';
 import DetailsSection from '@/components/repository/details-section';
 import DiagramPreviewSection from '@/components/repository/diagram-preview-section';
 import HotspotsSection from '@/components/repository/hotspots-section';
+import MissingArtifactsNotice from '@/components/repository/missing-artifacts-notice';
 import OverviewSection from '@/components/repository/overview-section';
 import StructureSection from '@/components/repository/structure-section';
 import RepositoryLayout from '@/layouts/repository-layout';
@@ -25,8 +26,9 @@ type Props = RepositoryPageProps & {
 /**
  * Capitolul „Prezentare generală”: numele și descrierea repository-ului, apoi rezumatul lui. Fiecare
  * secțiune apare doar când are date reale de afișat; „Detalii” (datele etapelor) apare mereu.
+ * Când lipsesc capitole, o notă de sub titlu spune care și oferă „Regenerează tot”.
  */
-export default function RepositoriesShow({ repository, overview, code_structure, diagram_preview, activity, hotspots }: Props) {
+export default function RepositoriesShow({ repository, completeness, overview, code_structure, diagram_preview, activity, hotspots }: Props) {
     return (
         <RepositoryLayout>
             <Head title={repository.full_name} />
@@ -39,6 +41,8 @@ export default function RepositoriesShow({ repository, overview, code_structure,
                 </h1>
                 {repository.description && <p className="mt-3 max-w-prose text-base leading-relaxed text-ink-muted">{repository.description}</p>}
             </header>
+
+            <MissingArtifactsNotice repository={repository} completeness={completeness} />
 
             <div className="mt-8 flex flex-col gap-10">
                 <OverviewSection overview={overview} />

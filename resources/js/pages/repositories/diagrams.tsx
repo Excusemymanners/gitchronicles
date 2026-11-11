@@ -1,10 +1,11 @@
 import { Head } from '@inertiajs/react';
 import DiagramsContent from '@/components/diagrams/diagrams-content';
 import type { DiagramSet } from '@/components/diagrams/types';
+import ChapterEmptyState from '@/components/repository/chapter-empty-state';
 import TimeTravelBar from '@/components/time-travel/time-travel-bar';
 import RepositoryLayout from '@/layouts/repository-layout';
 import { countLabel } from '@/lib/format';
-import type { RepositoryPageProps } from '@/types';
+import type { Completeness, RepositoryPageProps } from '@/types';
 import type { DiagramTimeTravel } from '@/types/history';
 
 type Props = RepositoryPageProps & {
@@ -17,8 +18,22 @@ type Props = RepositoryPageProps & {
 /**
  * Tab-ul „Diagrame”: fluxurile „Cum funcționează”, straturile și vederile C4 ale repository-ului.
  * Cu „Călătorie în timp” vezi diagramele de la un commit procesat mai demult și ce s-a schimbat de atunci.
+ * Un repository gata fără nicio diagramă spune de ce: nu au fost generate încă sau nu are cod de desenat.
  */
-export default function RepositoriesDiagrams({ repository, diagrams, time_travel }: Props) {
+export default function RepositoriesDiagrams({ repository, completeness, diagrams, time_travel }: Props) {
+    const hasNoDiagram = diagrams.flows.length === 0 && !diagrams.layers && !diagrams.container && !diagrams.component && !diagrams.context;
+
+    if (hasNoDiagram && time_travel.selected === null && repository.status === 'ready') {
+        return (
+            <RepositoryLayout>
+                <Head title={`Diagrame · ${repository.full_name}`} />
+                <div className="mt-6">
+                    <NoDiagrams completeness={completeness} />
+                </div>
+            </RepositoryLayout>
+        );
+    }
+
     return (
         <RepositoryLayout>
             <Head title={`Diagrame · ${repository.full_name}`} />
@@ -29,6 +44,28 @@ export default function RepositoriesDiagrams({ repository, diagrams, time_travel
 
             <DiagramsContent diagrams={diagrams} />
         </RepositoryLayout>
+    );
+}
+
+/**
+ * Fără nicio diagramă: fie repository-ul nu are module cu codul aplicației (doar README, configurări sau
+ * teste), deci nu avem ce desena, fie a fost procesat fără etapa diagramelor și o procesare completă le face.
+ */
+function NoDiagrams({ completeness }: { completeness: Completeness }) {
+    if (completeness.artifacts.diagrams.state === 'not_applicable') {
+        return (
+            <ChapterEmptyState title="Acest repository nu are diagrame de arhitectură.">
+                Diagramele se desenează din modulele cu codul aplicației (nu din teste, configurări sau documentație), iar repository-ul nu
+                are niciunul: conține doar fișiere precum README-ul sau configurări.
+            </ChapterEmptyState>
+        );
+    }
+
+    return (
+        <ChapterEmptyState title="Diagramele nu au fost generate încă." offerRegenerate>
+            Repository-ul a fost procesat fără etapa care le desenează. O procesare completă desenează straturile și vederile C4 din
+            analiza codului și din importurile reale dintre module.
+        </ChapterEmptyState>
     );
 }
 

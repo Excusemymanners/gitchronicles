@@ -68,6 +68,41 @@ class ProcessRepositoriesTest extends TestCase
         Bus::assertNotDispatched(ProcessRepository::class);
     }
 
+    public function test_all_incomplete_processes_in_full_every_ready_repository_that_misses_an_artifact(): void
+    {
+        $incomplete = Repository::factory()->ready()->analyzed()->create(['owner' => 'octocat', 'name' => 'hello-world']);
+        $complete = Repository::factory()->complete()->create();
+        $failed = Repository::factory()->failed()->create();
+        $pending = Repository::factory()->create();
+        Bus::fake([ProcessRepository::class]);
+
+        $this->artisan('repositories:process', ['--all-incomplete' => true])
+            ->expectsOutput("#{$incomplete->id} octocat/hello-world: lipsesc istoricul și documentația, procesarea completă a pornit.")
+            ->expectsOutputToContain('Am trimis 1 repository-uri în coadă.')
+            ->assertSuccessful();
+
+        Bus::assertDispatchedTimes(ProcessRepository::class, 1);
+        Bus::assertDispatched(ProcessRepository::class, fn (ProcessRepository $job) => $job->repository->is($incomplete)
+            && $job->trigger === ProcessingTrigger::Manual
+            && $job->full === true);
+        $this->assertDatabaseHas('repositories', ['id' => $incomplete->id, 'status' => 'pending']);
+        $this->assertDatabaseHas('repositories', ['id' => $complete->id, 'status' => 'ready']);
+        $this->assertDatabaseHas('repositories', ['id' => $failed->id, 'status' => 'failed']);
+        $this->assertDatabaseHas('repositories', ['id' => $pending->id, 'status' => 'pending']);
+    }
+
+    public function test_all_incomplete_says_so_when_nothing_is_missing(): void
+    {
+        Repository::factory()->complete()->create();
+        Bus::fake([ProcessRepository::class]);
+
+        $this->artisan('repositories:process', ['--all-incomplete' => true])
+            ->expectsOutput('Niciun repository gata nu are capitole lipsă.')
+            ->assertSuccessful();
+
+        Bus::assertNotDispatched(ProcessRepository::class);
+    }
+
     /**
      * @return array<string, array{array<string, mixed>}>
      */
@@ -76,6 +111,8 @@ class ProcessRepositoriesTest extends TestCase
         return [
             'neither an id nor --all-pending' => [[]],
             'both an id and --all-pending' => [['repository' => 1, '--all-pending' => true]],
+            'both an id and --all-incomplete' => [['repository' => 1, '--all-incomplete' => true]],
+            'both --all-pending and --all-incomplete' => [['--all-pending' => true, '--all-incomplete' => true]],
         ];
     }
 
@@ -89,7 +126,7 @@ class ProcessRepositoriesTest extends TestCase
         Bus::fake([ProcessRepository::class]);
 
         $this->artisan('repositories:process', $arguments)
-            ->expectsOutput('Dă fie id-ul unui repository (repositories:process 5), fie --all-pending.')
+            ->expectsOutput('Dă fie id-ul unui repository (repositories:process 5), fie --all-pending, fie --all-incomplete.')
             ->assertFailed();
 
         Bus::assertNotDispatched(ProcessRepository::class);

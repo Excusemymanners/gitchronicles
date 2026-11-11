@@ -6,6 +6,8 @@ export type User = {
     id: number;
     name: string;
     email: string;
+    /** Adevărat pentru un administrator; doar pentru eticheta „admin”: drepturile vin de la server (`can_…`). */
+    is_admin: boolean;
 };
 
 /**
@@ -167,6 +169,27 @@ export type LastUpdate = {
     nothing_new: boolean;
 };
 
+/** Un artefact pe care GitChronicle îl face pentru un repository (RepositoryCompleteness în Laravel). */
+export type ArtifactKey = 'structure' | 'history' | 'documentation' | 'diagrams' | 'assistant' | 'video' | 'slides';
+
+/**
+ * Starea unui artefact: există, lipsește deși ar trebui să existe, nu poate exista (repository-ul nu are
+ * cod sursă) sau, doar pentru video și slide-uri, e în lucru ori a eșuat.
+ */
+export type ArtifactState = 'ready' | 'missing' | 'not_applicable' | 'working' | 'failed';
+
+/** Ce are și ce îi lipsește unui repository, citit din datele lui reale. */
+export type Completeness = {
+    /** Adevărat când lipsește ceva din ce face procesarea (nu video-ul sau slide-urile). */
+    is_incomplete: boolean;
+    missing: ArtifactKey[];
+    /** Lipsurile ca text, de exemplu „istoricul, documentația și diagramele”. */
+    missing_text: string;
+    /** Adevărat când verificarea programată va porni singură o procesare completă. */
+    heals_automatically: boolean;
+    artifacts: Record<ArtifactKey, { state: ArtifactState; is_current: boolean }>;
+};
+
 /**
  * Prop-urile primite de fiecare pagină a unui repository, de la RendersRepositoryPage în Laravel.
  * WorkspaceLayout le citește pentru bara de sus, cuprins, elemente și asistent.
@@ -179,9 +202,13 @@ export type RepositoryPageProps = {
     can_retry: boolean;
     /** Adevărat pentru orice utilizator autentificat, când repository-ul e gata: poate cere „Verifică actualizări”. */
     can_check_updates: boolean;
+    /** Adevărat pentru orice utilizator autentificat, când repository-ul e gata sau a eșuat: poate cere „Regenerează tot”. */
+    can_regenerate: boolean;
     /** Ultima rulare terminată cu bine (reușită sau „nimic nou”); `null` până la prima. */
     last_update: LastUpdate | null;
     workspace: Workspace;
+    /** Ce capitole există și ce lipsește, pentru stările goale ale capitolelor. */
+    completeness: Completeness;
 };
 
 /**

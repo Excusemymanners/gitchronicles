@@ -31,7 +31,7 @@ class GitHubWebhookTest extends TestCase
 
     public function test_a_signed_push_to_the_main_branch_starts_an_update_with_the_webhook_trigger(): void
     {
-        $repository = Repository::factory()->ready()->create(['owner' => 'Acme', 'name' => 'Magazin', 'default_branch' => 'main']);
+        $repository = Repository::factory()->complete()->create(['owner' => 'Acme', 'name' => 'Magazin', 'default_branch' => 'main']);
 
         $response = $this->deliver('push', ['ref' => 'refs/heads/main', 'repository' => ['full_name' => 'acme/magazin']]);
 
@@ -40,6 +40,19 @@ class GitHubWebhookTest extends TestCase
             && $job->trigger === ProcessingTrigger::Webhook
             && $job->full === false);
         $this->assertDatabaseHas('repositories', ['id' => $repository->id, 'status' => 'updating']);
+    }
+
+    public function test_a_push_for_an_incomplete_repository_starts_a_full_processing(): void
+    {
+        $repository = Repository::factory()->ready()->create(['owner' => 'acme', 'name' => 'magazin', 'default_branch' => 'main']);
+
+        $this->deliver('push', ['ref' => 'refs/heads/main', 'repository' => ['full_name' => 'acme/magazin']])
+            ->assertAccepted()
+            ->assertExactJson(['status' => 'queued']);
+
+        Queue::assertPushed(ProcessRepository::class, fn (ProcessRepository $job): bool => $job->repository->is($repository)
+            && $job->trigger === ProcessingTrigger::Webhook
+            && $job->full === true);
     }
 
     public function test_ping_is_answered_without_starting_anything(): void

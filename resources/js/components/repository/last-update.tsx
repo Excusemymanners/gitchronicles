@@ -1,4 +1,5 @@
 import { Form } from '@inertiajs/react';
+import RegenerateButton from '@/components/repository/regenerate-button';
 import { formatDate, formatRelative, shortSha } from '@/lib/format';
 import type { LastUpdate, RepositoryItem } from '@/types';
 
@@ -8,6 +9,8 @@ type Props = {
     lastUpdate: LastUpdate | null;
     /** Adevărat când vizitatorul e autentificat și repository-ul e gata. */
     canCheckUpdates: boolean;
+    /** Adevărat când vizitatorul e autentificat și repository-ul e gata sau a eșuat. */
+    canRegenerate: boolean;
     className?: string;
 };
 
@@ -16,11 +19,12 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
 /**
  * „Actualizat la commitul abc1234 · acum 5 min.” și butonul „Verifică actualizări”: până la ce commit e
  * documentat repository-ul și de când. Butonul pornește o actualizare incrementală (aduce commit-urile noi
- * și reface doar ce s-a schimbat); dacă pe GitHub nu e nimic nou, rularea se încheie imediat.
- * Fără nicio rulare terminată nu afișăm nimic: nu știm încă un commit.
+ * și reface doar ce s-a schimbat); dacă pe GitHub nu e nimic nou, rularea se încheie imediat. Lângă el,
+ * perechea lui, „Regenerează tot”: o procesare completă, care reface toate capitolele.
+ * Fără nicio rulare terminată și fără butoane nu afișăm nimic: nu știm încă un commit.
  */
-export default function LastUpdateLine({ repository, lastUpdate, canCheckUpdates, className = '' }: Props) {
-    if (lastUpdate === null && !canCheckUpdates) {
+export default function LastUpdateLine({ repository, lastUpdate, canCheckUpdates, canRegenerate, className = '' }: Props) {
+    if (lastUpdate === null && !canCheckUpdates && !canRegenerate) {
         return null;
     }
 
@@ -46,18 +50,25 @@ export default function LastUpdateLine({ repository, lastUpdate, canCheckUpdates
                 </p>
             )}
 
-            {canCheckUpdates && (
-                <Form action={`/repositories/${repository.id}/check-updates`} method="post" options={{ preserveScroll: true }}>
-                    {({ processing }) => (
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className={`inline-flex cursor-pointer items-center rounded-md bg-surface px-2.5 py-1 text-[0.8125rem] font-medium text-ink shadow-xs ring-1 ring-line-strong ring-inset hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
-                        >
-                            {processing ? 'Se pornește…' : 'Verifică actualizări'}
-                        </button>
+            {(canCheckUpdates || canRegenerate) && (
+                <div className="flex items-center gap-2">
+                    {canCheckUpdates && (
+                        <Form action={`/repositories/${repository.id}/check-updates`} method="post" options={{ preserveScroll: true }}>
+                            {({ processing }) => (
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    title="Aduce commit-urile noi și reface doar ce au schimbat ele"
+                                    className={`pressable inline-flex cursor-pointer items-center rounded-md bg-surface px-2.5 py-1 text-[0.8125rem] font-medium text-ink shadow-xs ring-1 ring-line-strong ring-inset hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                                >
+                                    {processing ? 'Se pornește…' : 'Verifică actualizări'}
+                                </button>
+                            )}
+                        </Form>
                     )}
-                </Form>
+
+                    {canRegenerate && <RegenerateButton repository={repository} />}
+                </div>
             )}
         </div>
     );

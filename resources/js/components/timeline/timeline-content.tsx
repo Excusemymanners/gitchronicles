@@ -1,6 +1,7 @@
 import { InfiniteScroll, router } from '@inertiajs/react';
 import { useEffect, useId, useState } from 'react';
 import type { ReactNode } from 'react';
+import { RegenerateOffer } from '@/components/repository/chapter-empty-state';
 import TextInput from '@/components/text-input';
 import CommitRow from '@/components/timeline/commit-row';
 import ContributorList from '@/components/timeline/contributor-list';
@@ -84,11 +85,18 @@ export default function TimelineContent({ repository, summary, commits, runs, ho
     );
 }
 
-/** Ce afișăm cât timp nu există istoric importat: de ce lipsește și când apare. */
+/**
+ * Ce afișăm cât timp nu există istoric importat: de ce lipsește și când apare. Un repository gata a fost
+ * procesat fără etapa istoricului (de exemplu de o versiune mai veche): oferim „Regenerează tot”.
+ */
 function EmptyHistory({ repository }: { repository: RepositoryItem }) {
     let message = 'Istoricul nu a fost importat încă. Apare după următoarea procesare a repository-ului.';
 
-    if (repository.is_processing) {
+    if (repository.status === 'ready') {
+        message = 'Istoricul nu a fost importat încă: repository-ul a fost procesat fără etapa care citește commit-urile din git. O procesare completă le importă.';
+    } else if (repository.status === 'failed') {
+        message = 'Procesarea s-a oprit înainte să fie importat istoricul. Motivul e mai sus.';
+    } else if (repository.is_processing) {
         message = 'Istoricul se importă după clonare și analiza codului. Pagina se actualizează singură.';
     } else if (repository.cloned_at === null) {
         message = 'Repository-ul nu a fost clonat încă, așa că nu avem încă un istoric de arătat.';
@@ -100,6 +108,7 @@ function EmptyHistory({ repository }: { repository: RepositoryItem }) {
                 Istoric
             </h2>
             <p className="mt-2 text-sm text-ink-muted">{message}</p>
+            {repository.status === 'ready' && <RegenerateOffer className="mt-4 text-sm text-ink-muted" />}
         </section>
     );
 }

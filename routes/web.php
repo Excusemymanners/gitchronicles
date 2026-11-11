@@ -65,6 +65,11 @@ Route::post('/repositories/{repository}/check-updates', [RepositoryController::c
     ->middleware(['auth', 'throttle:repositories'])
     ->name('repositories.check-updates');
 
+// „Regenerează tot” on a ready or failed repository: a full processing (a clone too), so it shares the add limit.
+Route::post('/repositories/{repository}/regenerate', [RepositoryController::class, 'regenerate'])
+    ->middleware(['auth', 'throttle:repositories'])
+    ->name('repositories.regenerate');
+
 // GitHub calls this after every push to a repository that has the webhook set up (Faza 9).
 // It has no CSRF token (bootstrap/app.php): the request is trusted only by its signature.
 Route::post('/webhooks/github', GitHubWebhookController::class)
