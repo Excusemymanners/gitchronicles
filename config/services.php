@@ -44,12 +44,16 @@ return [
     ],
 
     /*
-    | The GitHub webhook (POST /webhooks/github) that starts an incremental update at every push.
-    | "webhook_secret" is the secret typed in the webhook's settings on GitHub: every delivery is
-    | signed with it (X-Hub-Signature-256). Without a secret the endpoint does not exist (404).
+    | GitHub. "webhook_secret" is the secret typed in the webhook's settings on GitHub: the webhook
+    | (POST /webhooks/github) starts an incremental update at every push and every delivery is signed
+    | with it (X-Hub-Signature-256). Without a secret the endpoint does not exist (404).
+    | "token" is optional and used by the „Descoperă” leaderboard: without it the REST API works with
+    | the public limits (10 searches per minute); a token raises them (30 searches per minute). Any
+    | personal access token works, it needs no permissions because only public data is read.
     */
     'github' => [
         'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
+        'token' => env('GITHUB_TOKEN'),
     ],
 
 ];

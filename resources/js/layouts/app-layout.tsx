@@ -58,6 +58,10 @@ export default function AppLayout({ children }: Props) {
                     </Link>
 
                     <nav aria-label="Navigare principală" className="flex items-center gap-1 text-sm">
+                        {/* Clasamentul „Descoperă” e public, așa că apare pentru toată lumea. */}
+                        <Link href="/discover" aria-current={url.startsWith('/discover') ? 'page' : undefined} className={navLinkClasses}>
+                            Descoperă
+                        </Link>
                         {auth.user ? (
                             <>
                                 <span className="max-w-40 truncate px-2 text-ink-subtle max-sm:hidden">{auth.user.name}</span>
@@ -67,8 +71,10 @@ export default function AppLayout({ children }: Props) {
                             </>
                         ) : (
                             <>
+                                {/* Pe telefon bara e îngustă: „Autentificare” se scurtează la „Intră”, ca să încapă și „Descoperă”. */}
                                 <Link href="/login" aria-current={url.startsWith('/login') ? 'page' : undefined} className={navLinkClasses}>
-                                    Autentificare
+                                    <span className="sm:hidden">Intră</span>
+                                    <span className="max-sm:hidden">Autentificare</span>
                                 </Link>
                                 {/* Pe telefon rămâne doar „Autentificare”: pagina ei duce și la contul nou. */}
                                 <Link

@@ -383,6 +383,43 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Fac:** un job zilnic notează stelele repo-urilor urmărite. Din „pozele” zilnice calculez cine a câștigat cele mai multe stele (GitHub nu are API oficial pentru Trending). Pagina „Descoperă” are secțiunile: în trend, în creștere, comori ascunse, pe limbaje.
 - **Gata când:** pagina arată un clasament care se actualizează singur în fiecare zi.
 
+**Progres:**
+- [x] D.1 tabelele `watched_repositories` (repository-urile urmărite: id GitHub, nume, descriere, limbaj, topicuri, licență, stele, fork-uri, creat/ultimul push pe GitHub, prima și ultima dată văzut) și `star_snapshots` (o notare pe repository și zi, cheie unică)
+- [x] D.2 comanda `php artisan discover:refresh`: căutări explicite în GitHub Search API (noi și populare, active cu multe stele, noi pe limbaje), upsert după id-ul GitHub, notarea zilei; repository-urile urmărite pe care căutările nu le-au adus sunt întrebate unul câte unul, până la o limită
+- [x] D.3 limitele GitHub respectate: 8 s între căutări fără token (3 s cu `GITHUB_TOKEN`), antetele `X-RateLimit-*`, oprire politicoasă la limită, reîncercări după 1 și 3 s la rețea sau 5xx, timeout, o linie în log și cod de ieșire nenul la eșec
+- [x] D.4 rularea zilnică în Laravel Scheduler (`routes/console.php`), cu ora și oprirea din `.env` (`DISCOVER_SCHEDULE_TIME`, `DISCOVER_SCHEDULE_ENABLED`)
+- [x] D.5 clasamentul (`App\Discover\Leaderboard`): creșterea pe 24 de ore, 7 și 30 de zile doar din două notări reale; până atunci ordinea după media de stele pe zi de la creare, spusă pe pagină; `repositoryOfTheDay()` pentru postarea de pe Instagram
+- [x] D.6 pagina publică „Descoperă” (`/discover`): repo-ul zilei, filtre de perioadă și limbaj în adresă, paginare, „Documentează” (fluxul `AddRepository`) sau „Deschide documentația”, legătura din meniu
+- [x] D.7 teste fără rețea (`Http::fake`): căutare, pagini, limită, erori, notarea idempotentă, creșterea cu 0, 1 și mai multe notări, ordinea și varianta de rezervă, filtrele, pagina, „Documentează” ca vizitator și ca utilizator, programarea zilnică
+- [x] D.8 rulat pe bune, fără token: 16 cereri, 708 repository-uri urmărite și 708 notări pe 2026-11-11, în 183 s
+
+**Jurnal:**
+- 2026-11-11 — Clasamentul „Descoperă”. Decizii și motivele lor:
+  - Tabelele se numesc `watched_repositories` și `star_snapshots`, separat de `repositories`: un repository urmărit e doar un candidat din căutări, iar unul din `repositories` e cerut de un utilizator ca să fie documentat.
+  - Cheia unui repository urmărit e id-ul GitHub, nu numele: numele se schimbă la redenumire sau la mutarea la alt proprietar, id-ul nu.
+  - O singură notare pe repository și zi (cheie unică pe repository + zi): comanda poate rula de mai multe ori pe zi fără să strice calculul, ultima rulare actualizează notarea zilei.
+  - Ziua notării e un text „Y-m-d”, fără cast de dată: un cast ar salva „Y-m-d 00:00:00” în SQLite și comparațiile cu o zi n-ar mai merge; textul se compară la fel pe SQLite și pe Postgres.
+  - O notare se scrie doar cu stelele raportate de GitHub în ziua aceea; un repository neîntrebat azi nu primește notare, niciodată o copie a cifrei de ieri.
+  - Căutările sunt puține și scrise explicit (noi și populare: create în ultimele 30 de zile cu cel puțin 50 de stele; active: push în ultima săptămână și cel puțin 1000 de stele; noi pe fiecare limbaj popular), ca la susținere să pot spune exact de unde vine fiecare candidat.
+  - GitHub nu are o căutare pentru mai multe repository-uri date (am încercat `repo:a/b repo:c/d` și întoarce doar unul), așa că repository-urile care au ieșit din căutări sunt întrebate unul câte unul, cele nevăzute de cel mai mult timp primele, cel mult 40 pe zi (limita fără token e 60 pe oră).
+  - Un repository care nu mai există pe GitHub (404) nu mai e urmărit: altfel ar ocupa în fiecare zi primul loc la rând.
+  - Între două căutări aștept 8 secunde fără token (7,5 căutări pe minut față de limita de 10), 3 secunde cu token (limita e 30): o rulare zilnică poate dura câteva minute, dar nu atinge niciodată limita.
+  - La limită (403/429 cu `X-RateLimit-Remaining: 0`, `Retry-After` sau mesajul despre limită) comanda nu reîncearcă: se oprește, păstrează ce a adunat și iese cu cod nenul; dacă știe că limita se resetează în cel mult un minut, așteaptă.
+  - Doar rețeaua căzută și erorile 5xx se reîncearcă (după 1 și 3 secunde): sunt trecătoare, pe când un 4xx nu se schimbă la o nouă încercare.
+  - Tokenul GitHub e opțional și citit din `config/services.php` (`GITHUB_TOKEN`); către GitHub nu pleacă nimic despre aplicație sau utilizatori, doar un User-Agent generic.
+  - Creșterea pe o perioadă = stelele din ziua clasamentului minus stelele din ziua aflată exact cu perioada în urmă; dacă lipsește una dintre notări, creșterea e „necunoscut”: o diferență pe alt interval ar fi prezentată greșit ca 24 de ore sau 7 zile.
+  - Ziua clasamentului e ziua ultimei notări și intră doar repository-urile notate în ziua aceea, ca toate cifrele de pe pagină să fie din aceeași zi.
+  - Pentru că notările încep azi, pagina arată din prima zi și media de stele pe zi de la creare (stele ÷ vârsta în zile), cu eticheta „Medie de la creare”: e o cifră reală, dar o medie pe toată viața proiectului, nu o creștere recentă.
+  - Ordinea folosește creșterea măsurată când măcar un repository o are pentru perioada aleasă (cei fără ea vin după), altfel media de la creare; pagina spune deasupra listei care dintre ele e folosită și de ce.
+  - Perioada implicită e de 7 zile: e vederea obișnuită de „trending” și e mai puțin zgomotoasă decât o singură zi.
+  - Calculul se face în PHP, nu în SQL: e un rând pe repository urmărit (câteva sute), codul e ușor de citit și merge la fel pe SQLite și Postgres.
+  - „Repo-ul zilei” e locul 1 din clasamentul implicit (7 zile, toate limbajele), dat de `Leaderboard::repositoryOfTheDay()`, ca postarea zilnică pe Instagram să-l ia de acolo.
+  - „Documentează” trimite linkul la același `POST /repositories` ca formularul de pe prima pagină, deci un vizitator ajunge la autentificare și repository-ul se adaugă după aceea, exact ca acolo; dacă GitChronicle îl are deja (după proprietar/nume, fără să conteze literele mari), butonul devine „Deschide documentația”.
+  - Filtrele stau în adresă (`?period=7d&language=Rust&page=2`), ca un clasament filtrat să poată fi trimis cuiva; o valoare necunoscută revine la cea implicită în loc de o eroare.
+  - Paginare clasică, câte 25: adresele paginilor păstrează filtrele și sunt ușor de explicat; o listă infinită ar fi cerut și resetarea ei la fiecare schimbare de filtru.
+  - Lista e un `<ol>` cu cifrele într-un `<dl>` (etichetă + valoare) pentru fiecare repository: rămâne lizibilă pe telefon, unde un tabel cu șapte coloane n-ar încăpea.
+  - Verificare pe bune, fără token: 16 cereri către GitHub, 708 repository-uri urmărite și 708 notări pe 2026-11-11, în 183 s (din care 120 s pauzele dintre căutări). Prima zi arată ordinea după media de la creare; creșterea pe 24 de ore apare de la a doua rulare.
+
 ### Video scurt
 - **Învăț:** HyperFrames (HTML/CSS/animații → MP4), FFmpeg.
 - **Fac:** dintr-un șablon HTML și documentația generată fac un video vertical (9:16) despre un repo.

@@ -120,4 +120,31 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | „Descoperă” leaderboard (bonus)
+    |--------------------------------------------------------------------------
+    |
+    | `php artisan discover:refresh` asks the GitHub Search API for interesting repositories and
+    | writes down today's stars of every watched repository (App\Discover\StarCollector).
+    |
+    | - schedule_enabled / schedule_time: the daily run of the Laravel Scheduler (routes/console.php);
+    | - languages: one extra search per language (new repositories of that language);
+    | - per_page / max_pages: how many results one search asks for, and on how many pages;
+    | - refresh_limit: at most this many watched repositories that no search returned today are asked
+    |   for one by one (GitHub allows 60 such requests per hour without a token, 5000 with one).
+    |
+    | The optional GitHub token is in config/services.php (GITHUB_TOKEN).
+    |
+    */
+
+    'discover' => [
+        'schedule_enabled' => (bool) env('DISCOVER_SCHEDULE_ENABLED', true),
+        'schedule_time' => env('DISCOVER_SCHEDULE_TIME', '03:00'),
+        'languages' => ['TypeScript', 'Python', 'Rust', 'Go', 'PHP', 'Java'],
+        'per_page' => 50,
+        'max_pages' => 2,
+        'refresh_limit' => (int) env('DISCOVER_REFRESH_LIMIT', 40),
+    ],
+
 ];

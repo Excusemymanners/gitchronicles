@@ -17,3 +17,11 @@ if (filled(config('gitchronicle.incremental.check_cron'))) {
         ->cron(config('gitchronicle.incremental.check_cron'))
         ->withoutOverlapping();
 }
+
+// „Descoperă” (bonus): once a day, write down the stars of the watched repositories. The hour and the
+// switch come from config/gitchronicle.php (DISCOVER_SCHEDULE_TIME, DISCOVER_SCHEDULE_ENABLED); the switch
+// is checked at run time. Locally the scheduler runs with `php artisan schedule:work`.
+Schedule::command('discover:refresh')
+    ->dailyAt(config('gitchronicle.discover.schedule_time'))
+    ->when(fn (): bool => (bool) config('gitchronicle.discover.schedule_enabled'))
+    ->withoutOverlapping();

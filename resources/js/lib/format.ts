@@ -87,6 +87,46 @@ export function formatFileSize(bytes: number): string {
     return `${new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;
 }
 
+const decimalFormatter = new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 1 });
+
+const signedFormatter = new Intl.NumberFormat('ro-RO', { signDisplay: 'exceptZero' });
+
+const dayFormatter = new Intl.DateTimeFormat('ro-RO', { dateStyle: 'medium', timeZone: 'UTC' });
+
+/** Un număr cu cel mult o zecimală: 45.25 → „45,3”, 12 → „12”. */
+export function formatDecimal(value: number): string {
+    return decimalFormatter.format(value);
+}
+
+/** O diferență cu semn: 1234 → „+1.234”, -5 → „-5”, 0 → „0”. */
+export function formatSignedNumber(value: number): string {
+    return signedFormatter.format(value);
+}
+
+/** O zi de forma „2026-11-11” (fără oră), afișată „11 nov. 2026”. */
+export function formatDay(isoDay: string): string {
+    const date = new Date(`${isoDay}T00:00:00Z`);
+
+    return Number.isNaN(date.getTime()) ? isoDay : dayFormatter.format(date);
+}
+
+/** Vârsta unui proiect din numărul de zile: „creat azi”, „23 de zile”, „5 luni”, „3 ani”. */
+export function formatAge(days: number): string {
+    if (days < 1) {
+        return 'creat azi';
+    }
+
+    if (days < 60) {
+        return countLabel(days, 'zi', 'zile');
+    }
+
+    if (days < 730) {
+        return countLabel(Math.floor(days / 30), 'lună', 'luni');
+    }
+
+    return countLabel(Math.floor(days / 365), 'an', 'ani');
+}
+
 /** O poziție într-un video, ca pe un player: 3500 → „0:03”, 71000 → „1:11”. */
 export function formatTimecode(milliseconds: number): string {
     const totalSeconds = Math.floor(milliseconds / 1000);

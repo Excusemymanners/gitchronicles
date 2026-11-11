@@ -18,7 +18,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 - **Actualizare incrementală**: la fiecare push se regenerează doar paginile afectate.
 - **Time travel**: un slider prin istoria commit-urilor arată cum arătau documentația și arhitectura la orice moment.
 - **Prezentare**: slide-uri despre repository (PDF/PPTX).
-- **Discover / leaderboard** *(bonus)*: repository-uri interesante, clasate după cât de repede câștigă stele.
+- **Discover / leaderboard** *(bonus)*: pagina publică „Descoperă” cu repository-uri interesante de pe GitHub, clasate după cât de repede câștigă stele (măsurat din notări zilnice), cu „repo-ul zilei” și butonul „Documentează”.
 - **Video scurt** *(bonus)* generat pentru un repository.
 - **Postări automate pe Instagram** *(bonus)*: zilnic, un Reel cu „repo-ul zilei” din leaderboard.
 - **Consultanță** *(bonus)*: raport cu bug-uri, vulnerabilități și zonele de cod schimbate cel mai des.
@@ -26,6 +26,8 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 ## Stare
 
 **Faza curentă:** Faza 9 — Actualizarea incrementală, gata. La un commit nou, GitChronicle aduce doar commit-urile noi (`git fetch` în clona existentă), află din `git diff` ce fișiere s-au schimbat, propagă schimbarea prin graful modulelor (modulele schimbate și vecinii lor la un pas) și reface doar paginile, fragmentele de cod și versiunile de diagrame atinse; peste 40% fișiere schimbate reprocesează tot. O pagină scrisă de Claude pe care Claude nu o poate rescrie acum rămâne, marcată „depășită”, cu motivul exact. Actualizarea pornește dintr-un webhook GitHub, dintr-o verificare programată la 15 minute sau din butonul „Verifică actualizări”. Paginile și diagramele își păstrează versiunile, așa că pe „Documentație” și „Diagrame” se poate „călători” la un commit procesat mai vechi; tab-ul „Istoric” arată pentru fiecare rulare ce s-a schimbat, ce s-a rescris și cât a costat. Înainte: Faza 8 — asistentul pe cod: codul analizat e tăiat în bucăți (funcții, clase, ferestre de linii) și indexat cu căutarea full-text din SQLite (FTS5); bara asistentului, jos pe orice pagină a repository-ului, răspunde la întrebări despre cod cu Claude și citează fișierele și liniile exacte pe GitHub, iar fără AI arată fragmentele găsite. Înainte: Faza 7 — diagramele de arhitectură (straturi și C4 Containere, Componente, Context, desenate cu Mermaid și ELK doar din analiza codului și din fișierele proiectului, plus 1–3 fluxuri „Cum funcționează” explicate de Claude); Faza 6 — documentația generată (o pagină pentru fiecare modul, „Despre proiect” și un README descărcabil, scrise de Claude sau, fără AI, de un șablon care folosește doar faptele din analiză; paginile al căror cod nu s-a schimbat nu se mai scriu); Faza 5 — un analizor în Python cu tree-sitter găsește clasele, funcțiile și importurile, iar Laravel le grupează în module. Pagina repository-ului e un spațiu de lucru: cuprinsul cu capitolele (documentație, arhitectură, modulele grupate pe foldere, istoric) în stânga, capitolul în mijloc, panoul „Elemente” în dreapta și bara asistentului jos; capitolele apar doar când au date reale. Stratul AI comun scrie textele prin Claude Code, cu abonamentul (fără credite API), sau prin API-ul Anthropic. Interfața are temă întunecată (implicită), cu un comutator spre tema luminoasă. Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+
+**Descoperă (bonus):** gata. Comanda `php artisan discover:refresh`, pornită zilnic de Laravel Scheduler, caută cu GitHub Search API repository-uri noi și populare, active sau noi pe limbaje și notează în fiecare zi stelele fiecărui repository urmărit. Pagina publică „Descoperă” (`/discover`) le clasează după stelele câștigate în 24 de ore, 7 sau 30 de zile, măsurate din două notări; până există două notări, creșterea e „necunoscut” și ordinea folosește media de stele pe zi de la creare, iar pagina spune asta. Fiecare rând are „Documentează” (îl adaugă în GitChronicle) sau „Deschide documentația”.
 
 **Istoric:** gata. După analiza codului, GitChronicle importă din clonă cele mai noi 500 de commit-uri (apoi doar pe cele noi), cu fișierele și liniile schimbate. Tab-ul „Istoric” le arată pe luni, cu rulările GitChronicle pe commit-urile procesate, căutare, „Zone fierbinți” (fișierele schimbate cel mai des) și contribuitori.
 
@@ -65,7 +67,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | Marp | Prezentarea repository-ului ca slide-uri (PDF și PPTX) | 7 | ✅ |
 | HyperFrames + FFmpeg | Video-urile scurte despre repository (HTML + GSAP → MP4) | bonus | ✅ |
 | Piper TTS | Vocea românească a video-ului, generată local, fără internet | bonus | ✅ |
-| GitHub Search API + Laravel Scheduler | Leaderboard: notează zilnic stelele repo-urilor și calculează cine crește cel mai repede | bonus | ⏳ |
+| GitHub Search API + Laravel Scheduler | Leaderboard: notează zilnic stelele repo-urilor și calculează cine crește cel mai repede | bonus | ✅ |
 | Instagram Graph API | Postarea automată a Reel-ului „repo-ul zilei” | bonus | ⏳ |
 | k3s + KEDA | Deploy pe VPS; workerii se scalează după lungimea cozii | 10 | ⏳ |
 
@@ -121,6 +123,8 @@ php artisan queue:work  # workerul care rulează joburile (clonarea, analiza cod
 Sau totul într-un singur terminal: `composer run dev`. Fără worker, repository-urile adăugate rămân „În așteptare”. Pentru cele adăugate înainte de Faza 3: `php artisan repositories:process --all-pending`.
 
 Video-ul de prezentare și slide-urile (PDF, PPTX) se fac după ce repository-ul e gata, pe coada separată `media`: `composer run dev` pornește și workerul ei, iar de mână e `php artisan queue:work --queue=media`. Au nevoie de `composer media:install`, de Google Chrome și de FFmpeg (căile lor: `MEDIA_BROWSER_PATH`, `MEDIA_FFMPEG_PATH`, `MEDIA_FFPROBE_PATH` în `.env`); `MEDIA_AUTO_GENERATE=false` le oprește. De mână: `php artisan repositories:media {id}` (`--force` le reface și pentru același commit, `--now` le randează direct în terminal). Uneltele și licențele lor sunt în [renderers/README.md](renderers/README.md).
+
+Clasamentul „Descoperă”: `php artisan discover:refresh` adună stelele de azi (durează câteva minute, pentru că așteaptă 8 secunde între căutări ca să rămână sub limita GitHub). Zilnic îl pornește Laravel Scheduler: pe server prin cron (`* * * * * php artisan schedule:run`), local cu `php artisan schedule:work`; ora e `DISCOVER_SCHEDULE_TIME` (implicit 03:00), iar `DISCOVER_SCHEDULE_ENABLED=false` îl oprește. Merge fără cont GitHub; un `GITHUB_TOKEN` opțional (orice token personal, fără permisiuni) ridică limitele API-ului. Creșterea pe 24 de ore apare după a doua zi cu notări, cea pe 7 și 30 de zile după tot atâtea zile.
 
 Documentația unui repository deja analizat se poate scrie și direct din terminal: `php artisan repositories:document {id}` (`--force` rescrie și paginile neschimbate, `--page=overview` scrie doar paginile date).
 
