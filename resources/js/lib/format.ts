@@ -19,6 +19,35 @@ export function formatDate(isoDate: string): string {
     return dateFormatter.format(date);
 }
 
+const relativeFormatter = new Intl.RelativeTimeFormat('ro-RO', { numeric: 'auto', style: 'short' });
+
+/** Pragurile unităților de timp, de la cea mai mică: până la câte secunde folosim unitatea de dinainte. */
+const relativeUnits: { unit: Intl.RelativeTimeFormatUnit; seconds: number }[] = [
+    { unit: 'minute', seconds: 60 },
+    { unit: 'hour', seconds: 3600 },
+    { unit: 'day', seconds: 86400 },
+    { unit: 'month', seconds: 2592000 },
+    { unit: 'year', seconds: 31536000 },
+];
+
+/** Cât timp a trecut de la o dată ISO 8601, de exemplu „acum 5 min.” sau „acum 2 zile”; sub un minut: „chiar acum”. */
+export function formatRelative(isoDate: string, now: Date = new Date()): string {
+    const seconds = Math.round((new Date(isoDate).getTime() - now.getTime()) / 1000);
+
+    if (Number.isNaN(seconds)) {
+        return isoDate;
+    }
+
+    if (Math.abs(seconds) < 60) {
+        return 'chiar acum';
+    }
+
+    // Cea mai mare unitate care încape măcar o dată în intervalul trecut.
+    const { unit, seconds: unitSeconds } = [...relativeUnits].reverse().find((candidate) => Math.abs(seconds) >= candidate.seconds) ?? relativeUnits[0];
+
+    return relativeFormatter.format(Math.round(seconds / unitSeconds), unit);
+}
+
 /** Primele 7 caractere ale unui SHA, ca în `git log --oneline`. */
 export function shortSha(sha: string): string {
     return sha.slice(0, 7);

@@ -1,4 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import AuthShell from '@/components/auth/auth-shell';
 import PrimaryButton from '@/components/primary-button';
 import TextField from '@/components/text-field';
 import AppLayout from '@/layouts/app-layout';
@@ -8,50 +9,38 @@ type Props = {
     pending_repository: string | null;
 };
 
+const linkClasses =
+    'rounded-sm font-medium text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+
 export default function Login({ pending_repository }: Props) {
     return (
         <AppLayout>
             <Head title="Autentificare" />
 
-            <div className="mx-auto w-full max-w-sm">
-                <h1 className="text-2xl font-semibold tracking-tight">Autentificare</h1>
-                <p className="mt-1 text-sm text-ink-muted">Intră în cont ca să adaugi repository-uri noi.</p>
-
-                {pending_repository && (
-                    <p className="mt-6 rounded-lg border border-info-line bg-info-soft p-4 text-sm text-info-ink">
-                        După ce intri în cont, adăugăm automat <span className="font-medium break-all">{pending_repository}</span>.
-                    </p>
-                )}
-
+            <AuthShell
+                title="Intră în cont"
+                lead="Contul e necesar doar ca să adaugi repository-uri. Documentația, diagramele și asistentul se pot folosi fără el."
+                pendingRepository={pending_repository}
+                pendingText="După ce intri în cont, adăugăm automat"
+                footer={
+                    <>
+                        Nu ai cont?{' '}
+                        <Link href="/register" className={linkClasses}>
+                            Creează unul
+                        </Link>
+                    </>
+                }
+            >
                 {/*
                   <Form> trimite câmpurile prin Inertia (POST /login), fără reîncărcarea paginii.
                   resetOnError golește parola după o încercare eșuată; emailul rămâne completat.
                   noValidate: validarea o face serverul, cu mesaje în română.
                 */}
-                <Form
-                    action="/login"
-                    method="post"
-                    resetOnError={['password']}
-                    noValidate
-                    className="mt-6 flex flex-col gap-4 rounded-lg border border-line bg-surface p-6 shadow-xs"
-                >
+                <Form action="/login" method="post" resetOnError={['password']} noValidate className="flex flex-col gap-5">
                     {({ errors, processing }) => (
                         <>
-                            <TextField
-                                label="Email"
-                                name="email"
-                                type="email"
-                                autoComplete="username"
-                                autoFocus
-                                error={errors.email}
-                            />
-                            <TextField
-                                label="Parolă"
-                                name="password"
-                                type="password"
-                                autoComplete="current-password"
-                                error={errors.password}
-                            />
+                            <TextField label="Email" name="email" type="email" autoComplete="username" autoFocus error={errors.email} />
+                            <TextField label="Parolă" name="password" type="password" autoComplete="current-password" error={errors.password} />
 
                             <div className="flex items-center gap-2">
                                 <input
@@ -62,25 +51,17 @@ export default function Login({ pending_repository }: Props) {
                                     className="size-4 cursor-pointer accent-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                                 />
                                 <label htmlFor="remember" className="cursor-pointer text-sm text-ink-muted">
-                                    Ține-mă minte
+                                    Ține-mă minte pe acest dispozitiv
                                 </label>
                             </div>
 
-                            <PrimaryButton disabled={processing}>{processing ? 'Se verifică…' : 'Intră în cont'}</PrimaryButton>
+                            <PrimaryButton size="lg" disabled={processing}>
+                                {processing ? 'Se verifică…' : 'Intră în cont'}
+                            </PrimaryButton>
                         </>
                     )}
                 </Form>
-
-                <p className="mt-6 text-center text-sm text-ink-muted">
-                    Nu ai cont?{' '}
-                    <Link
-                        href="/register"
-                        className="rounded-sm font-medium text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                    >
-                        Creează unul
-                    </Link>
-                </p>
-            </div>
+            </AuthShell>
         </AppLayout>
     );
 }

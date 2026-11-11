@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import { CloseIcon } from '@/components/icons';
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
@@ -73,14 +74,18 @@ export default function FlashMessage({ placement = 'bottom' }: Props) {
     }, [visibleFlash]);
 
     // Zona aria-live există mereu, ca cititoarele de ecran să anunțe mesajul când apare în ea.
+    // Are nume propriu de tranziție („toast”): la trecerea dintre pagini rămâne deasupra conținutului care se schimbă.
     return (
         <div
             aria-live="polite"
+            style={{ viewTransitionName: 'toast' }}
             className={`pointer-events-none fixed z-50 flex justify-center ${placementClasses[placement]}`}
         >
             {visibleFlash && (
+                // Cheia e textul: un mesaj nou repornește animația de apariție (urcă 8 px).
                 <div
-                    className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-surface-raised p-4 text-sm shadow-lg ${flashBoxClasses[visibleFlash.kind]}`}
+                    key={visibleFlash.text}
+                    className={`pointer-events-auto flex w-full max-w-sm animate-rise items-start gap-3 rounded-lg border bg-surface-raised p-4 text-sm shadow-float ${flashBoxClasses[visibleFlash.kind]}`}
                 >
                     <span aria-hidden="true" className={`mt-1.5 size-2 shrink-0 rounded-full ${flashDotClasses[visibleFlash.kind]}`} />
                     <p className="flex-1">{visibleFlash.text}</p>
@@ -88,9 +93,9 @@ export default function FlashMessage({ placement = 'bottom' }: Props) {
                         type="button"
                         onClick={() => setVisibleFlash(null)}
                         aria-label="Închide mesajul"
-                        className={`-my-1 cursor-pointer rounded-md px-1.5 text-lg leading-none text-ink-subtle hover:text-ink ${focusRing}`}
+                        className={`pressable -my-1 -mr-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-subtle hover:bg-surface-2 hover:text-ink ${focusRing}`}
                     >
-                        ×
+                        <CloseIcon />
                     </button>
                 </div>
             )}

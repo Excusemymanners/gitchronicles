@@ -10,16 +10,122 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+    /* Trei voci: Instrument Sans pentru text, Mona Sans (fontul din logo) pentru titluri, JetBrains Mono pentru cod. */
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
-    /* Fontul numelui GitChronicle din logo: Mona Sans, fontul open-source al GitHub. */
+    --font-display: 'Mona Sans', ui-sans-serif, system-ui, sans-serif;
+    /* Numele vechi al aceluiași font, folosit de logo. */
     --font-brand: 'Mona Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+    /*
+     * Titlurile: text-display (doar titlul mare de pe prima pagină), text-title (titlul unei pagini)
+     * și text-heading (titlul unei secțiuni). Fiecare vine cu înălțimea rândului și spațierea literelor.
+     */
+    --text-display: clamp(2.5rem, 1.4rem + 4.2vw, 4.25rem);
+    --text-display--line-height: 1.04;
+    --text-display--letter-spacing: -0.03em;
+    --text-title: clamp(1.75rem, 1.5rem + 1vw, 2.25rem);
+    --text-title--line-height: 1.15;
+    --text-title--letter-spacing: -0.02em;
+    --text-heading: 1.5rem;
+    --text-heading--line-height: 1.25;
+    --text-heading--letter-spacing: -0.015em;
+
+    /* Două raze: 8 px pentru butoane și câmpuri (rounded-md), 12 px pentru carduri și panouri (rounded-lg). */
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+
+    /*
+     * Mișcarea are un singur set de curbe: ease-out pentru ce apare sau răspunde la o acțiune,
+     * ease-in pentru ce dispare, ease-in-out pentru ce se mută sau se desenează,
+     * ease-pop (trece puțin de capăt și revine) doar pentru un inel care se așază pe linie.
+     */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Orice clasă „transition” din aplicație folosește durata scurtă și curba ease-out de mai sus. */
+    --default-transition-duration: 120ms;
+    --default-transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Animațiile: fiecare devine o clasă animate-… și se oprește în starea finală (both). */
+    --animate-fade-in: fade-in var(--motion-base) var(--ease-out) both;
+    --animate-rise: rise var(--motion-slow) var(--ease-out) both;
+    --animate-pop: pop var(--motion-slow) var(--ease-pop) both;
+    --animate-draw: draw var(--motion-draw) var(--ease-in-out) both;
+    --animate-grow-x: grow-x var(--motion-slow) var(--ease-in-out) both;
+    --animate-grow-y: grow-y var(--motion-slow) var(--ease-in-out) both;
+    --animate-halo: halo 1.8s var(--ease-out) infinite;
+
+    /* Apare pe loc. */
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+    }
+
+    /* Apare urcând 8 px: un mesaj, un card nou, un răspuns. */
+    @keyframes rise {
+        from {
+            opacity: 0;
+            translate: 0 8px;
+        }
+    }
+
+    /* Un inel care se așază pe linie. */
+    @keyframes pop {
+        from {
+            opacity: 0;
+            scale: 0.4;
+        }
+    }
+
+    /* O linie SVG care se desenează: elementul are pathLength="1". */
+    @keyframes draw {
+        from {
+            stroke-dashoffset: 1;
+        }
+
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    /* O bară care crește de la capătul ei de început (orizontal sau vertical). */
+    @keyframes grow-x {
+        from {
+            scale: 0 1;
+        }
+    }
+
+    @keyframes grow-y {
+        from {
+            scale: 1 0;
+        }
+    }
+
+    /* Haloul inelului la care se lucrează acum: un cerc care se lărgește și se stinge. */
+    @keyframes halo {
+        from {
+            opacity: 0.55;
+            scale: 1;
+        }
+
+        to {
+            opacity: 0;
+            scale: 2.6;
+        }
+    }
 }
 
 /*
  * Culorile interfeței, numite după rol (fundal, suprafață, text, accent, stare), nu după nuanță:
  * o componentă scrie bg-surface sau text-ink-muted și arată bine în ambele teme.
- * Valorile de aici sunt tema luminoasă (aspectul de până acum); clasa .dark le înlocuiește mai jos.
+ * Valorile de aici sunt tema luminoasă: hârtie rece și cerneală bleumarin, din aceeași familie cu tema
+ * întunecată (nu griurile și indigoul implicite din Tailwind); clasa .dark le înlocuiește mai jos.
  * Sunt în hex, ca diagramele Mermaid să le poată citi din JavaScript și folosi direct.
  * „static” păstrează toate variabilele în CSS, chiar și pe cele pe care nicio clasă nu le folosește încă.
  */
@@ -28,29 +134,29 @@
      * Fundaluri: pagina, cardurile, elementele mici de pe carduri (cod, bare, hover) și ce plutește
      * deasupra paginii (mesajul flash, bara fixă de jos). În tema întunecată „mai sus” înseamnă „mai deschis”.
      */
-    --color-canvas: #f9fafb;
+    --color-canvas: #f5f6fa;
     --color-surface: #ffffff;
-    --color-surface-2: #f3f4f6;
+    --color-surface-2: #eceef5;
     --color-surface-raised: #ffffff;
 
     /* Linii: între rândurile unei liste, chenarul cardurilor, chenarul câmpurilor de formular. */
-    --color-line-subtle: #f3f4f6;
-    --color-line: #e5e7eb;
-    --color-line-strong: #d1d5db;
+    --color-line-subtle: #eceef5;
+    --color-line: #dfe2ec;
+    --color-line-strong: #c5cad9;
 
     /* Text: principal, secundar (descrieri, etichete), discret (date, indicii, placeholder). */
-    --color-ink: #111827;
-    --color-ink-muted: #4b5563;
-    --color-ink-subtle: #6b7280;
+    --color-ink: #0f1730;
+    --color-ink-muted: #434b66;
+    --color-ink-subtle: #636b85;
 
     /* Accentul: legături, tab-ul deschis, conturul de focus; butonul principal; fundalul unui element ales. */
-    --color-accent: #4f46e5;
-    --color-accent-hover: #6366f1;
-    --color-accent-soft: #eef2ff;
-    --color-accent-strong: #4f46e5;
-    --color-accent-strong-hover: #6366f1;
+    --color-accent: #3b4fd3;
+    --color-accent-hover: #2c3db3;
+    --color-accent-soft: #eaedfc;
+    --color-accent-strong: #3b4fd3;
+    --color-accent-strong-hover: #2f41bd;
     --color-on-accent: #ffffff;
-    --color-selection: rgb(79 70 229 / 0.18);
+    --color-selection: rgb(59 79 211 / 0.18);
 
     /*
      * Stările, fiecare cu patru nuanțe: culoarea plină (punct, text de eroare), fundalul pal,
@@ -69,7 +175,7 @@
     --color-success-soft: #f0fdf4;
     --color-success-line: rgb(22 163 74 / 0.2);
     --color-success-ink: #166534;
-    --color-danger: #dc2626;
+    --color-danger: #d12323;
     --color-danger-soft: #fef2f2;
     --color-danger-line: rgb(220 38 38 / 0.2);
     --color-danger-ink: #991b1b;
@@ -79,8 +185,30 @@
      * Tailwind copiază forma umbrei în clasa shadow-raised, dar culoarea rămâne variabila --color-shadow,
      * așa că .dark o poate schimba.
      */
-    --color-shadow: rgb(17 24 39 / 0.08);
+    --color-shadow: rgb(15 23 48 / 0.08);
+    --color-shadow-strong: rgb(15 23 48 / 0.18);
     --shadow-raised: 0 -6px 20px var(--color-shadow);
+
+    /*
+     * shadow-card: umbra fină a unui card așezat pe pagină (se vede doar în tema luminoasă; în cea
+     * întunecată cardul se desparte prin chenar și printr-o suprafață mai deschisă).
+     * shadow-float: umbra a ceea ce plutește deasupra paginii (mesaj flash, meniu, sertar).
+     */
+    --shadow-card: 0 1px 2px 0 var(--color-shadow);
+    --shadow-float: 0 12px 32px -12px var(--color-shadow-strong), 0 2px 6px -2px var(--color-shadow);
+
+    /*
+     * Duratele mișcării, aceleași în toată aplicația:
+     * fast = răspunsul la hover, apăsare și focus; base = ce apare sau dispare pe loc (mesaj, etichetă);
+     * slow = panouri, sertare, dezvăluirea unei diagrame; page = trecerea dintre pagini;
+     * draw = linia care se desenează o dată, la încărcare; stagger = decalajul dintre elementele unei serii.
+     */
+    --motion-fast: 120ms;
+    --motion-base: 200ms;
+    --motion-slow: 320ms;
+    --motion-page: 220ms;
+    --motion-draw: 900ms;
+    --motion-stagger: 60ms;
 }
 
 @layer base {
@@ -134,6 +262,7 @@
         --color-danger-ink: #fca5a5;
 
         --color-shadow: rgb(0 0 0 / 0.5);
+        --color-shadow-strong: rgb(0 0 0 / 0.7);
     }
 
     /*
@@ -150,4 +279,146 @@
     ::selection {
         background-color: var(--color-selection);
     }
+
+    /* Literele subțiri pe fundal închis se citesc mai bine cu netezire în tonuri de gri. */
+    html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Titlurile de pagină și de secțiune vorbesc cu fontul din logo, pe toate paginile. */
+    h1,
+    h2 {
+        font-family: var(--font-display);
+    }
+
+    /*
+     * Orice element pe care se poate da click își schimbă culorile lin, în 120 ms.
+     * Conturul de focus nu e în listă: trebuie să apară pe loc. :where() păstrează specificitatea zero,
+     * așa că orice clasă Tailwind de pe element are întâietate.
+     */
+    :where(a, button, input, select, textarea, summary, [role='button']) {
+        transition-property: color, background-color, border-color, box-shadow, opacity, text-decoration-color, fill, stroke;
+        transition-duration: var(--motion-fast);
+        transition-timing-function: var(--ease-out);
+    }
+
+    /* Conturul de focus de la tastatură, pentru orice element care nu și-l definește singur. */
+    :focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+    }
+
+    /*
+     * Trecerea dintre pagini (View Transitions API, pornită o singură dată în app.tsx).
+     * Browserul fotografiază pagina veche și pe cea nouă și le topește una în alta; ce nu s-a schimbat rămâne pe loc.
+     * Zonele cu nume propriu (view-transition-name) se animă separat:
+     *  - page: conținutul care se schimbă; cel vechi se stinge repede, cel nou apare urcând 8 px;
+     *  - site-header, toast, brand-mark: rama care rămâne; logo-ul alunecă la noul lui loc.
+     */
+    ::view-transition-group(*) {
+        animation-duration: var(--motion-page);
+        animation-timing-function: var(--ease-in-out);
+    }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation-duration: var(--motion-page);
+    }
+
+    ::view-transition-old(page) {
+        animation: vt-page-out 100ms var(--ease-in) both;
+    }
+
+    ::view-transition-new(page) {
+        animation: vt-page-in var(--motion-page) var(--ease-out) both;
+    }
+
+    /*
+     * Cine a cerut sistemului mai puțină mișcare nu primește niciuna: duratele devin practic zero,
+     * animațiile sar direct la starea finală, iar trecerea dintre pagini e o simplă înlocuire.
+     */
+    @media (prefers-reduced-motion: reduce) {
+        :root {
+            --motion-fast: 0.01ms;
+            --motion-base: 0.01ms;
+            --motion-slow: 0.01ms;
+            --motion-page: 0.01ms;
+            --motion-draw: 0.01ms;
+            --motion-stagger: 0ms;
+        }
+
+        *,
+        ::before,
+        ::after {
+            animation-duration: 0.01ms !important;
+            animation-delay: 0s !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+            animation: none !important;
+        }
+    }
+}
+
+@keyframes vt-page-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes vt-page-in {
+    from {
+        opacity: 0;
+        translate: 0 8px;
+    }
+}
+
+@keyframes shimmer {
+    from {
+        background-position: 100% 0;
+    }
+
+    to {
+        background-position: -100% 0;
+    }
+}
+
+/*
+ * pressable: butonul se strânge puțin cât e apăsat, ca apăsarea să se simtă.
+ * Pentru butoane și etichete pe care se dă click; rândurile și cardurile doar își schimbă fundalul.
+ */
+@utility pressable {
+    transition-property: color, background-color, border-color, box-shadow, opacity, scale;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--ease-out);
+
+    &:active:not(:disabled) {
+        scale: 0.97;
+    }
+}
+
+/*
+ * stagger: elementele unei serii pornesc pe rând. Fiecare își spune locul în serie cu style={{ '--i': index }};
+ * de la al nouălea încolo pornesc odată, ca seria să nu dureze prea mult.
+ */
+@utility stagger {
+    animation-delay: calc(min(var(--i, 0), 8) * var(--motion-stagger));
+}
+
+/*
+ * skeleton: locul unui conținut care încă se încarcă, cu o lumină care trece peste el.
+ * Cine îl folosește îi dă mărimea conținutului final (de exemplu h-4 w-48).
+ */
+@utility skeleton {
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface-2);
+    background-image: linear-gradient(100deg, transparent 30%, var(--color-line) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
 }

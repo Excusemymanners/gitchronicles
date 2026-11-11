@@ -1,21 +1,27 @@
-import { Form, Head, Link, usePage, usePoll } from '@inertiajs/react';
+import { Head, usePoll } from '@inertiajs/react';
 import { useEffect } from 'react';
-import { AppLogoMark } from '@/components/app-logo';
-import PrimaryButton from '@/components/primary-button';
-import StatusBadge from '@/components/status-badge';
-import TextInput from '@/components/text-input';
-import AppLayout from '@/layouts/app-layout';
-import { formatDate, shortSha } from '@/lib/format';
-import type { RepositoryItem } from '@/types';
+import AddRepositoryForm from '@/components/home/add-repository-form';
+import Capabilities from '@/components/home/capabilities';
+import RepositoryCard from '@/components/home/repository-card';
+import PipelineRail from '@/components/pipeline-rail';
+import AppLayout, { pageContainer } from '@/layouts/app-layout';
+import { countLabel, formatNumber } from '@/lib/format';
+import { useCountUp } from '@/lib/motion';
+import type { RepositoryCard as RepositoryCardData } from '@/types/home';
 
 type Props = {
+    /** Descrierea scurtă a aplicației, pusă în <meta name="description">. */
     mesaj: string;
-    /** Toate repository-urile adăugate de oricine, cele mai noi primele. */
-    repositories: RepositoryItem[];
+    /** Toate repository-urile adăugate de oricine, cele mai noi primele, cu faptele de pe carduri. */
+    repositories: RepositoryCardData[];
 };
 
+/**
+ * Prima pagină: ce face aplicația și formularul de adăugare, pașii procesării („Cum funcționează”),
+ * capitolele pe care le primește fiecare repository și galeria repository-urilor adăugate.
+ * Toate numerele vin din baza de date; textele fixe doar explică produsul.
+ */
 export default function Home({ mesaj, repositories }: Props) {
-    const { auth } = usePage().props;
     const hasProcessingRepository = repositories.some((repository) => repository.is_processing);
 
     // Cât timp măcar un repository se mai procesează, cerem lista din nou la fiecare 2 secunde
@@ -32,100 +38,104 @@ export default function Home({ mesaj, repositories }: Props) {
 
     return (
         <AppLayout>
-            <Head title="Acasă" />
+            <Head title="Acasă">
+                <meta head-key="description" name="description" content={mesaj} />
+            </Head>
 
-            <section className="flex flex-col items-center gap-2 pb-8 text-center">
-                <AppLogoMark className="mb-2 size-20" />
-                <h1 className="font-brand text-3xl font-bold tracking-tight sm:text-4xl">GitChronicle</h1>
-                <p className="max-w-xl text-ink-muted sm:text-lg">{mesaj}</p>
+            {/* Pe ecrane late: titlul și formularul în stânga, pașii procesării în dreapta. Pe telefon, unul sub altul. */}
+            <section className={`grid gap-x-16 gap-y-14 pt-12 pb-16 sm:pt-16 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:pt-24 lg:pb-24 ${pageContainer}`}>
+                <div>
+                    <h1 className="max-w-[16ch] font-display text-display font-bold text-ink">Documentație care ține pasul cu fiecare commit.</h1>
+                    <p className="mt-5 max-w-[58ch] text-base leading-7 text-ink-muted sm:mt-6 sm:text-lg sm:leading-8">
+                        GitChronicle citește codul și istoricul git al unui repository, îi scrie documentația, îi desenează arhitectura și răspunde la
+                        întrebări cu trimiteri la liniile exacte. La următorul commit reface doar ce s-a schimbat.
+                    </p>
+
+                    <div className="mt-10 max-w-2xl">
+                        <AddRepositoryForm />
+                    </div>
+                </div>
+
+                <section aria-labelledby="how-heading" className="lg:pt-3">
+                    <h2 id="how-heading" className="font-display text-lg font-semibold tracking-tight text-ink">
+                        Cum funcționează
+                    </h2>
+                    <p className="mt-1 text-sm text-ink-muted">Șapte pași, mereu în aceeași ordine. Fiecare pornește după ce a reușit cel dinainte.</p>
+                    {/* Singura animație de la încărcarea paginii: linia „se scrie” de sus în jos, inel cu inel. */}
+                    <PipelineRail animated className="mt-6" />
+                </section>
             </section>
 
-            {/*
-              Oricine poate trimite formularul; serverul decide ce urmează. Dacă repository-ul există deja,
-              deschide pagina lui. Un vizitator fără cont ajunge la autentificare, iar după ce intră în cont
-              repository-ul se adaugă automat. resetOnSuccess golește câmpul după un răspuns reușit.
-            */}
-            <Form
-                action="/repositories"
-                method="post"
-                resetOnSuccess
-                noValidate
-                className="rounded-lg border border-line bg-surface p-4 shadow-xs sm:p-6"
-            >
-                {({ errors, processing }) => (
-                    <>
-                        <label htmlFor="url" className="text-sm font-medium text-ink-muted">
-                            Link GitHub
-                        </label>
-                        <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
-                            <div className="flex-1">
-                                <TextInput
-                                    id="url"
-                                    name="url"
-                                    type="url"
-                                    placeholder="https://github.com/proprietar/nume"
-                                    autoComplete="off"
-                                    aria-invalid={errors.url ? true : undefined}
-                                    aria-describedby={errors.url ? 'url-error url-hint' : 'url-hint'}
-                                />
-                            </div>
-                            <PrimaryButton disabled={processing}>{processing ? 'Se adaugă…' : 'Adaugă'}</PrimaryButton>
-                        </div>
-                        {errors.url && (
-                            <p id="url-error" className="mt-1.5 text-sm text-danger">
-                                {errors.url}
-                            </p>
-                        )}
-                        <p id="url-hint" className="mt-3 text-sm text-ink-subtle">
-                            {auth.user
-                                ? 'Lipește linkul unui repository de pe GitHub ca să-l adaugi.'
-                                : 'Poți răsfoi totul fără cont. Ca să adaugi un repository nou, îți cerem să intri în cont — apoi îl adăugăm automat.'}
-                        </p>
-                    </>
-                )}
-            </Form>
-
-            <section aria-labelledby="repositories-heading" className="mt-10">
-                <h2 id="repositories-heading" className="text-lg font-semibold tracking-tight">
-                    Repository-uri
+            <section aria-labelledby="capabilities-heading" className={`pb-16 lg:pb-24 ${pageContainer}`}>
+                <h2 id="capabilities-heading" className="font-display text-heading font-semibold text-ink">
+                    Ce găsești în fiecare repository
                 </h2>
+                <div className="mt-8">
+                    <Capabilities />
+                </div>
+            </section>
 
-                {repositories.length === 0 ? (
-                    <p className="mt-4 rounded-lg border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-muted">
-                        Încă nu a fost adăugat niciun repository. Adaugă primul link de GitHub mai sus.
-                    </p>
-                ) : (
-                    <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-surface shadow-xs">
-                        {repositories.map((repository) => (
-                            <li key={repository.id} className="px-4 py-4 sm:px-6">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Link
-                                        href={`/repositories/${repository.id}`}
-                                        className="rounded-sm font-medium break-words text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                                    >
-                                        {repository.full_name}
-                                    </Link>
-                                    <StatusBadge status={repository.status} label={repository.status_label} />
-                                </div>
-                                <p className="mt-1 truncate text-sm text-ink-subtle">{repository.url}</p>
-                                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-subtle">
-                                    {repository.last_sha && (
-                                        <code
-                                            title={repository.last_sha}
-                                            className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ink-muted"
-                                        >
-                                            {shortSha(repository.last_sha)}
-                                        </code>
-                                    )}
-                                    <span>
-                                        Adăugat la <time dateTime={repository.created_at}>{formatDate(repository.created_at)}</time>
-                                    </span>
-                                </p>
-                            </li>
-                        ))}
-                    </ul>
-                )}
+            <section aria-labelledby="repositories-heading" className="flex-1 border-t border-line bg-surface/40 py-16 lg:py-20">
+                <div className={pageContainer}>
+                    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
+                        <h2 id="repositories-heading" className="font-display text-heading font-semibold text-ink">
+                            Repository-uri
+                        </h2>
+                        {repositories.length > 0 && <Totals repositories={repositories} />}
+                    </div>
+
+                    {repositories.length === 0 ? (
+                        <div className="mt-8 rounded-lg border border-dashed border-line-strong px-6 py-14 text-center">
+                            <p className="font-display text-lg font-semibold text-ink">Încă nu a fost adăugat niciun repository.</p>
+                            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-muted">
+                                Lipește un link de GitHub în câmpul de sus. Aici apare cardul lui și poți urmări, pas cu pas, cum i se scrie
+                                documentația.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => document.getElementById('url')?.focus()}
+                                className="pressable mt-6 inline-flex cursor-pointer items-center rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                            >
+                                Mergi la câmpul pentru link
+                            </button>
+                        </div>
+                    ) : (
+                        <ul className="mt-8 grid gap-4 lg:grid-cols-2">
+                            {repositories.map((repository) => (
+                                <RepositoryCard key={repository.id} repository={repository} />
+                            ))}
+                        </ul>
+                    )}
+                </div>
             </section>
         </AppLayout>
+    );
+}
+
+/**
+ * Totalurile galeriei, adunate din cardurile de mai jos: câte repository-uri, fișiere analizate și pagini scrise.
+ * Numerele urcă o dată până la valoarea lor (useCountUp) și din nou când un repository termină de procesat.
+ */
+function Totals({ repositories }: { repositories: RepositoryCardData[] }) {
+    const fileCount = repositories.reduce((sum, repository) => sum + repository.facts.file_count, 0);
+    const documentCount = repositories.reduce((sum, repository) => sum + repository.facts.document_count, 0);
+
+    const shownFiles = useCountUp(fileCount);
+    const shownDocuments = useCountUp(documentCount);
+
+    // Substantivul se acordă cu numărul final („1 fișier”, „20 de fișiere”), nu cu cel care încă urcă.
+    const nounOf = (count: number, singular: string, plural: string) => countLabel(count, singular, plural).replace(/^\S+\s/, '');
+
+    return (
+        <p className="text-sm text-ink-muted">
+            <strong className="font-medium text-ink tabular-nums">{repositories.length}</strong> {nounOf(repositories.length, 'repository', 'repository-uri')},{' '}
+            <strong className="font-medium text-ink tabular-nums">{formatNumber(shownFiles)}</strong> {nounOf(fileCount, 'fișier analizat', 'fișiere analizate')}
+            {documentCount > 0 && (
+                <>
+                    , <strong className="font-medium text-ink tabular-nums">{formatNumber(shownDocuments)}</strong>{' '}
+                    {nounOf(documentCount, 'pagină scrisă', 'pagini scrise')}
+                </>
+            )}
+        </p>
     );
 }

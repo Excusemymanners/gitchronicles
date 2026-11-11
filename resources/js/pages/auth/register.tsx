@@ -1,4 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import AuthShell from '@/components/auth/auth-shell';
 import PrimaryButton from '@/components/primary-button';
 import TextField from '@/components/text-field';
 import AppLayout from '@/layouts/app-layout';
@@ -8,28 +9,35 @@ type Props = {
     pending_repository: string | null;
 };
 
+const linkClasses =
+    'rounded-sm font-medium text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+
 export default function Register({ pending_repository }: Props) {
     return (
         <AppLayout>
             <Head title="Cont nou" />
 
-            <div className="mx-auto w-full max-w-sm">
-                <h1 className="text-2xl font-semibold tracking-tight">Cont nou</h1>
-                <p className="mt-1 text-sm text-ink-muted">Creează un cont ca să adaugi repository-uri de pe GitHub.</p>
-
-                {pending_repository && (
-                    <p className="mt-6 rounded-lg border border-info-line bg-info-soft p-4 text-sm text-info-ink">
-                        După ce îți creezi contul, adăugăm automat <span className="font-medium break-all">{pending_repository}</span>.
-                    </p>
-                )}
-
+            <AuthShell
+                title="Creează un cont"
+                lead="Cu un cont poți adăuga repository-uri publice de pe GitHub și le poți șterge pe cele adăugate de tine."
+                pendingRepository={pending_repository}
+                pendingText="După ce îți creezi contul, adăugăm automat"
+                footer={
+                    <>
+                        Ai deja cont?{' '}
+                        <Link href="/login" className={linkClasses}>
+                            Intră în cont
+                        </Link>
+                    </>
+                }
+            >
                 {/* După o încercare eșuată, cele două parole se golesc; numele și emailul rămân. */}
                 <Form
                     action="/register"
                     method="post"
                     resetOnError={['password', 'password_confirmation']}
                     noValidate
-                    className="mt-6 flex flex-col gap-4 rounded-lg border border-line bg-surface p-6 shadow-xs"
+                    className="flex flex-col gap-5"
                 >
                     {({ errors, processing }) => (
                         <>
@@ -40,6 +48,7 @@ export default function Register({ pending_repository }: Props) {
                                 name="password"
                                 type="password"
                                 autoComplete="new-password"
+                                hint="Cel puțin 8 caractere."
                                 error={errors.password}
                             />
                             <TextField
@@ -50,21 +59,13 @@ export default function Register({ pending_repository }: Props) {
                                 error={errors.password_confirmation}
                             />
 
-                            <PrimaryButton disabled={processing}>{processing ? 'Se creează contul…' : 'Creează cont'}</PrimaryButton>
+                            <PrimaryButton size="lg" disabled={processing}>
+                                {processing ? 'Se creează contul…' : 'Creează cont'}
+                            </PrimaryButton>
                         </>
                     )}
                 </Form>
-
-                <p className="mt-6 text-center text-sm text-ink-muted">
-                    Ai deja cont?{' '}
-                    <Link
-                        href="/login"
-                        className="rounded-sm font-medium text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                    >
-                        Autentifică-te
-                    </Link>
-                </p>
-            </div>
+            </AuthShell>
         </AppLayout>
     );
 }

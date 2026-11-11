@@ -11,7 +11,7 @@ use App\Http\Requests\StoreRepositoryRequest;
 use App\Http\Resources\CodeStructureResource;
 use App\Http\Resources\DiagramResource;
 use App\Http\Resources\OverviewSummaryResource;
-use App\Http\Resources\RepositoryResource;
+use App\Http\Resources\RepositoryCardResource;
 use App\Models\Document;
 use App\Models\Repository;
 use App\Support\GitHubUrl;
@@ -29,18 +29,20 @@ class RepositoryController extends Controller
     use RendersRepositoryPage;
 
     /**
-     * The home page: every repository, newest first.
+     * The home page: every repository, newest first, each as a gallery card with real facts about it
+     * (files, modules, commits, languages, which chapters exist). The facts are aggregates loaded for
+     * the whole list at once (RepositoryCardResource), never one query per repository.
      */
     public function index(): Response
     {
-        $repositories = Repository::query()
+        $repositories = RepositoryCardResource::withFacts(Repository::query())
             ->latest()
             ->latest('id')
             ->get();
 
         return Inertia::render('home', [
             'mesaj' => 'Documentație vie pentru repository-urile tale',
-            'repositories' => RepositoryResource::collection($repositories)->resolve(),
+            'repositories' => RepositoryCardResource::cards($repositories),
         ]);
     }
 

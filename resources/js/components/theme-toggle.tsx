@@ -1,8 +1,10 @@
+import { withViewTransition } from '@/lib/motion';
 import { setTheme, useTheme } from '@/lib/theme';
 
 /**
  * Butonul din antet care schimbă tema. Iconița și eticheta arată tema în care treci:
  * în tema întunecată apare soarele („Temă luminoasă”), în cea luminoasă luna („Temă întunecată”).
+ * Schimbarea se face cu o trecere lină a întregii pagini (withViewTransition), nu dintr-odată.
  */
 export default function ThemeToggle() {
     const theme = useTheme();
@@ -12,10 +14,10 @@ export default function ThemeToggle() {
     return (
         <button
             type="button"
-            onClick={() => setTheme(nextTheme)}
+            onClick={() => withViewTransition(() => setTheme(nextTheme))}
             aria-label={label}
             title={label}
-            className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="pressable inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
             {nextTheme === 'light' ? <SunIcon /> : <MoonIcon />}
         </button>
