@@ -2,23 +2,38 @@
 
 namespace App\Jobs;
 
+use App\Ai\NullTextGenerator;
+use App\Ai\TextGenerator;
+use App\Enums\ProcessingRunStatus;
 use App\Enums\RepositoryStatus;
 use App\Exceptions\RepositoryProcessingException;
+use App\Git\LocalClone;
+use App\Models\Document;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
+use Closure;
+use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Step 1 of the pipeline: clone the repository from GitHub into storage/app/private/repositories/{id}
+ * Step 1 of the pipeline: bring the repository's code to storage/app/private/repositories/{id}
  * and remember which commit it reached (last_sha) and its main branch (default_branch).
  *
- * The job is idempotent: every attempt first deletes what a previous attempt left behind.
+ * - The first time (or when the folder does not hold a usable clone) the repository is cloned.
+ * - After that, an existing clone is only updated (Faza 9): `git fetch` brings the new commits and
+ *   the clone moves to the newest one. This is much cheaper than deleting it and cloning again.
+ * - When an incremental run finds the same commit as the last successful run, there is nothing new:
+ *   the run is closed as "skipped" and the rest of the pipeline is dropped, so no step runs and
+ *   Claude is never called. The only exception is a repository with pages marked stale (Claude could
+ *   not write them last time) while an AI driver is configured: then the pipeline goes on, with no
+ *   changed files, to try them again.
+ *
+ * The job is idempotent: a second attempt replaces whatever the first one left with a fresh clone.
  *
  * When git fails, the user gets a short Romanian message (repositories.error) and the log gets
  * the details (exit code and git's own output). Errors that cannot go away by themselves
@@ -67,61 +82,86 @@ class CloneRepository implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->repository->update(['status' => RepositoryStatus::Cloning]);
+        $this->repository->update(['status' => $this->run->statusFor(RepositoryStatus::Cloning)]);
 
-        Storage::disk('local')->deleteDirectory($this->repository->cloneDirectory());
+        $clone = LocalClone::of($this->repository);
 
-        if (! $this->cloneFromGitHub()) {
+        // Only the first attempt trusts an existing clone: if updating it failed, the second one starts clean.
+        $isUpdate = $this->attempts() === 1 && $clone->isHealthy($this->repository->url);
+
+        if (! $isUpdate) {
+            Storage::disk('local')->deleteDirectory($this->repository->cloneDirectory());
+        }
+
+        $worked = $isUpdate
+            ? $this->git(fn () => $clone->fetch(self::CLONE_TIMEOUT_SECONDS), isUpdate: true)
+                && $this->git(fn () => $clone->moveTo('FETCH_HEAD', self::CLONE_TIMEOUT_SECONDS), isUpdate: true)
+            : $this->git(fn () => $clone->clone($this->repository->url, self::CLONE_TIMEOUT_SECONDS), isUpdate: false);
+
+        if (! $worked) {
             return;
         }
 
-        $clonePath = $this->repository->clonePath();
-        $head = Process::path($clonePath)->run(['git', 'rev-parse', 'HEAD']);
+        $sha = $clone->head();
 
-        if ($head->failed()) {
+        if ($sha === null) {
             $this->fail(new RepositoryProcessingException('Repository-ul nu are încă niciun commit, deci nu avem ce documenta.'));
 
             return;
         }
 
-        $sha = trim($head->output());
-        $defaultBranch = trim(Process::path($clonePath)->run(['git', 'symbolic-ref', '--short', 'HEAD'])->throw()->output());
-        $trackedFiles = Process::path($clonePath)->run(['git', 'ls-files', '-z'])->throw()->output();
-
         $this->repository->update([
             'last_sha' => $sha,
-            'default_branch' => $defaultBranch,
+            'default_branch' => $clone->branch(),
             'cloned_at' => now(),
         ]);
 
         $this->run->update([
             'to_sha' => $sha,
-            'files_total' => substr_count($trackedFiles, "\0"),
+            'files_total' => $clone->trackedFileCount(),
         ]);
+
+        if ($this->run->isIncremental() && $sha === $this->run->from_sha && ! $this->canRetryStalePages()) {
+            $this->finishWithNothingNew();
+        }
     }
 
     /**
-     * Run `git clone` and return whether it worked. On failure the job is already failed
-     * (return false) or an exception is thrown for a second attempt.
-     *
-     * - the command is an array, never a shell string, so the URL cannot run other commands,
-     *   and "--" tells git that what follows is the URL and the folder, never an option;
-     * - credential.helper, core.askPass and GIT_ASKPASS are emptied and GIT_TERMINAL_PROMPT=0,
-     *   so git never asks for (or finds) a password: only public repositories can be cloned,
-     *   even when the worker runs in a terminal logged in to GitHub (VS Code sets GIT_ASKPASS);
-     * - --filter=blob:none downloads file contents only for the latest commit, and --no-tags skips tags,
-     *   so the clone is small and fast; the full history of commits is still there.
+     * Whether a run at the same commit still has something to do: pages marked stale that Claude can
+     * try to write again. Without an AI driver (AI_DRIVER=none) they would only stay stale, so the
+     * run is "nothing new" like any other.
      */
-    private function cloneFromGitHub(): bool
+    private function canRetryStalePages(): bool
+    {
+        return ! app(TextGenerator::class) instanceof NullTextGenerator
+            && Document::whereBelongsTo($this->repository)->where('is_stale', true)->exists();
+    }
+
+    /**
+     * The clone is at the same commit as the last successful run: close the run as "skipped", put the
+     * repository back to "ready" and drop the steps that were chained after this one.
+     */
+    private function finishWithNothingNew(): void
+    {
+        $this->repository->update(['status' => RepositoryStatus::Ready]);
+        $this->run->finish(ProcessingRunStatus::Skipped);
+
+        // The next steps of the chain travel with the job (Queueable::$chained); without them the chain ends here.
+        $this->chained = [];
+    }
+
+    /**
+     * Run one git command (the clone, the fetch or the move to the new commit) and return whether it
+     * worked. On failure the job is already failed (return false) or an exception is thrown for a
+     * second attempt. LocalClone explains the commands themselves.
+     *
+     * @param  Closure(): ProcessResult  $command
+     * @param  bool  $isUpdate  the command updates an existing clone (the messages say so)
+     */
+    private function git(Closure $command, bool $isUpdate): bool
     {
         try {
-            $result = Process::timeout(self::CLONE_TIMEOUT_SECONDS)
-                ->env(['GIT_TERMINAL_PROMPT' => '0', 'GIT_ASKPASS' => ''])
-                ->run([
-                    'git', '-c', 'credential.helper=', '-c', 'core.askPass=',
-                    'clone', '--filter=blob:none', '--no-tags', '--quiet',
-                    '--', $this->repository->url, $this->repository->clonePath(),
-                ]);
+            $result = $command();
         } catch (ProcessTimedOutException) {
             Log::warning('git clone timed out.', [
                 'repository_id' => $this->repository->id,
@@ -129,7 +169,8 @@ class CloneRepository implements ShouldQueue
             ]);
 
             $minutes = intdiv(self::CLONE_TIMEOUT_SECONDS, 60);
-            $this->fail(new RepositoryProcessingException("Clonarea a durat mai mult de {$minutes} minute, așa că am oprit-o. Repository-ul este probabil prea mare."));
+            $what = $isUpdate ? 'Aducerea commit-urilor noi' : 'Clonarea';
+            $this->fail(new RepositoryProcessingException("{$what} a durat mai mult de {$minutes} minute, așa că am oprit-o. Repository-ul este probabil prea mare."));
 
             return false;
         }
@@ -140,6 +181,7 @@ class CloneRepository implements ShouldQueue
 
         Log::warning('git clone failed.', [
             'repository_id' => $this->repository->id,
+            'is_update' => $isUpdate,
             'exit_code' => $result->exitCode(),
             'git_output' => $result->errorOutput(),
         ]);
@@ -150,7 +192,9 @@ class CloneRepository implements ShouldQueue
             return false;
         }
 
-        throw new RepositoryProcessingException('Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.');
+        throw new RepositoryProcessingException($isUpdate
+            ? 'Nu am putut aduce commit-urile noi de pe GitHub. Încearcă din nou peste câteva minute.'
+            : 'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.');
     }
 
     /**

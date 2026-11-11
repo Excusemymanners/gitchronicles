@@ -72,6 +72,55 @@ class TimelinePageTest extends TestCase
         );
     }
 
+    public function test_an_incremental_run_shows_what_changed_and_the_last_complete_run_to_compare_with(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        $commit = Commit::factory()->for($repository)->create();
+        $complete = ProcessingRun::factory()->for($repository)->create([
+            'status' => 'succeeded', 'to_sha' => str_repeat('a', 40), 'duration_ms' => 60000,
+            'files_analyzed' => 900, 'documents_regenerated' => 42, 'context_characters' => 500000,
+        ]);
+        ProcessingRun::factory()->for($repository)->create(['status' => 'failed', 'mode' => 'full', 'to_sha' => str_repeat('b', 40)]);
+        ProcessingRun::factory()->for($repository)->create([
+            'mode' => 'incremental', 'trigger' => 'webhook', 'status' => 'succeeded',
+            'from_sha' => str_repeat('a', 40), 'to_sha' => $commit->sha, 'duration_ms' => 4000,
+            'files_total' => 1000, 'files_changed' => 3, 'files_analyzed' => 3, 'modules_total' => 20, 'modules_affected' => 2,
+            'documents_regenerated' => 1, 'documents_kept' => 41, 'context_characters' => 12000,
+            'change_summary' => [
+                'added' => 1, 'modified' => 2, 'deleted' => 0,
+                'modules' => [['path' => 'app/Http', 'files' => 3, 'via' => 'changed'], ['path' => 'routes', 'files' => 0, 'via' => 'imports']],
+                'modules_added' => [], 'modules_removed' => [], 'project_files' => [], 'full_reason' => null,
+            ],
+        ]);
+
+        $this->get(route('repositories.timeline', $repository))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('runs', 3)
+                ->where('runs.0.mode', 'incremental')
+                ->where('runs.0.trigger', 'webhook')
+                ->where('runs.0.from_sha', str_repeat('a', 40))
+                ->where('runs.0.files_changed', 3)
+                ->where('runs.0.files_analyzed', 3)
+                ->where('runs.0.modules_affected', 2)
+                ->where('runs.0.documents_regenerated', 1)
+                ->where('runs.0.documents_kept', 41)
+                ->where('runs.0.context_characters', 12000)
+                ->where('runs.0.changes.added', 1)
+                ->where('runs.0.changes.modified', 2)
+                ->where('runs.0.changes.modules.0', ['path' => 'app/Http', 'files' => 3, 'via' => 'changed'])
+                ->where('runs.0.changes.modules_not_listed', 0)
+                ->where('runs.0.changes.full_reason', null)
+                // The comparison is with the last complete run that succeeded: the failed full run is skipped.
+                ->where('runs.0.reference.sha', $complete->to_sha)
+                ->where('runs.0.reference.duration_ms', 60000)
+                ->where('runs.0.reference.documents_regenerated', 42)
+                ->where('runs.0.reference.files_analyzed', 900)
+                ->where('runs.0.reference.context_characters', 500000)
+                ->where('runs.1.reference', null)
+                ->where('runs.2.changes', null)
+                ->where('runs.2.reference', null));
+    }
+
     public function test_commits_come_newest_first_thirty_per_page(): void
     {
         $repository = Repository::factory()->ready()->create();

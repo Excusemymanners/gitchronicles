@@ -4,6 +4,7 @@ namespace Tests\Feature\Jobs;
 
 use App\Ai\TextGenerator;
 use App\Diagrams\ArchitectureDiagramBuilder;
+use App\Diagrams\DiagramHistory;
 use App\Diagrams\FlowDiagramWriter;
 use App\Enums\ProcessingTrigger;
 use App\Jobs\AnalyzeRepository;
@@ -92,7 +93,7 @@ class BuildDiagramsTest extends TestCase
      */
     private function handle(BuildDiagrams $job): void
     {
-        $job->handle(app(ArchitectureDiagramBuilder::class), app(FlowDiagramWriter::class));
+        $job->handle(app(ArchitectureDiagramBuilder::class), app(FlowDiagramWriter::class), app(DiagramHistory::class));
     }
 
     /**

@@ -33,16 +33,19 @@ function authorLabel(document: DocumentPage): string {
 }
 
 /**
- * O pagină de documentație: avertismentul când e scrisă automat în locul variantei cu AI, cine a scris-o
+ * O pagină de documentație: avertismentul când e depășită sau scrisă automat în locul variantei cu AI, cine a scris-o
  * (și câți tokeni a folosit), butoanele README-ului („Copiază”, „Descarcă README.md”) și textul Markdown.
  * Componenta e de sine stătătoare, ca s-o poată folosi și alte ecrane (de exemplu spațiul de lucru al repository-ului).
  */
 export default function DocsContent({ document, repositoryFullName }: Props) {
     return (
         <article className="min-w-0">
+            {/* Două feluri de avertisment: textul lui Claude a rămas în urma codului, sau pagina e scrisă de șablon în locul lui Claude. */}
             {document.is_stale && (
-                <div className="mb-6 rounded-lg border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning-ink">
-                    <p className="font-semibold">Pagina e scrisă automat, fără AI.</p>
+                <div role="status" className="mb-6 rounded-lg border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning-ink">
+                    <p className="font-semibold">
+                        {document.writer === 'ai' ? 'Pagina poate fi depășită: codul s-a schimbat după ce a fost scrisă.' : 'Pagina e scrisă automat, fără AI.'}
+                    </p>
                     {document.stale_reason && <p className="mt-1">{document.stale_reason}</p>}
                 </div>
             )}

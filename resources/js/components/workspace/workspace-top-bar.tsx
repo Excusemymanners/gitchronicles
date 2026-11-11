@@ -1,16 +1,20 @@
 import { Form, Link } from '@inertiajs/react';
 import { AppLogoMark } from '@/components/app-logo';
 import DeleteRepositoryButton from '@/components/delete-repository-button';
+import LastUpdateLine from '@/components/repository/last-update';
 import StatusBadge from '@/components/status-badge';
 import ThemeToggle from '@/components/theme-toggle';
 import { GitHubIcon, MenuIcon } from '@/components/workspace/icons';
 import { shortSha } from '@/lib/format';
-import type { RepositoryItem } from '@/types';
+import type { LastUpdate, RepositoryItem } from '@/types';
 
 type Props = {
     repository: RepositoryItem;
     canDelete: boolean;
     canRetry: boolean;
+    canCheckUpdates: boolean;
+    /** Ultima rulare terminată cu bine; `null` până la prima. */
+    lastUpdate: LastUpdate | null;
     /** Deschide cuprinsul pe ecranele înguste; `null` pe ecranele late, unde cuprinsul e mereu vizibil. */
     onOpenChapters: (() => void) | null;
     isChaptersOpen: boolean;
@@ -22,11 +26,12 @@ const iconButtonClasses = `inline-flex size-9 shrink-0 cursor-pointer items-cent
 
 /**
  * Bara de sus a spațiului de lucru: logo-ul (spre lista tuturor repository-urilor), numele repository-ului
- * și statusul lui; în dreapta ramura, ultimul commit procesat, GitHub, „Reîncearcă” după o eroare,
- * „Șterge” pentru cine l-a adăugat și comutatorul de temă. Pe telefon rămân doar butonul cuprinsului,
- * numele, statusul și tema; restul apare sus în cuprins (ChaptersDrawer).
+ * și statusul lui; în dreapta ramura, „Actualizat la commitul … · acum 5 min.” cu „Verifică actualizări”,
+ * GitHub, „Reîncearcă” după o eroare, „Șterge” pentru cine l-a adăugat și comutatorul de temă.
+ * Pe telefon rămân doar butonul cuprinsului, numele, statusul și tema; restul apare sus în cuprins
+ * (ChaptersDrawer), iar actualizarea deasupra capitolului (RepositoryLayout).
  */
-export default function WorkspaceTopBar({ repository, canDelete, canRetry, onOpenChapters, isChaptersOpen }: Props) {
+export default function WorkspaceTopBar({ repository, canDelete, canRetry, canCheckUpdates, lastUpdate, onOpenChapters, isChaptersOpen }: Props) {
     return (
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-2 sm:gap-3 sm:px-4">
             {onOpenChapters && (
@@ -69,20 +74,25 @@ export default function WorkspaceTopBar({ repository, canDelete, canRetry, onOpe
                         </span>
                     )}
 
-                    {repository.last_sha && (
-                        <span>
-                            commit{' '}
-                            <a
-                                href={`https://github.com/${repository.owner}/${repository.name}/commit/${repository.last_sha}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={`Ultimul commit procesat: ${repository.last_sha}`}
-                                className={`rounded-sm text-accent hover:text-accent-hover ${focusRing}`}
-                            >
-                                <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-xs">{shortSha(repository.last_sha)}</code>
-                                <span className="sr-only"> (ultimul commit procesat, pe GitHub, se deschide într-o filă nouă)</span>
-                            </a>
-                        </span>
+                    {/* După prima rulare reușită: până la ce commit e documentat și de când. Înainte, doar commitul clonat. */}
+                    {lastUpdate || canCheckUpdates ? (
+                        <LastUpdateLine repository={repository} lastUpdate={lastUpdate} canCheckUpdates={canCheckUpdates} />
+                    ) : (
+                        repository.last_sha && (
+                            <span>
+                                commit{' '}
+                                <a
+                                    href={`https://github.com/${repository.owner}/${repository.name}/commit/${repository.last_sha}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`Ultimul commit clonat: ${repository.last_sha}`}
+                                    className={`rounded-sm text-accent hover:text-accent-hover ${focusRing}`}
+                                >
+                                    <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-xs">{shortSha(repository.last_sha)}</code>
+                                    <span className="sr-only"> (ultimul commit clonat, pe GitHub, se deschide într-o filă nouă)</span>
+                                </a>
+                            </span>
+                        )
                     )}
                 </div>
 

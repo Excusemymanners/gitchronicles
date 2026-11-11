@@ -73,10 +73,7 @@ final class AiDocumentationWriter implements DocumentationWriter
      */
     public function module(ModuleContext $context, SourceLinks $links): WrittenPage
     {
-        return $this->write(
-            "Page type: module\n".$this->linkLines($links)."\n\n".$this->moduleContext($context),
-            TemplateDocumentationWriter::MODULE_SECTIONS,
-        );
+        return $this->write($this->prompt('module', $context, $links), TemplateDocumentationWriter::MODULE_SECTIONS);
     }
 
     /**
@@ -84,10 +81,7 @@ final class AiDocumentationWriter implements DocumentationWriter
      */
     public function overview(OverviewContext $context, SourceLinks $links): WrittenPage
     {
-        return $this->write(
-            "Page type: overview\n".$this->linkLines($links)."\n\n".$this->overviewContext($context),
-            TemplateDocumentationWriter::OVERVIEW_SECTIONS,
-        );
+        return $this->write($this->prompt('overview', $context, $links), TemplateDocumentationWriter::OVERVIEW_SECTIONS);
     }
 
     /**
@@ -95,10 +89,20 @@ final class AiDocumentationWriter implements DocumentationWriter
      */
     public function readme(OverviewContext $context, SourceLinks $links): WrittenPage
     {
-        return $this->write(
-            "Page type: readme\n".$this->linkLines($links)."\n\n".$this->overviewContext($context),
-            [],
-        );
+        return $this->write($this->prompt('readme', $context, $links), []);
+    }
+
+    /**
+     * The message Claude receives for one page (after SYSTEM_PROMPT): the page type, where the links
+     * point, and the page's context as text. It is public so its size can be measured without sending
+     * it: the incremental update records how many characters each run sends, or would send without AI.
+     *
+     * @param  string  $pageType  "module", "overview" or "readme"
+     */
+    public function prompt(string $pageType, ModuleContext|OverviewContext $context, SourceLinks $links): string
+    {
+        return "Page type: {$pageType}\n".$this->linkLines($links)."\n\n"
+            .($context instanceof ModuleContext ? $this->moduleContext($context) : $this->overviewContext($context));
     }
 
     /**

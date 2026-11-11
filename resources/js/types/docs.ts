@@ -12,7 +12,7 @@ export type DocumentLink = {
     kind: DocumentKind;
     /** Folderul de sus al unui modul („app” pentru „app/Http”); `null` pentru celelalte pagini. */
     group: string | null;
-    /** Adevărat când pagina e scrisă automat în locul celei cu AI (Claude n-a putut-o scrie). */
+    /** Adevărat când pagina e depășită (codul s-a schimbat și Claude n-a putut-o rescrie) sau e scrisă automat în locul celei cu AI. */
     is_stale: boolean;
     /** Adresa paginii, de exemplu „/repositories/1/docs/app-http”. */
     href: string;

@@ -159,6 +159,14 @@ export type Workspace = {
     };
 };
 
+/** Când a fost adus repository-ul la zi ultima dată și până la ce commit. */
+export type LastUpdate = {
+    sha: string;
+    finished_at: string;
+    /** Adevărat când ultima verificare nu a găsit commit-uri noi. */
+    nothing_new: boolean;
+};
+
 /**
  * Prop-urile primite de fiecare pagină a unui repository, de la RendersRepositoryPage în Laravel.
  * WorkspaceLayout le citește pentru bara de sus, cuprins, elemente și asistent.
@@ -169,6 +177,10 @@ export type RepositoryPageProps = {
     can_delete: boolean;
     /** Adevărat pentru orice utilizator autentificat, când procesarea a eșuat. */
     can_retry: boolean;
+    /** Adevărat pentru orice utilizator autentificat, când repository-ul e gata: poate cere „Verifică actualizări”. */
+    can_check_updates: boolean;
+    /** Ultima rulare terminată cu bine (reușită sau „nimic nou”); `null` până la prima. */
+    last_update: LastUpdate | null;
     workspace: Workspace;
 };
 

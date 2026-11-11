@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'module_id', 'slug', 'title', 'markdown', 'source_sha', 'input_hash', 'writer', 'model', 'ai_driver',
-    'input_tokens', 'output_tokens', 'cost_usd_equivalent', 'generated_at', 'is_stale', 'stale_reason',
+    'input_tokens', 'output_tokens', 'context_characters', 'cost_usd_equivalent', 'generated_at', 'is_stale', 'stale_reason',
 ])]
 class Document extends Model
 {

@@ -94,6 +94,9 @@ class AppServiceProvider extends ServiceProvider
      *
      * "assistant": at most 20 questions per hour for each IP address, logged in or not
      * (the assistant is public), because every question can start a call to Claude.
+     *
+     * "webhooks": at most 60 deliveries per minute for each IP address. GitHub sends one per push,
+     * so the limit only stops someone who hammers the address with unsigned requests.
      */
     private function configureRateLimiting(): void
     {
@@ -103,6 +106,10 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('assistant', function (Request $request) {
             return Limit::perHour(20)->by($request->ip());
+        });
+
+        RateLimiter::for('webhooks', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
         });
     }
 }

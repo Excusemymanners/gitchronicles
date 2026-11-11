@@ -30,6 +30,11 @@ final class LikeCodeSearch implements CodeSearch
     public function rebuild(Repository $repository): void {}
 
     /**
+     * Nothing to bring in line: there is no index besides code_chunks.
+     */
+    public function sync(Repository $repository): void {}
+
+    /**
      * Nothing to delete: the chunks are deleted with the repository (cascade).
      */
     public function forget(Repository $repository): void {}

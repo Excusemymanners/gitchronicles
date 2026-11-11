@@ -23,6 +23,13 @@ interface CodeSearch
     public function rebuild(Repository $repository): void;
 
     /**
+     * Bring the index in line with the repository's code_chunks rows after only some of them changed
+     * (the incremental update, Faza 9): the entries of deleted chunks are removed and the new chunks
+     * are added, without touching the rest.
+     */
+    public function sync(Repository $repository): void;
+
+    /**
      * Delete the index of a repository (when the repository is deleted).
      */
     public function forget(Repository $repository): void;

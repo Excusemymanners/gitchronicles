@@ -2,6 +2,7 @@
 
 namespace App\Search;
 
+use App\Git\ChangeSet;
 use App\Models\CodeChunk;
 use App\Models\Repository;
 use App\Models\RepositoryFile;
@@ -19,6 +20,9 @@ use Illuminate\Support\Facades\DB;
  *
  * It is idempotent: in one transaction the repository's old chunks are deleted and the new ones saved,
  * so the assistant sees either the old index or the new one, never half of it.
+ *
+ * index() does this for the whole repository; reindex() (the incremental update, Faza 9) only for the
+ * files that changed between two commits, leaving the chunks of every other file as they are.
  */
 final class CodeIndexer
 {
@@ -58,38 +62,78 @@ final class CodeIndexer
             $repository->codeChunks()->delete();
 
             $filesIndexed = 0;
-            $chunksTotal = 0;
 
             $repository->files()
                 ->with('symbols:id,repository_file_id,name,start_line,end_line')
-                ->chunkById(self::BATCH_SIZE, function (Collection $files) use ($repository, &$filesIndexed, &$chunksTotal): void {
-                    $rows = [];
-
-                    foreach ($files as $file) {
-                        $content = $this->readableContent($repository, $file);
-
-                        if ($content === null) {
-                            continue;
-                        }
-
-                        $filesIndexed++;
-
-                        foreach (CodeChunker::chunk($content, $file->symbols->map->only(['name', 'start_line', 'end_line'])->all()) as $chunk) {
-                            $rows[] = [...$chunk, 'repository_id' => $repository->id, 'repository_file_id' => $file->id];
-                        }
-                    }
-
-                    foreach (array_chunk($rows, self::BATCH_SIZE) as $batch) {
-                        CodeChunk::insert($batch);
-                    }
-
-                    $chunksTotal += count($rows);
+                ->chunkById(self::BATCH_SIZE, function (Collection $files) use ($repository, &$filesIndexed): void {
+                    $filesIndexed += $this->saveChunksOf($repository, $files);
                 });
 
             $this->search->rebuild($repository);
 
-            return ['files_indexed' => $filesIndexed, 'chunks_total' => $chunksTotal];
+            return ['files_indexed' => $filesIndexed, 'chunks_total' => $repository->codeChunks()->count()];
         });
+    }
+
+    /**
+     * Cut again only the files that changed: their old chunks are deleted and new ones are saved.
+     * The chunks of a deleted file are already gone (they were deleted together with the file's row
+     * by the code analysis), and the search index is then brought in line (CodeSearch::sync()).
+     *
+     * @return array{files_indexed: int, chunks_total: int}
+     */
+    public function reindex(Repository $repository, ChangeSet $changes): array
+    {
+        return DB::transaction(function () use ($repository, $changes): array {
+            $filesIndexed = 0;
+
+            foreach (array_chunk([...$changes->added, ...$changes->modified], self::BATCH_SIZE) as $paths) {
+                $files = $repository->files()
+                    ->whereIn('path', $paths)
+                    ->with('symbols:id,repository_file_id,name,start_line,end_line')
+                    ->get();
+
+                CodeChunk::whereIn('repository_file_id', $files->modelKeys())->delete();
+
+                $filesIndexed += $this->saveChunksOf($repository, $files);
+            }
+
+            $this->search->sync($repository);
+
+            return ['files_indexed' => $filesIndexed, 'chunks_total' => $repository->codeChunks()->count()];
+        });
+    }
+
+    /**
+     * Cut the given files into chunks and save them. Returns how many of the files were indexed
+     * (the others are not code someone reads, see readableContent()).
+     *
+     * @param  Collection<int, RepositoryFile>  $files  with their symbols loaded
+     */
+    private function saveChunksOf(Repository $repository, Collection $files): int
+    {
+        $filesIndexed = 0;
+        $rows = [];
+
+        foreach ($files as $file) {
+            $content = $this->readableContent($repository, $file);
+
+            if ($content === null) {
+                continue;
+            }
+
+            $filesIndexed++;
+
+            foreach (CodeChunker::chunk($content, $file->symbols->map->only(['name', 'start_line', 'end_line'])->all()) as $chunk) {
+                $rows[] = [...$chunk, 'repository_id' => $repository->id, 'repository_file_id' => $file->id];
+            }
+        }
+
+        foreach (array_chunk($rows, self::BATCH_SIZE) as $batch) {
+            CodeChunk::insert($batch);
+        }
+
+        return $filesIndexed;
     }
 
     /**

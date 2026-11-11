@@ -43,4 +43,13 @@ return [
         'python' => env('ANALYZER_PYTHON', base_path('analyzer/.venv/bin/python')),
     ],
 
+    /*
+    | The GitHub webhook (POST /webhooks/github) that starts an incremental update at every push.
+    | "webhook_secret" is the secret typed in the webhook's settings on GitHub: every delivery is
+    | signed with it (X-Hub-Signature-256). Without a secret the endpoint does not exist (404).
+    */
+    'github' => [
+        'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
+    ],
+
 ];

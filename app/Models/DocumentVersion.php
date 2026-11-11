@@ -11,8 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * One version of a documentation page: its Markdown as it was written from the commit "sha".
  * A version is added every time the page's Markdown changes and is never updated afterwards.
+ * processing_run_id is the run that wrote it (Faza 9): the time travel finds a page's text at a commit
+ * by it (see ProcessedCommits).
  */
-#[Fillable(['sha', 'markdown'])]
+#[Fillable(['processing_run_id', 'sha', 'markdown'])]
 class DocumentVersion extends Model
 {
     /** @use HasFactory<DocumentVersionFactory> */

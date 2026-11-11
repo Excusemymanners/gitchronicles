@@ -14,13 +14,18 @@ use Illuminate\Console\Command;
  * Useful for the repositories added before the pipeline existed, and after a failure.
  *
  *     php artisan repositories:process 5
+ *     php artisan repositories:process 5 --full
  *     php artisan repositories:process --all-pending
+ *
+ * A repository that was already processed gets an incremental update: only what changed since its
+ * last processed commit. --full processes everything again (every file parsed, every page checked).
  *
  * The command only puts the jobs in the queue: a worker runs them (php artisan queue:work).
  */
 #[Signature('repositories:process
     {repository? : The id of the repository to process}
-    {--all-pending : Process every repository that is still pending}')]
+    {--all-pending : Process every repository that is still pending}
+    {--full : Process everything again instead of only what changed}')]
 #[Description('Start the processing pipeline (clone, ...) for one repository or for all pending ones')]
 class ProcessRepositories extends Command
 {
@@ -67,7 +72,7 @@ class ProcessRepositories extends Command
                 continue;
             }
 
-            $reprocessRepository->handle($repository);
+            $reprocessRepository->handle($repository, (bool) $this->option('full'));
             $this->info("{$name}: procesarea a pornit.");
             $startedCount++;
         }

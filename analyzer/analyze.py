@@ -5,21 +5,31 @@ TypeScript, Python, Go and Java, the symbols (classes, functions, ...) and the i
 each import resolved to a file of the repository when it points to one.
 
     python analyze.py /path/to/clone --files-from list.txt    # one path per line ("-" = stdin)
+    python analyze.py /path/to/clone --files-from list.txt --cache parsed.json
     python analyze.py --install-grammars                       # once, at install time
 
 The result is printed as JSON on stdout:
 
-    {"files": [{"path", "language", "lines",
+    {"files": [{"path", "language", "lines", "cached",
                 "symbols": [{"kind", "name", "start_line", "end_line"}],
                 "imports": [{"raw", "resolved_path", "external"}]}],
-     "errors": [{"path", "message"}]}
+     "errors": [{"path", "message"}],
+     "parsed": 12}
+
+With --cache the analyzer remembers, in that JSON file, what it parsed from every file together
+with the hash of the file's content. At the next run a file with the same content is not parsed
+again ("cached": true); "parsed" counts the files that were. Only the parsing is remembered: every
+import is resolved again at each run, because that depends on which other files exist. So the
+result is the same as without the cache, only faster (the incremental update, Faza 9).
 
 A file that cannot be read or parsed goes to "errors"; it never stops the others.
 The analysis never uses the network: the grammars are downloaded only by --install-grammars.
 """
 
 import argparse
+import hashlib
 import json
+import os
 import posixpath
 import re
 import sys
@@ -133,6 +143,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Analyze the code of a repository with tree-sitter.")
     parser.add_argument("repository", nargs="?", help="the folder of the cloned repository")
     parser.add_argument("--files-from", help='file with one relative path per line ("-" = stdin)')
+    parser.add_argument("--cache", help="JSON file that remembers the parsed files between runs")
     parser.add_argument("--install-grammars", action="store_true", help="download the grammars (needs the network)")
     arguments = parser.parse_args()
 
@@ -154,7 +165,11 @@ def main() -> int:
 
     root = Path(arguments.repository).resolve()
     paths = read_file_list(arguments.files_from)
-    result = analyze_repository(root, paths)
+    cache_path = Path(arguments.cache) if arguments.cache else None
+    result, parsed_files = analyze_repository(root, paths, read_cache(cache_path))
+
+    if cache_path is not None:
+        write_cache(cache_path, parsed_files)
 
     json.dump(result, sys.stdout, separators=(",", ":"))
     return 0
@@ -167,23 +182,78 @@ def read_file_list(files_from: str) -> list[str]:
     return [line for line in text.split("\n") if line.strip() != ""]
 
 
-def analyze_repository(root: Path, paths: list[str]) -> dict:
+def analyzer_version() -> str:
+    """The hash of this very file: a cache written by another version of the analyzer is not used."""
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+
+
+def read_cache(cache_path: Path | None) -> dict:
+    """What the previous run parsed (path -> parsed file), or nothing when there is no usable cache."""
+    if cache_path is None or not cache_path.is_file():
+        return {}
+
+    try:
+        cache = json.loads(cache_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+    if not isinstance(cache, dict) or cache.get("analyzer") != analyzer_version():
+        return {}
+
+    return cache.get("files", {})
+
+
+def write_cache(cache_path: Path, parsed_files: dict) -> None:
+    """Save what this run knows about every file. The file is written whole, then renamed over the
+    old one, so a run that is stopped halfway never leaves a broken cache behind."""
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = cache_path.with_name(cache_path.name + ".tmp")
+    temporary_path.write_text(
+        json.dumps({"analyzer": analyzer_version(), "files": parsed_files}, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    os.replace(temporary_path, cache_path)
+
+
+def analyze_repository(root: Path, paths: list[str], cache: dict) -> tuple[dict, dict]:
+    """Analyze every file. Returns the result to print and what was parsed (the next run's cache)."""
     resolver = ImportResolver(root, set(paths))
     parsers = {}
     files = []
     errors = []
+    parsed_files = {}
+    parsed_count = 0
 
     for path in paths:
         try:
-            files.append(analyze_file(root, path, resolver, parsers))
+            parsed, was_cached = parse_file(root, path, parsers, cache.get(path))
         except Exception as error:  # one broken file must never stop the analysis
             reason = error.strerror if isinstance(error, OSError) and error.strerror else str(error)
             errors.append({"path": path, "message": f"{type(error).__name__}: {reason}"})
+            continue
 
-    return {"files": files, "errors": errors}
+        parsed_files[path] = parsed
+        parsed_count += 0 if was_cached else 1
+
+        # The imports are resolved at every run: an import may point to a file added or deleted since.
+        files.append({
+            "path": path,
+            "language": parsed["language"],
+            "lines": parsed["lines"],
+            "cached": was_cached,
+            "symbols": parsed["symbols"],
+            "imports": [
+                {"raw": raw, **resolver.resolve(parsed["grammar"], path, raw, names)}
+                for raw, names in parsed["imports"]
+            ],
+        })
+
+    return {"files": files, "errors": errors, "parsed": parsed_count}, parsed_files
 
 
-def analyze_file(root: Path, path: str, resolver: "ImportResolver", parsers: dict) -> dict:
+def parse_file(root: Path, path: str, parsers: dict, remembered: dict | None) -> tuple[dict, bool]:
+    """What one file contains: its language, lines, symbols and imports as written in the code
+    (not resolved yet). When the previous run saw the same content, its answer is reused."""
     absolute_path = root / path
 
     # A symbolic link could point outside the clone (for example to /etc/passwd): never follow it.
@@ -191,23 +261,25 @@ def analyze_file(root: Path, path: str, resolver: "ImportResolver", parsers: dic
         raise ValueError("the path leaves the repository")
 
     source = absolute_path.read_bytes()
+    content_hash = hashlib.sha1(source).hexdigest()
+
+    if remembered is not None and remembered.get("hash") == content_hash:
+        return remembered, True
+
     language, grammar = detect_language(path)
-    result = {"path": path, "language": language, "lines": count_lines(source), "symbols": [], "imports": []}
+    parsed = {"hash": content_hash, "language": language, "grammar": grammar, "lines": count_lines(source), "symbols": [], "imports": []}
 
     if grammar is None:
-        return result
+        return parsed, False
 
     if grammar not in parsers:
         parsers[grammar] = language_pack.get_parser(grammar)
 
     tree = parsers[grammar].parse(source)
-    result["symbols"] = find_symbols(tree.root_node, grammar)
-    result["imports"] = [
-        {"raw": raw, **resolver.resolve(grammar, path, raw, names)}
-        for raw, names in unique_imports(find_imports(tree.root_node, grammar))
-    ]
+    parsed["symbols"] = find_symbols(tree.root_node, grammar)
+    parsed["imports"] = [[raw, names] for raw, names in unique_imports(find_imports(tree.root_node, grammar))]
 
-    return result
+    return parsed, False
 
 
 def detect_language(path: str) -> tuple[str | None, str | None]:

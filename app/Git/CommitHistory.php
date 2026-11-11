@@ -8,7 +8,6 @@ use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
 /**
@@ -217,7 +216,7 @@ final class CommitHistory
     private function hasCommit(string $clonePath, string $sha): bool
     {
         return preg_match('/\A[0-9a-f]{40}\z/', $sha) === 1
-            && $this->git($clonePath)->env(['GIT_NO_LAZY_FETCH' => '1'])->run(['git', 'cat-file', '-e', "{$sha}^{commit}"])->successful();
+            && $this->git($clonePath, ['GIT_NO_LAZY_FETCH' => '1'])->run(['git', 'cat-file', '-e', "{$sha}^{commit}"])->successful();
     }
 
     /**
@@ -244,7 +243,6 @@ final class CommitHistory
         try {
             $result = $this->git($clonePath)
                 ->timeout(self::DOWNLOAD_TIMEOUT_SECONDS)
-                ->env(['GIT_TERMINAL_PROMPT' => '0', 'GIT_ASKPASS' => ''])
                 ->run(['git', '-c', 'credential.helper=', '-c', 'core.askPass=', 'backfill', ...$range]);
         } catch (ProcessTimedOutException) {
             Log::warning('git backfill timed out.', ['clone' => $clonePath, 'timeout_seconds' => self::DOWNLOAD_TIMEOUT_SECONDS]);
@@ -273,9 +271,8 @@ final class CommitHistory
      */
     private function log(string $clonePath, array $revisions, int $limit, string $filesOption): ProcessResult
     {
-        return $this->git($clonePath)
+        return $this->git($clonePath, ['GIT_NO_LAZY_FETCH' => '1'])
             ->timeout(self::LOG_TIMEOUT_SECONDS)
-            ->env(['GIT_NO_LAZY_FETCH' => '1'])
             ->run([
                 'git', '-c', 'log.showSignature=false', 'log',
                 '-z', '--topo-order', "--max-count={$limit}", '--no-renames',
@@ -285,10 +282,12 @@ final class CommitHistory
     }
 
     /**
-     * A git command that runs in the clone's folder.
+     * A git command that runs in the clone's folder and can never ask for a password (see Git).
+     *
+     * @param  array<string, string>  $environment
      */
-    private function git(string $clonePath): PendingProcess
+    private function git(string $clonePath, array $environment = []): PendingProcess
     {
-        return Process::path($clonePath);
+        return Git::process($clonePath, $environment);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Git\ChangeSet;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
 use App\Search\CodeIndexer;
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\Log;
  *
  * It does not change the repository's status: indexing is quick and needs no step of its own on the page.
  * The job is idempotent: every indexing replaces the previous one of the same repository.
+ *
+ * An incremental run (Faza 9) cuts again only the files that changed between its two commits
+ * (CodeIndexer::reindex()); the first processing, a Full run and a repository that has no index yet
+ * index everything.
  */
 class IndexCode implements ShouldQueue
 {
@@ -49,11 +54,18 @@ class IndexCode implements ShouldQueue
      */
     public function handle(CodeIndexer $indexer): void
     {
-        $summary = $indexer->index($this->repository);
+        $changes = $this->run->isIncremental() && $this->repository->codeChunks()->exists()
+            ? ChangeSet::between($this->repository->clonePath(), (string) $this->run->from_sha, (string) $this->run->to_sha)
+            : null;
+
+        $summary = $changes === null
+            ? $indexer->index($this->repository)
+            : $indexer->reindex($this->repository, $changes);
 
         Log::info('The code was indexed for the assistant.', [
             'repository_id' => $this->repository->id,
             'processing_run_id' => $this->run->id,
+            'only_changed_files' => $changes !== null,
             ...$summary,
         ]);
     }

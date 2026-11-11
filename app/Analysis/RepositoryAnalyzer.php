@@ -3,6 +3,7 @@
 namespace App\Analysis;
 
 use App\Exceptions\RepositoryProcessingException;
+use App\Git\Git;
 use App\Models\CodeSymbol;
 use App\Models\FileImport;
 use App\Models\Module;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -25,11 +27,17 @@ use Illuminate\Support\Str;
  *    shouldAnalyze() leaves out libraries (vendor/, node_modules/), build output (dist/, build/),
  *    minified files, lock files, binary files and files over 1 MB;
  * 2. runAnalyzer(): analyzer/analyze.py (Python + tree-sitter) reads those files and answers,
- *    in JSON, with each file's language, lines, symbols and imports;
- * 3. save(): in one database transaction, the previous analysis of the repository is replaced
- *    by the new one: files, symbols, imports (with the file each one points to), modules
+ *    in JSON, with each file's language, lines, symbols and imports. It keeps a cache of what it
+ *    parsed, by the hash of each file's content, so an update parses only the files that changed
+ *    (Faza 9); the imports are resolved again every time, so the answer is always complete;
+ * 3. save(): in one database transaction, the previous analysis of the repository is brought in line
+ *    with the new one: files, symbols, imports (with the file each one points to), modules
  *    (ModuleGrouper) and the dependencies between modules; the repository gets analyzed_at
  *    and a short description from its README.
+ *
+ * A file or a module that is still there keeps its database row (and its id): the rows are matched by
+ * path, updated, and only the ones that disappeared are deleted. So the search chunks of an unchanged
+ * file and the documentation page of an unchanged module stay linked to them after every analysis.
  *
  * When the analyzer cannot run, the user sees a short Romanian message and the log gets the details.
  */
@@ -68,20 +76,29 @@ final class RepositoryAnalyzer
     /**
      * Analyze the repository's clone and save the result.
      *
-     * @return array{files_total: int, files_analyzed: int, modules_total: int}
+     * files_analyzed counts every file of the analysis; files_parsed only the ones tree-sitter really
+     * read in this call (the others had the same content as last time and came from the cache).
+     *
+     * @param  bool  $fromScratch  forget the cache and parse every file again (a full reprocessing)
+     * @return array{files_total: int, files_analyzed: int, files_parsed: int, modules_total: int}
      */
-    public function analyze(Repository $repository): array
+    public function analyze(Repository $repository, bool $fromScratch = false): array
     {
         $trackedFiles = $this->listFiles($repository);
         $filesToAnalyze = array_values(array_filter($trackedFiles, $this->shouldAnalyze(...)));
 
+        if ($fromScratch) {
+            Storage::disk('local')->delete($repository->analysisCacheFile());
+        }
+
         $analysis = $this->runAnalyzer($repository, array_column($filesToAnalyze, 'path'));
 
-        $modulesTotal = DB::transaction(fn (): int => $this->save($repository, $filesToAnalyze, $analysis['files']));
+        $modulesTotal = DB::transaction(fn (): int => $this->save($repository, $filesToAnalyze, $analysis['files'], $fromScratch));
 
         return [
             'files_total' => count($trackedFiles),
             'files_analyzed' => count($analysis['files']),
+            'files_parsed' => (int) ($analysis['parsed'] ?? count($analysis['files'])),
             'modules_total' => $modulesTotal,
         ];
     }
@@ -96,7 +113,7 @@ final class RepositoryAnalyzer
      */
     private function listFiles(Repository $repository): array
     {
-        $output = Process::path($repository->clonePath())
+        $output = Git::process($repository->clonePath())
             ->run(['git', 'ls-files', '-z', '--format=%(objectmode) %(objectname) %(objectsize) %(eolinfo:index) %(path)'])
             ->throw()
             ->output();
@@ -151,10 +168,11 @@ final class RepositoryAnalyzer
      *
      * The command is an array (no shell), the file list goes through stdin ("--files-from -"),
      * and "-I" (isolated mode) makes Python ignore PYTHON* variables and the current folder,
-     * so nothing from the cloned repository can be imported by mistake.
+     * so nothing from the cloned repository can be imported by mistake. "--cache" names the file
+     * in which the analyzer remembers what it parsed (outside the clone, see Repository::analysisCacheFile()).
      *
      * @param  list<string>  $paths
-     * @return array{files: list<array{path: string, language: string|null, lines: int, symbols: list<array{kind: string, name: string, start_line: int, end_line: int}>, imports: list<array{raw: string, resolved_path: string|null, external: bool}>}>, errors: list<array{path: string, message: string}>}
+     * @return array{files: list<array{path: string, language: string|null, lines: int, cached: bool, symbols: list<array{kind: string, name: string, start_line: int, end_line: int}>, imports: list<array{raw: string, resolved_path: string|null, external: bool}>}>, errors: list<array{path: string, message: string}>, parsed: int}
      */
     private function runAnalyzer(Repository $repository, array $paths): array
     {
@@ -169,7 +187,11 @@ final class RepositoryAnalyzer
         try {
             $result = Process::timeout(self::TIMEOUT_SECONDS)
                 ->input(implode("\n", $paths))
-                ->run([$python, '-I', base_path('analyzer/analyze.py'), $repository->clonePath(), '--files-from', '-']);
+                ->run([
+                    $python, '-I', base_path('analyzer/analyze.py'), $repository->clonePath(),
+                    '--files-from', '-',
+                    '--cache', Storage::disk('local')->path($repository->analysisCacheFile()),
+                ]);
         } catch (ProcessTimedOutException) {
             Log::warning('The code analyzer timed out.', [
                 'repository_id' => $repository->id,
@@ -205,25 +227,30 @@ final class RepositoryAnalyzer
     }
 
     /**
-     * Replace the repository's previous analysis with this one and return the number of modules.
+     * Bring the repository's saved analysis in line with this one and return the number of modules.
      * It runs inside a transaction: the pages see either the old analysis or the new one, never half.
      *
+     * Modules and files are matched by path (their ids stay the same), symbols are replaced only for
+     * the files whose content changed, and the imports and the module dependencies are written again
+     * whole: where an import points to depends on which other files exist.
+     *
      * @param  list<array{path: string, mode: string, blob_sha: string, size_bytes: int, is_binary: bool}>  $filesToAnalyze
-     * @param  list<array{path: string, language: string|null, lines: int, symbols: list<array{kind: string, name: string, start_line: int, end_line: int}>, imports: list<array{raw: string, resolved_path: string|null, external: bool}>}>  $analyzedFiles
+     * @param  list<array{path: string, language: string|null, lines: int, cached?: bool, symbols: list<array{kind: string, name: string, start_line: int, end_line: int}>, imports: list<array{raw: string, resolved_path: string|null, external: bool}>}>  $analyzedFiles
+     * @param  bool  $replaceEverySymbol  write the symbols of every file again, whatever the cache says
      */
-    private function save(Repository $repository, array $filesToAnalyze, array $analyzedFiles): int
+    private function save(Repository $repository, array $filesToAnalyze, array $analyzedFiles, bool $replaceEverySymbol = false): int
     {
-        ModuleDependency::whereBelongsTo($repository)->delete();
-        FileImport::whereBelongsTo($repository)->delete();
-        CodeSymbol::whereBelongsTo($repository)->delete();
-        RepositoryFile::whereBelongsTo($repository)->delete();
-        Module::whereBelongsTo($repository)->delete();
-
         $moduleOfFile = ModuleGrouper::group(array_column($analyzedFiles, 'path'));
 
+        ModuleDependency::whereBelongsTo($repository)->delete();
+        FileImport::whereBelongsTo($repository)->delete();
+
         $moduleIds = $this->saveModules($repository, $analyzedFiles, $moduleOfFile);
-        $fileIds = $this->saveFiles($repository, $filesToAnalyze, $analyzedFiles, $moduleOfFile, $moduleIds);
-        $this->saveSymbolsAndImports($repository, $analyzedFiles, $fileIds);
+        [$fileIds, $changedPaths] = $this->saveFiles($repository, $filesToAnalyze, $analyzedFiles, $moduleOfFile, $moduleIds);
+
+        $this->deleteMissing(Module::class, $repository->modules()->pluck('id', 'path')->all(), $moduleIds);
+        $this->saveSymbols($repository, $analyzedFiles, $fileIds, $replaceEverySymbol ? null : $changedPaths);
+        $this->saveImports($repository, $analyzedFiles, $fileIds);
         $this->saveModuleDependencies($repository, $analyzedFiles, $moduleOfFile, $moduleIds);
 
         $repository->update([
@@ -235,7 +262,8 @@ final class RepositoryAnalyzer
     }
 
     /**
-     * Save one row for each module, with its number of files and lines.
+     * Save one row for each module, with its number of files and lines. A module that already has
+     * a row keeps it (upsert by path); the modules that disappeared are deleted by save().
      *
      * @param  list<array{path: string, lines: int}>  $analyzedFiles
      * @param  array<string, string>  $moduleOfFile
@@ -253,23 +281,31 @@ final class RepositoryAnalyzer
                 'line_count' => $files->sum('lines'),
             ]);
 
-        $this->insertInChunks(Module::class, $rows->values()->all());
+        foreach ($rows->values()->chunk(self::INSERT_CHUNK_SIZE) as $chunk) {
+            Module::upsert($chunk->all(), uniqueBy: ['repository_id', 'path'], update: ['name', 'file_count', 'line_count']);
+        }
 
-        return $repository->modules()->pluck('id', 'path')->all();
+        return $repository->modules()->whereIn('path', $rows->keys()->map(strval(...))->all())->pluck('id', 'path')->all();
     }
 
     /**
-     * Save one row for each analyzed file, already linked to its module.
+     * Save one row for each analyzed file, already linked to its module. A file that already has a row
+     * keeps it (upsert by path), and the rows of the files that are gone are deleted.
+     *
+     * The second value returned is the list of files whose symbols must be written again: the new
+     * files and the ones whose content changed (another blob_sha, or parsed again by the analyzer).
      *
      * @param  list<array{path: string, mode: string, blob_sha: string, size_bytes: int, is_binary: bool}>  $filesToAnalyze
-     * @param  list<array{path: string, language: string|null, lines: int}>  $analyzedFiles
+     * @param  list<array{path: string, language: string|null, lines: int, cached?: bool}>  $analyzedFiles
      * @param  array<string, string>  $moduleOfFile
      * @param  array<string, int>  $moduleIds
-     * @return array<string, int> file path => file id
+     * @return array{array<string, int>, list<string>} file path => file id, and the changed paths
      */
     private function saveFiles(Repository $repository, array $filesToAnalyze, array $analyzedFiles, array $moduleOfFile, array $moduleIds): array
     {
         $gitInfo = array_column($filesToAnalyze, null, 'path');
+        $savedBefore = $repository->files()->get(['id', 'path', 'blob_sha'])->keyBy('path');
+        $changedPaths = [];
 
         $rows = array_map(fn (array $file): array => [
             'repository_id' => $repository->id,
@@ -281,26 +317,65 @@ final class RepositoryAnalyzer
             'blob_sha' => $gitInfo[$file['path']]['blob_sha'],
         ], $analyzedFiles);
 
-        $this->insertInChunks(RepositoryFile::class, $rows);
+        foreach ($analyzedFiles as $file) {
+            $isUnchanged = ($file['cached'] ?? false)
+                && $savedBefore->get($file['path'])?->blob_sha === $gitInfo[$file['path']]['blob_sha'];
 
-        return $repository->files()->pluck('id', 'path')->all();
+            if (! $isUnchanged) {
+                $changedPaths[] = $file['path'];
+            }
+        }
+
+        foreach (array_chunk($rows, self::INSERT_CHUNK_SIZE) as $chunk) {
+            RepositoryFile::upsert($chunk, uniqueBy: ['repository_id', 'path'], update: ['module_id', 'language', 'lines', 'size_bytes', 'blob_sha']);
+        }
+
+        $fileIds = $repository->files()->pluck('id', 'path')->all();
+        $analyzedIds = array_intersect_key($fileIds, array_flip(array_column($analyzedFiles, 'path')));
+
+        $this->deleteMissing(RepositoryFile::class, $fileIds, $analyzedIds);
+
+        return [$analyzedIds, $changedPaths];
     }
 
     /**
-     * Save the symbols and the imports of every file. An import that points to a file
-     * of the repository gets that file's id (target_file_id).
+     * Delete the saved rows (path => id) whose path is not among the ones to keep.
+     * Their symbols, imports, search chunks and dependencies go with them (cascade).
      *
-     * @param  list<array{path: string, symbols: list<array{kind: string, name: string, start_line: int, end_line: int}>, imports: list<array{raw: string, resolved_path: string|null, external: bool}>}>  $analyzedFiles
-     * @param  array<string, int>  $fileIds
+     * @param  class-string<Model>  $model
+     * @param  array<string, int>  $savedIds
+     * @param  array<string, int>  $keptIds
      */
-    private function saveSymbolsAndImports(Repository $repository, array $analyzedFiles, array $fileIds): void
+    private function deleteMissing(string $model, array $savedIds, array $keptIds): void
     {
-        $symbolRows = [];
-        $importRows = [];
+        foreach (array_chunk(array_values(array_diff_key($savedIds, $keptIds)), self::INSERT_CHUNK_SIZE) as $ids) {
+            $model::whereKey($ids)->delete();
+        }
+    }
+
+    /**
+     * Save the symbols (classes, functions, ...) of the changed files, in place of their old ones.
+     * The symbols of a file whose content did not change are already right, so they are not touched.
+     *
+     * @param  list<array{path: string, symbols: list<array{kind: string, name: string, start_line: int, end_line: int}>}>  $analyzedFiles
+     * @param  array<string, int>  $fileIds
+     * @param  list<string>|null  $changedPaths  null = every file
+     */
+    private function saveSymbols(Repository $repository, array $analyzedFiles, array $fileIds, ?array $changedPaths): void
+    {
+        $isChanged = $changedPaths === null ? null : array_flip($changedPaths);
+        $staleFileIds = [];
+        $rows = [];
 
         foreach ($analyzedFiles as $file) {
+            if ($isChanged !== null && ! isset($isChanged[$file['path']])) {
+                continue;
+            }
+
+            $staleFileIds[] = $fileIds[$file['path']];
+
             foreach ($file['symbols'] as $symbol) {
-                $symbolRows[] = [
+                $rows[] = [
                     'repository_id' => $repository->id,
                     'repository_file_id' => $fileIds[$file['path']],
                     'kind' => mb_substr($symbol['kind'], 0, 20),
@@ -309,9 +384,30 @@ final class RepositoryAnalyzer
                     'end_line' => $symbol['end_line'],
                 ];
             }
+        }
 
+        foreach (array_chunk($staleFileIds, self::INSERT_CHUNK_SIZE) as $ids) {
+            CodeSymbol::whereIn('repository_file_id', $ids)->delete();
+        }
+
+        $this->insertInChunks(CodeSymbol::class, $rows);
+    }
+
+    /**
+     * Save the imports of every file. An import that points to a file of the repository gets that
+     * file's id (target_file_id). They are all written again at every analysis (save() deleted the
+     * old ones): an unchanged file may import a file that was just added or deleted.
+     *
+     * @param  list<array{path: string, imports: list<array{raw: string, resolved_path: string|null, external: bool}>}>  $analyzedFiles
+     * @param  array<string, int>  $fileIds
+     */
+    private function saveImports(Repository $repository, array $analyzedFiles, array $fileIds): void
+    {
+        $rows = [];
+
+        foreach ($analyzedFiles as $file) {
             foreach ($file['imports'] as $import) {
-                $importRows[] = [
+                $rows[] = [
                     'repository_id' => $repository->id,
                     'repository_file_id' => $fileIds[$file['path']],
                     'target' => mb_substr($import['raw'], 0, 1024),
@@ -321,8 +417,7 @@ final class RepositoryAnalyzer
             }
         }
 
-        $this->insertInChunks(CodeSymbol::class, $symbolRows);
-        $this->insertInChunks(FileImport::class, $importRows);
+        $this->insertInChunks(FileImport::class, $rows);
     }
 
     /**

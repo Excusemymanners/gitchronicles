@@ -3,14 +3,17 @@
 namespace App\Documentation;
 
 /**
- * What happened to one page in a documentation run: written (by Claude or by the template) or left
- * as it was because its input did not change, and what the AI calls consumed (failed answers included).
+ * What happened to one page in a documentation run: written (by Claude or by the template), left
+ * as it was because its input did not change, or kept although its input changed because Claude
+ * could not write it again (outdated). It also carries what the AI calls consumed (failed answers included).
  */
 final readonly class PageResult
 {
     /**
-     * @param  string|null  $writer  "ai" or "template" when the page was written, null when it was unchanged
-     * @param  string|null  $aiError  why Claude could not write the page (the template wrote it instead)
+     * @param  string|null  $writer  "ai" or "template" when the page was written, null when it was not
+     * @param  string|null  $aiError  why Claude could not write the page
+     * @param  bool  $outdated  the page's code changed, but the page written by Claude was kept and marked stale
+     * @param  int  $contextCharacters  the size of the text the writer received (or would have received) for a written page
      */
     public function __construct(
         public string $slug,
@@ -20,6 +23,8 @@ final readonly class PageResult
         public int $outputTokens = 0,
         public ?float $costUsdEquivalent = null,
         public ?string $aiError = null,
+        public bool $outdated = false,
+        public int $contextCharacters = 0,
     ) {}
 
     /**

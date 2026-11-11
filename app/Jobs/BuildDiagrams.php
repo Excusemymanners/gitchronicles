@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Diagrams\ArchitectureDiagramBuilder;
+use App\Diagrams\DiagramHistory;
 use App\Diagrams\FlowDiagramWriter;
 use App\Enums\DiagramType;
 use App\Models\ProcessingRun;
@@ -17,7 +18,12 @@ use Illuminate\Support\Facades\DB;
  * 1. the architecture diagrams (layers, C4 containers, components, context) are drawn from the
  *    code analysis and the clone's manifests and replace the previous ones, in one transaction;
  * 2. Claude writes the „Cum funcționează” flows, best effort: without AI, or when Claude fails,
- *    the step still succeeds and the page shows no flows. Its tokens are added to the run.
+ *    the step still succeeds and the page shows no flows. Its tokens and their cost are added to the run;
+ * 3. what changed in the diagrams is saved as new versions (DiagramHistory), for the time travel.
+ *
+ * At an update (Faza 9) nothing special is needed here: the architecture views are drawn again from
+ * the analysis in milliseconds, and Claude is asked for the flows only when the code it sees changed
+ * (the input hash of FlowDiagramWriter), so an update that does not touch the entry files costs no tokens.
  *
  * It needs only the analysis, never the documentation, and it is idempotent: running it again
  * for the same commit gives the same diagrams (and does not ask Claude again, see FlowDiagramWriter).
@@ -54,16 +60,22 @@ class BuildDiagrams implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(ArchitectureDiagramBuilder $builder, FlowDiagramWriter $flowWriter): void
+    public function handle(ArchitectureDiagramBuilder $builder, FlowDiagramWriter $flowWriter, DiagramHistory $history): void
     {
         $this->saveArchitectureDiagrams($builder->build($this->repository));
 
         $aiResult = $flowWriter->refresh($this->repository);
 
         if ($aiResult !== null) {
-            $this->run->increment('input_tokens', $aiResult->inputTokens);
-            $this->run->increment('output_tokens', $aiResult->outputTokens);
+            $this->run->incrementEach(['input_tokens' => $aiResult->inputTokens, 'output_tokens' => $aiResult->outputTokens]);
+
+            // The cost goes with the tokens, so the run's cost and its tokens describe the same calls.
+            if ($aiResult->costUsdEquivalent !== null) {
+                $this->run->update(['cost_usd_equivalent' => (float) $this->run->cost_usd_equivalent + $aiResult->costUsdEquivalent]);
+            }
         }
+
+        $history->record($this->repository, $this->run);
     }
 
     /**

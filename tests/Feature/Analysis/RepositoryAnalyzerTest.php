@@ -34,7 +34,7 @@ class RepositoryAnalyzerTest extends TestCase
 
         $summary = app(RepositoryAnalyzer::class)->analyze($repository);
 
-        $this->assertSame(['files_total' => 16, 'files_analyzed' => 13, 'modules_total' => 9], $summary);
+        $this->assertSame(['files_total' => 16, 'files_analyzed' => 13, 'files_parsed' => 13, 'modules_total' => 9], $summary);
         $this->assertDatabaseHas('repository_files', [
             'repository_id' => $repository->id,
             'path' => 'src/Http/ProductController.php',
@@ -179,7 +179,8 @@ class RepositoryAnalyzerTest extends TestCase
 
         $summary = app(RepositoryAnalyzer::class)->analyze($repository);
 
-        $this->assertSame(['files_total' => 15, 'files_analyzed' => 12, 'modules_total' => 8], $summary);
+        // Nothing is parsed again: the 12 files left have the same content as at the first analysis.
+        $this->assertSame(['files_total' => 15, 'files_analyzed' => 12, 'files_parsed' => 0, 'modules_total' => 8], $summary);
         $this->assertSame(12, $repository->files()->count());
         $this->assertDatabaseMissing('repository_files', ['path' => 'frontend/app.ts']);
         $this->assertDatabaseMissing('modules', ['repository_id' => $repository->id, 'path' => 'frontend']);
@@ -202,6 +203,74 @@ class RepositoryAnalyzerTest extends TestCase
             ['json', null, true],
             ['tools.stats', null, false],
         ], $this->importsOf($repository, 'tools/report.py'));
+    }
+
+    public function test_an_update_parses_only_the_changed_files_and_gives_the_same_analysis_as_from_scratch(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        $clonePath = $this->copyFixtureProject($repository);
+        $this->commitEverything($clonePath);
+        app(RepositoryAnalyzer::class)->analyze($repository);
+        // One file modified, one added (imported by the modified one), one deleted (imported by an unchanged file).
+        File::put("{$clonePath}/src/Http/ProductController.php", str_replace('use Shop\Support\Money;', "use Shop\\Support\\Money;\nuse Shop\\Support\\Vat;", File::get("{$clonePath}/src/Http/ProductController.php")));
+        File::put("{$clonePath}/src/Support/Vat.php", "<?php\n\nnamespace Shop\\Support;\n\nfinal class Vat\n{\n    public const RATE = 19;\n}\n");
+        $this->git($clonePath, ['rm', '--quiet', 'frontend/lib/format.ts']);
+        $this->git($clonePath, ['add', '--all']);
+        $this->git($clonePath, ['commit', '--quiet', '-m', 'Schimbări']);
+
+        $update = app(RepositoryAnalyzer::class)->analyze($repository);
+        $afterUpdate = $this->analysisSnapshot($repository);
+        $fromScratch = app(RepositoryAnalyzer::class)->analyze($repository, fromScratch: true);
+
+        $this->assertSame(2, $update['files_parsed']);
+        $this->assertSame(13, $update['files_analyzed']);
+        $this->assertSame(13, $fromScratch['files_parsed']);
+        $this->assertSame($afterUpdate, $this->analysisSnapshot($repository));
+        $this->assertContains(['src/Http/ProductController.php', 'Shop\Support\Vat', 'src/Support/Vat.php'], $afterUpdate['imports']);
+        // The import of the deleted file stays, but it no longer points to a file.
+        $this->assertContains(['frontend/components/product-card.tsx', '../lib/format', null], $afterUpdate['imports']);
+    }
+
+    public function test_unchanged_files_and_modules_keep_their_rows_after_another_analysis(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        $clonePath = $this->copyFixtureProject($repository);
+        $this->commitEverything($clonePath);
+        app(RepositoryAnalyzer::class)->analyze($repository);
+        $fileIds = $repository->files()->pluck('id', 'path');
+        $moduleIds = $repository->modules()->pluck('id', 'path');
+        $symbolIds = $repository->files()->firstWhere('path', 'src/Models/Product.php')->symbols()->pluck('id')->all();
+        $linesBefore = $repository->files()->firstWhere('path', 'src/Support/Money.php')->lines;
+        File::append("{$clonePath}/src/Support/Money.php", "\n// o schimbare\n");
+        $this->git($clonePath, ['commit', '--quiet', '--all', '-m', 'Schimbare']);
+
+        app(RepositoryAnalyzer::class)->analyze($repository);
+
+        $this->assertEquals($fileIds, $repository->files()->pluck('id', 'path'));
+        $this->assertEquals($moduleIds, $repository->modules()->pluck('id', 'path'));
+        $this->assertSame($symbolIds, $repository->files()->firstWhere('path', 'src/Models/Product.php')->symbols()->pluck('id')->all());
+        $this->assertSame($linesBefore + 2, $repository->files()->firstWhere('path', 'src/Support/Money.php')->lines);
+    }
+
+    /**
+     * Everything the analysis saved, by path and never by id, so two analyses can be compared.
+     *
+     * @return array<string, list<mixed>>
+     */
+    private function analysisSnapshot(Repository $repository): array
+    {
+        $files = $repository->files()->with(['module:id,path', 'symbols', 'imports.targetFile:id,path'])->orderBy('path')->get();
+
+        return [
+            'modules' => $repository->modules()->orderBy('path')->get()->map->only(['path', 'name', 'file_count', 'line_count'])->all(),
+            'files' => $files->map(fn (RepositoryFile $file): array => [$file->path, $file->module->path, $file->language, $file->lines, $file->size_bytes, $file->blob_sha])->all(),
+            'symbols' => $files->flatMap(fn (RepositoryFile $file) => $file->symbols->sortBy([['start_line', 'asc'], ['name', 'asc']])
+                ->map(fn ($symbol): array => [$file->path, $symbol->kind, $symbol->name, $symbol->start_line, $symbol->end_line]))->values()->all(),
+            'imports' => $files->flatMap(fn (RepositoryFile $file) => $file->imports->sortBy('target')
+                ->map(fn ($import): array => [$file->path, $import->target, $import->targetFile?->path]))->values()->all(),
+            'dependencies' => $repository->moduleDependencies()->with(['fromModule:id,path', 'toModule:id,path'])->get()
+                ->map(fn ($dependency): array => [$dependency->fromModule->path, $dependency->toModule->path, $dependency->weight])->sort()->values()->all(),
+        ];
     }
 
     /**

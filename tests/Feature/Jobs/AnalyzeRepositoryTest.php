@@ -10,6 +10,7 @@ use App\Models\Repository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyTimeoutException;
 use Symfony\Component\Process\Process as SymfonyProcess;
 use Tests\TestCase;
@@ -54,6 +55,7 @@ class AnalyzeRepositoryTest extends TestCase
         $this->assertDatabaseHas('module_dependencies', ['repository_id' => $repository->id, 'weight' => 1]);
         Process::assertRan(fn (PendingProcess $process) => $process->command === [
             PHP_BINARY, '-I', base_path('analyzer/analyze.py'), $repository->clonePath(), '--files-from', '-',
+            '--cache', Storage::disk('local')->path("analysis-cache/{$repository->id}.json"),
         ]
             && $process->input === "app/Http/HomeController.php\napp/Models/User.php"
             && $process->timeout === 240);

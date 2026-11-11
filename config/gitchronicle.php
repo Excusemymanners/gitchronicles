@@ -62,6 +62,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Incremental update (Faza 9)
+    |--------------------------------------------------------------------------
+    |
+    | full_threshold: when more than this share of the tracked files changed since the last
+    | processed commit (0.40 = 40%), the run processes everything again instead of only the changes.
+    | overview_share: the overview and the generated README are written again when at least this
+    | share of the modules has changed files (they are also written again when the list of modules
+    | or a file of the root folder changes).
+    | check_cron: when `repositories:check-updates` runs by itself (a cron expression, by default
+    | every 15 minutes); an empty value turns the scheduled check off.
+    | min_interval_minutes: an update started by the webhook or by the scheduled check waits until this
+    | many minutes passed since the repository's last run that did some work, so a burst of pushes
+    | cannot spend AI calls again and again (0 turns the limit off). A commit pushed in between is
+    | picked up by the next scheduled check, or by the next push after the interval.
+    |
+    */
+
+    'incremental' => [
+        'full_threshold' => (float) env('INCREMENTAL_FULL_THRESHOLD', 0.40),
+        'overview_share' => (float) env('INCREMENTAL_OVERVIEW_SHARE', 0.25),
+        'check_cron' => env('UPDATES_CHECK_CRON', '*/15 * * * *'),
+        'min_interval_minutes' => (int) env('UPDATES_MIN_INTERVAL_MINUTES', 10),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Presentation video and slides (bonus)
     |--------------------------------------------------------------------------
     |

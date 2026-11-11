@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Actions\AddRepository;
 use App\Actions\ReprocessRepository;
+use App\Actions\UpdateRepository;
 use App\Enums\DiagramType;
+use App\Enums\ProcessingTrigger;
 use App\Git\HistoryStatistics;
 use App\Http\Controllers\Repository\RendersRepositoryPage;
 use App\Http\Requests\StoreRepositoryRequest;
@@ -138,6 +140,22 @@ class RepositoryController extends Controller
         Inertia::flash('success', 'Am pornit din nou procesarea.');
 
         return redirect()->route('repositories.show', $repository);
+    }
+
+    /**
+     * „Verifică actualizări” (RepositoryPolicy::checkUpdates): start an update and go back to the page
+     * the button was pressed on, which then follows the run. When GitHub has no new commit the run
+     * ends in a moment as „nimic nou”.
+     */
+    public function checkUpdates(Repository $repository, UpdateRepository $updateRepository): RedirectResponse
+    {
+        Gate::authorize('checkUpdates', $repository);
+
+        $updateRepository->handle($repository, ProcessingTrigger::Manual);
+
+        Inertia::flash('success', 'Verificăm dacă sunt commit-uri noi pe GitHub.');
+
+        return redirect()->back(fallback: route('repositories.show', $repository));
     }
 
     /**

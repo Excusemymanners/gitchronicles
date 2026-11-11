@@ -11,6 +11,7 @@ use App\Http\Controllers\Repository\MediaController;
 use App\Http\Controllers\Repository\MediaFileController;
 use App\Http\Controllers\Repository\TimelineController;
 use App\Http\Controllers\RepositoryController;
+use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [RepositoryController::class, 'index'])->name('home');
@@ -54,6 +55,17 @@ Route::prefix('repositories/{repository}')->name('repositories.')->group(functio
 Route::post('/repositories/{repository}/retry', [RepositoryController::class, 'retry'])
     ->middleware(['auth', 'throttle:repositories'])
     ->name('repositories.retry');
+
+// „Verifică actualizări” on a ready repository: it starts a fetch, so it shares the add limit too (Faza 9).
+Route::post('/repositories/{repository}/check-updates', [RepositoryController::class, 'checkUpdates'])
+    ->middleware(['auth', 'throttle:repositories'])
+    ->name('repositories.check-updates');
+
+// GitHub calls this after every push to a repository that has the webhook set up (Faza 9).
+// It has no CSRF token (bootstrap/app.php): the request is trusted only by its signature.
+Route::post('/webhooks/github', GitHubWebhookController::class)
+    ->middleware('throttle:webhooks')
+    ->name('webhooks.github');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'create'])->name('register');

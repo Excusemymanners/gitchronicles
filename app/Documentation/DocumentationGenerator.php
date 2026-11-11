@@ -8,6 +8,7 @@ use App\Ai\NullTextGenerator;
 use App\Ai\TextGenerator;
 use App\Models\Document;
 use App\Models\Module;
+use App\Models\ProcessingRun;
 use App\Models\Repository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,6 +29,11 @@ use InvalidArgumentException;
  *    error that will repeat (a usage limit, a timeout, an overloaded API: AiException::$retryable)
  *    pauses Claude for the rest of the run, so the run does not wait for it page after page;
  * 5. the page is saved, and a new DocumentVersion is added when its Markdown changed.
+ *
+ * Outdated pages (Faza 9): when the input of a page written by Claude changed but Claude cannot write
+ * it now (AI turned off, paused or failed), the page is not replaced by the template. Claude's text
+ * stays, and the page is marked stale with the exact reason: which commit changed the code and which
+ * commit the page describes. Its saved input hash stays the old one, so the next run tries again.
  */
 final class DocumentationGenerator
 {
@@ -57,10 +63,15 @@ final class DocumentationGenerator
      * Write one page of the plan (or leave it as it is when its input did not change).
      *
      * @param  bool  $force  write it even when its input did not change
+     * @param  string|null  $changeDescription  what changed, as the start of a Romanian sentence
+     *                                          („Codul modulului s-a schimbat la commitul abc1234 (3 fișiere)”);
+     *                                          used in the reason of a page that is kept outdated
+     * @param  ProcessingRun|null  $run  the pipeline run that writes the page; the new version remembers it
+     *                                   (without one, as in repositories:document, the repository's newest run)
      *
      * @throws InvalidArgumentException for a slug that is not a page of the plan
      */
-    public function write(DocumentationPlan $plan, string $slug, bool $force = false): PageResult
+    public function write(DocumentationPlan $plan, string $slug, bool $force = false, ?string $changeDescription = null, ?ProcessingRun $run = null): PageResult
     {
         if (! in_array($slug, $plan->slugs(), true)) {
             throw new InvalidArgumentException("The documentation plan has no page \"{$slug}\".");
@@ -76,21 +87,24 @@ final class DocumentationGenerator
 
         if (! $force && $document !== null && $document->input_hash === $inputHash
             && ($document->writer === Document::WRITER_AI || ! $useAi)) {
-            if ($module !== null && $document->module_id !== $module->id) {
-                $document->update(['module_id' => $module->id]);
-            }
+            $this->keepUnchanged($document, $module);
 
             return PageResult::unchanged($slug);
         }
 
         $links = SourceLinks::for($repository);
+        $aiWriter = new AiDocumentationWriter($this->textGenerator);
         $aiError = $this->aiIsOn() ? $this->aiPausedReason : null;
         $rejectedAnswer = null;
 
+        if (! $force && ! $useAi && $document?->writer === Document::WRITER_AI) {
+            return $this->keepOutdated($document, $changeDescription, $aiError);
+        }
+
         try {
-            $page = $this->writePage($useAi ? new AiDocumentationWriter($this->textGenerator) : $this->template, $slug, $context, $links);
+            $page = $this->writePage($useAi ? $aiWriter : $this->template, $slug, $context, $links);
         } catch (AiException $exception) {
-            Log::warning('Claude could not write a documentation page; the template wrote it instead.', [
+            Log::warning('Claude could not write a documentation page.', [
                 'repository_id' => $repository->id,
                 'slug' => $slug,
                 'reason' => $exception->getMessage(),
@@ -103,10 +117,16 @@ final class DocumentationGenerator
                 $this->aiPausedReason = $exception->getMessage();
             }
 
+            if (! $force && $document?->writer === Document::WRITER_AI) {
+                return $this->keepOutdated($document, $changeDescription, $aiError, $rejectedAnswer);
+            }
+
             $page = $this->writePage($this->template, $slug, $context, $links);
         }
 
-        $this->save($repository, $module, $document, $slug, $page, $inputHash, $aiError);
+        $contextCharacters = mb_strlen(AiDocumentationWriter::SYSTEM_PROMPT) + mb_strlen($this->prompt($aiWriter, $slug, $context, $links));
+
+        $this->save($repository, $module, $document, $slug, $page, $inputHash, $aiError, $contextCharacters, $run?->id ?? $repository->processingRuns()->max('id'));
 
         return new PageResult(
             slug: $slug,
@@ -116,6 +136,7 @@ final class DocumentationGenerator
             outputTokens: $page->outputTokens + ($rejectedAnswer->outputTokens ?? 0),
             costUsdEquivalent: $this->addCosts($page->costUsdEquivalent, $rejectedAnswer),
             aiError: $aiError,
+            contextCharacters: $contextCharacters,
         );
     }
 
@@ -156,6 +177,66 @@ final class DocumentationGenerator
     }
 
     /**
+     * A page whose input is the same as when it was written: only its links are checked. A module page
+     * follows its module, and a page of Claude that was marked outdated is good again (the code is back
+     * to what the page describes).
+     */
+    private function keepUnchanged(Document $document, ?Module $module): void
+    {
+        if ($module !== null && $document->module_id !== $module->id) {
+            $document->update(['module_id' => $module->id]);
+        }
+
+        if ($document->is_stale && $document->writer === Document::WRITER_AI) {
+            $document->update(['is_stale' => false, 'stale_reason' => null]);
+        }
+    }
+
+    /**
+     * Keep a page written by Claude although its input changed, and mark it stale with the reason:
+     * what changed, which commit the page describes and why it was not written again.
+     * A page that is already stale keeps its reason when this run brings no new change to describe.
+     *
+     * @param  string|null  $aiError  why Claude could not write it; null when AI is turned off
+     * @param  AiResult|null  $rejectedAnswer  an answer Claude gave that could not be used (its tokens still count)
+     */
+    private function keepOutdated(Document $document, ?string $changeDescription, ?string $aiError, ?AiResult $rejectedAnswer = null): PageResult
+    {
+        if ($changeDescription !== null || ! $document->is_stale) {
+            $repository = $document->repository;
+            $change = $changeDescription ?? 'Codul s-a schimbat la commitul '.substr((string) $repository->last_sha, 0, 7);
+            $pageCommit = $document->source_sha === null ? '' : '; pagina e de la commitul '.substr($document->source_sha, 0, 7);
+            $why = $aiError === null
+                ? 'Claude nu e disponibil acum (AI oprit), așa că rămâne textul vechi până la o procesare cu AI.'
+                : "Claude nu a putut-o rescrie: {$aiError}";
+
+            $document->update(['is_stale' => true, 'stale_reason' => "{$change}{$pageCommit}. {$why}"]);
+        }
+
+        return new PageResult(
+            slug: $document->slug,
+            written: false,
+            inputTokens: $rejectedAnswer->inputTokens ?? 0,
+            outputTokens: $rejectedAnswer->outputTokens ?? 0,
+            costUsdEquivalent: $rejectedAnswer?->costUsdEquivalent,
+            aiError: $aiError,
+            outdated: true,
+        );
+    }
+
+    /**
+     * The message Claude receives (or would receive) for the page with this slug.
+     */
+    private function prompt(AiDocumentationWriter $writer, string $slug, ModuleContext|OverviewContext $context, SourceLinks $links): string
+    {
+        return $writer->prompt(match (true) {
+            $context instanceof ModuleContext => 'module',
+            $slug === Document::README => 'readme',
+            default => 'overview',
+        }, $context, $links);
+    }
+
+    /**
      * Ask a writer for the page with this slug.
      */
     private function writePage(DocumentationWriter $writer, string $slug, ModuleContext|OverviewContext $context, SourceLinks $links): WrittenPage
@@ -171,10 +252,12 @@ final class DocumentationGenerator
      * Save the page (and a new version when its Markdown changed), in one transaction.
      *
      * @param  string|null  $aiError  why Claude did not write it while AI is on: the page is then stale
+     * @param  int  $contextCharacters  the size of the text Claude received, or would have received, for this page
+     * @param  int|null  $processingRunId  the run the new version belongs to (for the time travel)
      */
-    private function save(Repository $repository, ?Module $module, ?Document $document, string $slug, WrittenPage $page, string $inputHash, ?string $aiError): void
+    private function save(Repository $repository, ?Module $module, ?Document $document, string $slug, WrittenPage $page, string $inputHash, ?string $aiError, int $contextCharacters, ?int $processingRunId): void
     {
-        DB::transaction(function () use ($repository, $module, $document, $slug, $page, $inputHash, $aiError): void {
+        DB::transaction(function () use ($repository, $module, $document, $slug, $page, $inputHash, $aiError, $contextCharacters, $processingRunId): void {
             $document ??= new Document(['slug' => $slug]);
             $document->repository()->associate($repository);
             $markdownChanged = $document->markdown !== $page->markdown;
@@ -190,6 +273,7 @@ final class DocumentationGenerator
                 'ai_driver' => $page->aiDriver,
                 'input_tokens' => $page->inputTokens,
                 'output_tokens' => $page->outputTokens,
+                'context_characters' => $contextCharacters,
                 'cost_usd_equivalent' => $page->costUsdEquivalent,
                 'generated_at' => now(),
                 'is_stale' => $aiError !== null,
@@ -197,7 +281,7 @@ final class DocumentationGenerator
             ])->save();
 
             if ($markdownChanged) {
-                $document->versions()->create(['sha' => $repository->last_sha, 'markdown' => $page->markdown]);
+                $document->versions()->create(['processing_run_id' => $processingRunId, 'sha' => $repository->last_sha, 'markdown' => $page->markdown]);
             }
         });
     }

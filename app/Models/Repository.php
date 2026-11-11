@@ -47,6 +47,7 @@ class Repository extends Model
     {
         static::deleted(function (Repository $repository): void {
             Storage::disk('local')->deleteDirectory($repository->cloneDirectory());
+            Storage::disk('local')->delete($repository->analysisCacheFile());
             Storage::disk('local')->deleteDirectory($repository->mediaDirectory());
 
             app(CodeSearch::class)->forget($repository);
@@ -140,6 +141,16 @@ class Repository extends Model
     }
 
     /**
+     * Every version the diagrams ever had, oldest first (the time travel of Faza 9, DiagramHistory).
+     *
+     * @return HasMany<DiagramVersion, $this>
+     */
+    public function diagramVersions(): HasMany
+    {
+        return $this->hasMany(DiagramVersion::class)->orderBy('id');
+    }
+
+    /**
      * The pieces of code the assistant searches and cites, written by the last IndexCode step (Faza 8).
      *
      * @return HasMany<CodeChunk, $this>
@@ -174,6 +185,28 @@ class Repository extends Model
     public function isBeingProcessed(): bool
     {
         return $this->processingRuns()->where('status', ProcessingRunStatus::Running)->exists();
+    }
+
+    /**
+     * The newest run that processed the repository to the end. Its commit (to_sha) is where the next
+     * incremental update starts from: everything up to it is fully documented.
+     */
+    public function lastSuccessfulRun(): ?ProcessingRun
+    {
+        return $this->processingRuns()
+            ->where('status', ProcessingRunStatus::Succeeded)
+            ->whereNotNull('to_sha')
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * The file in which the code analyzer remembers what it parsed (analyzer/analyze.py --cache),
+     * relative to the "local" disk. It is deleted together with the repository.
+     */
+    public function analysisCacheFile(): string
+    {
+        return "analysis-cache/{$this->id}.json";
     }
 
     /**

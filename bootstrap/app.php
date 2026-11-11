@@ -20,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Guests on "auth" routes go to route('login') (Laravel's default once that route exists).
         // Logged-in users on "guest" routes (/login, /register) go to the home page.
         $middleware->redirectUsersTo(fn () => route('home'));
+
+        // GitHub's webhook cannot send a CSRF token; GitHubWebhookController checks its signature instead.
+        $middleware->preventRequestForgery(except: ['webhooks/github']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

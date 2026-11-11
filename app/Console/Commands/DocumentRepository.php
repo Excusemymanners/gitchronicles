@@ -78,6 +78,7 @@ class DocumentRepository extends Command
             $cost = $page->costUsdEquivalent === null ? $cost : ($cost ?? 0) + $page->costUsdEquivalent;
 
             $this->line(match (true) {
+                $page->outdated => "  {$slug}: codul s-a schimbat, dar rămâne textul vechi al lui Claude, marcat ca depășit".($page->aiError === null ? ' (AI oprit)' : " (Claude: {$page->aiError})"),
                 ! $page->written => "  {$slug}: neschimbată",
                 $page->writer === 'ai' => "  {$slug}: scrisă de Claude ({$page->inputTokens} tokeni la intrare, {$page->outputTokens} la ieșire"
                     .($page->costUsdEquivalent === null ? '' : ', '.number_format($page->costUsdEquivalent, 4).' $ pe API').')',

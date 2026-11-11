@@ -13,4 +13,14 @@ enum ProcessingTrigger: string
     case Manual = 'manual';
     case Webhook = 'webhook';
     case Schedule = 'schedule';
+
+    /**
+     * Whether nobody pressed a button: a push announced by GitHub or the scheduled check.
+     * These runs respect a minimum interval per repository (see UpdateRepository), so a burst of
+     * pushes cannot start one update (and its AI calls) after another.
+     */
+    public function isAutomatic(): bool
+    {
+        return $this === self::Webhook || $this === self::Schedule;
+    }
 }

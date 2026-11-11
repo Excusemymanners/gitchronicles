@@ -34,7 +34,7 @@ const ELEMENTS_COLUMN_QUERY = '(min-width: 80rem)';
  */
 export default function WorkspaceLayout({ children }: Props) {
     const { props, component } = usePage<RepositoryPageProps>();
-    const { repository, workspace, can_delete, can_retry } = props;
+    const { repository, workspace, can_delete, can_retry, can_check_updates, last_update } = props;
 
     // Cât timp procesarea mai are de lucru, cerem serverului la fiecare 2 secunde doar
     // repository-ul și dreptul de „Reîncearcă”; când e gata sau a eșuat, ne oprim.
@@ -92,6 +92,8 @@ export default function WorkspaceLayout({ children }: Props) {
                     repository={repository}
                     canDelete={can_delete}
                     canRetry={can_retry}
+                    canCheckUpdates={can_check_updates}
+                    lastUpdate={last_update}
                     onOpenChapters={hasChaptersColumn ? null : () => setChaptersDrawerOpen(true)}
                     isChaptersOpen={isChaptersDrawerOpen}
                 />

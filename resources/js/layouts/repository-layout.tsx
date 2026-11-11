@@ -1,5 +1,6 @@
 import { Form, Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+import LastUpdateLine from '@/components/repository/last-update';
 import { useActiveChapter } from '@/lib/workspace';
 import type { RepositoryPageProps } from '@/types';
 
@@ -31,7 +32,7 @@ const pageTitles: Record<string, string> = {
  */
 export default function RepositoryLayout({ children }: Props) {
     const { props, component } = usePage<RepositoryPageProps>();
-    const { auth, repository, can_retry } = props;
+    const { auth, repository, can_retry, can_check_updates, last_update } = props;
     const activeChapter = useActiveChapter();
 
     const breadcrumb = activeChapter ? `${activeChapter.groupTitle} · ${activeChapter.label}` : (pageTitles[component] ?? null);
@@ -39,6 +40,9 @@ export default function RepositoryLayout({ children }: Props) {
     return (
         <div className="mx-auto w-full max-w-190 px-4 pt-6 sm:px-8 sm:pt-8">
             {breadcrumb && <p className="text-xs text-ink-subtle">{breadcrumb}</p>}
+
+            {/* Pe ecranele late, „Actualizat la commitul …” și „Verifică actualizări” sunt în bara de sus. */}
+            <LastUpdateLine repository={repository} lastUpdate={last_update} canCheckUpdates={can_check_updates} className="mt-2 lg:hidden" />
 
             {repository.is_processing && (
                 <p

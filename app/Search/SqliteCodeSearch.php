@@ -6,6 +6,7 @@ use App\Models\CodeChunk;
 use App\Models\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -40,7 +41,34 @@ final class SqliteCodeSearch implements CodeSearch
     {
         $this->forget($repository);
 
-        $repository->codeChunks()
+        $this->add($repository, $repository->codeChunks());
+    }
+
+    /**
+     * After an incremental reindexing: delete the index rows whose chunk no longer exists and add
+     * a row for every chunk that has none yet. The rows of the unchanged chunks are not touched.
+     */
+    public function sync(Repository $repository): void
+    {
+        DB::table('code_chunks_fts')
+            ->where('repository_id', $repository->id)
+            ->whereNotIn('rowid', DB::table('code_chunks')->select('id')->where('repository_id', $repository->id))
+            ->delete();
+
+        $this->add($repository, $repository->codeChunks()->whereNotIn(
+            'code_chunks.id',
+            DB::table('code_chunks_fts')->select('rowid')->where('repository_id', $repository->id),
+        ));
+    }
+
+    /**
+     * Write one index row for each of the given chunks (rowid = the chunk's id).
+     *
+     * @param  HasMany<CodeChunk, Repository>|Builder<CodeChunk>  $chunks
+     */
+    private function add(Repository $repository, HasMany|Builder $chunks): void
+    {
+        $chunks
             ->with('repositoryFile:id,path')
             ->chunkById(self::INSERT_CHUNK_SIZE, function (EloquentCollection $chunks) use ($repository): void {
                 DB::table('code_chunks_fts')->insert($chunks->map(fn (CodeChunk $chunk): array => [

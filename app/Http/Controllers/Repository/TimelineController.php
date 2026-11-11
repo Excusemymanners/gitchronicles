@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Repository;
 
+use App\Enums\ProcessingMode;
+use App\Enums\ProcessingRunStatus;
 use App\Git\HistoryStatistics;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CommitResource;
 use App\Http\Resources\ProcessingRunResource;
+use App\Models\ProcessingRun;
 use App\Models\Repository;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,7 +19,7 @@ use Inertia\Response;
 /**
  * The „Istoric” tab of a repository: the imported commits (newest first, grouped by month on the page),
  * the GitChronicle processing runs as markers on the commits they processed, the „Zone fierbinți”
- * and the contributors. The time travel to older documentation comes with the incremental update (Faza 9).
+ * and the contributors. Each run shows how it worked: its kind, what started it, what changed and what it rewrote.
  *
  * Every prop is a closure, so the layout's polling (which asks only for "repository" and
  * "can_retry") runs none of these queries.
@@ -69,9 +73,7 @@ class TimelineController extends Controller
                     ->withQueryString(),
             )),
 
-            'runs' => fn () => ProcessingRunResource::collection(
-                $repository->processingRuns()->whereNotNull('to_sha')->latest('id')->limit(self::SHOWN_RUNS)->get(),
-            )->resolve(),
+            'runs' => fn () => ProcessingRunResource::collection($this->runsOf($repository))->resolve(),
 
             'hotspots' => fn () => $statistics->hotspots($repository, self::SHOWN_HOTSPOTS),
 
@@ -79,5 +81,31 @@ class TimelineController extends Controller
 
             'filters' => ['q' => $search],
         ]);
+    }
+
+    /**
+     * The newest runs that reached a commit. Every incremental run that succeeded gets, as its
+     * "reference" relation, the last complete processing (first or full) that succeeded before it:
+     * the page compares the two to show what the incremental update saved (Faza 9).
+     *
+     * @return Collection<int, ProcessingRun>
+     */
+    private function runsOf(Repository $repository): Collection
+    {
+        $runs = $repository->processingRuns()->whereNotNull('to_sha')->latest('id')->limit(self::SHOWN_RUNS)->get();
+
+        $completeRuns = $repository->processingRuns()
+            ->whereIn('mode', [ProcessingMode::Initial, ProcessingMode::Full])
+            ->where('status', ProcessingRunStatus::Succeeded)
+            ->orderBy('id')
+            ->get();
+
+        foreach ($runs as $run) {
+            if ($run->isIncremental() && $run->status === ProcessingRunStatus::Succeeded) {
+                $run->setRelation('reference', $completeRuns->last(fn (ProcessingRun $complete): bool => $complete->id < $run->id));
+            }
+        }
+
+        return $runs;
     }
 }

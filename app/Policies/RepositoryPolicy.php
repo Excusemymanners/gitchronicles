@@ -34,4 +34,16 @@ class RepositoryPolicy
     {
         return $repository->status === RepositoryStatus::Failed;
     }
+
+    /**
+     * Determine whether the user can ask for an update („Verifică actualizări”, Faza 9).
+     *
+     * Any logged-in user may, like „Reîncearcă”: the repository is public and an update only brings
+     * its documentation up to date. It is allowed only while the repository is ready, so it never
+     * starts next to a run that is waiting or working; after a failure „Reîncearcă” is the button.
+     */
+    public function checkUpdates(User $user, Repository $repository): bool
+    {
+        return $repository->status === RepositoryStatus::Ready;
+    }
 }
