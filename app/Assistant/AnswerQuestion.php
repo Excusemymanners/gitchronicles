@@ -69,6 +69,11 @@ final class AnswerQuestion
     public const PREVIEW_LINES = 20;
 
     /**
+     * The most lines of a citation's snippet (the text shown in the preview card).
+     */
+    public const SNIPPET_LINES = 12;
+
+    /**
      * The first line of the answer without AI.
      */
     public const RETRIEVAL_INTRO = 'These are the most relevant code fragments:';
@@ -144,7 +149,7 @@ final class AnswerQuestion
      * Answer the question.
      *
      * @param  list<array{role: string, content: string}>  $history  the earlier messages, oldest first ("user" or "assistant")
-     * @return array{answer_markdown: string, citations: list<array{index: int, path: string, start_line: int, end_line: int, symbol_name: string|null, url: string|null, cited: bool}>, mode: 'ai'|'retrieval', notice: string|null, usage: array{input_tokens: int, output_tokens: int, cost_usd_equivalent: float|null, model: string, driver: string}|null}
+     * @return array{answer_markdown: string, citations: list<array{index: int, path: string, start_line: int, end_line: int, symbol_name: string|null, url: string|null, cited: bool, snippet: string}>, mode: 'ai'|'retrieval', notice: string|null, usage: array{input_tokens: int, output_tokens: int, cost_usd_equivalent: float|null, model: string, driver: string}|null}
      */
     public function handle(Repository $repository, string $question, array $history = []): array
     {
@@ -362,7 +367,7 @@ final class AnswerQuestion
      * The answer without AI: the fragments themselves, each with its first lines.
      *
      * @param  Collection<int, CodeChunk>  $fragments
-     * @return array{answer_markdown: string, citations: list<array{index: int, path: string, start_line: int, end_line: int, symbol_name: string|null, url: string|null, cited: bool}>, mode: 'retrieval', notice: string|null, usage: null}
+     * @return array{answer_markdown: string, citations: list<array{index: int, path: string, start_line: int, end_line: int, symbol_name: string|null, url: string|null, cited: bool, snippet: string}>, mode: 'retrieval', notice: string|null, usage: null}
      */
     private function retrievalAnswer(Repository $repository, Collection $fragments, ?string $notice): array
     {
@@ -435,7 +440,7 @@ final class AnswerQuestion
      *
      * @param  Collection<int, CodeChunk>  $fragments
      * @param  list<int>  $citedNumbers
-     * @return list<array{index: int, path: string, start_line: int, end_line: int, symbol_name: string|null, url: string|null, cited: bool}>
+     * @return list<array{index: int, path: string, start_line: int, end_line: int, symbol_name: string|null, url: string|null, cited: bool, snippet: string}>
      */
     private function citations(Repository $repository, Collection $fragments, array $citedNumbers): array
     {
@@ -447,7 +452,17 @@ final class AnswerQuestion
             'symbol_name' => $chunk->symbol_name,
             'url' => $this->githubUrl($repository, $chunk),
             'cited' => in_array($index + 1, $citedNumbers, true),
+            'snippet' => $this->snippetOf($chunk),
         ])->all();
+    }
+
+    /**
+     * The cited lines as text for the hover preview: the first SNIPPET_LINES lines of the chunk
+     * (the chunk text is already loaded, so this costs no extra query).
+     */
+    private function snippetOf(CodeChunk $chunk): string
+    {
+        return implode("\n", array_slice(explode("\n", $chunk->content), 0, self::SNIPPET_LINES));
     }
 
     /**

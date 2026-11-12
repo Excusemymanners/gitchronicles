@@ -133,6 +133,8 @@ export type AssistantCitation = {
     url: string | null;
     /** Adevărat dacă răspunsul chiar citează fragmentul. */
     cited: boolean;
+    /** Liniile citate, ca text (cel mult 12 linii, începând de la `start_line`), pentru previzualizare. */
+    snippet: string;
 };
 
 /** Răspunsul serverului la o întrebare (POST /repositories/{id}/assistant). */

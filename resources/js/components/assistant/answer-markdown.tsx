@@ -45,36 +45,35 @@ export default function AnswerMarkdown({ markdown, citations }: Props) {
                 </a>
             );
         },
-        p: ({ children }) => <p className="leading-relaxed">{children}</p>,
-        ul: ({ children }) => <ul className="list-disc space-y-1 pl-5 marker:text-ink-subtle">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal space-y-1 pl-5 marker:text-ink-subtle">{children}</ol>,
+        p: ({ children }) => <p className="leading-7 text-ink">{children}</p>,
+        ul: ({ children }) => <ul className="list-disc space-y-2 pl-5 marker:text-ink-subtle">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal space-y-2 pl-5 marker:text-ink-subtle">{children}</ol>,
+        li: ({ children }) => <li className="leading-7 text-ink [&>ol]:mt-2 [&>ul]:mt-2">{children}</li>,
         h1: ({ children }) => <Heading>{children}</Heading>,
         h2: ({ children }) => <Heading>{children}</Heading>,
         h3: ({ children }) => <Heading>{children}</Heading>,
         h4: ({ children }) => <Heading>{children}</Heading>,
-        blockquote: ({ children }) => <blockquote className="border-l-4 border-line-strong pl-3 text-ink-muted">{children}</blockquote>,
+        blockquote: ({ children }) => <blockquote className="border-l-2 border-accent pl-4 text-ink-muted">{children}</blockquote>,
         pre: ({ children }) => (
-            <pre className="overflow-x-auto rounded-md border border-line bg-canvas p-3 font-mono text-[0.8125rem] leading-relaxed text-ink">
-                {children}
-            </pre>
+            <pre className="overflow-x-auto rounded-lg border border-line bg-canvas p-3 font-mono text-[0.8125rem] leading-relaxed text-ink">{children}</pre>
         ),
         code: ({ className, children }) =>
             className?.startsWith('language-') || String(children).includes('\n') ? (
                 <code className={className}>{children}</code>
             ) : (
-                <code className="rounded-sm bg-surface-2 px-1 py-0.5 font-mono text-[0.85em] break-words text-ink">{children}</code>
+                <code className="rounded-sm bg-surface-2 px-1 py-0.5 font-mono text-[0.8125em] break-words text-ink">{children}</code>
             ),
         table: ({ children }) => (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-line">
                 <table className="w-full text-left text-sm">{children}</table>
             </div>
         ),
-        th: ({ children }) => <th className="border-b border-line py-1.5 pr-3 font-medium text-ink">{children}</th>,
-        td: ({ children }) => <td className="border-b border-line-subtle py-1.5 pr-3 align-top text-ink-muted">{children}</td>,
+        th: ({ children }) => <th className="bg-surface-2 px-3 py-2 text-left text-[0.8125rem] font-medium whitespace-nowrap text-ink-muted">{children}</th>,
+        td: ({ children }) => <td className="border-t border-line-subtle px-3 py-2 align-top text-ink-muted first:text-ink">{children}</td>,
     };
 
     return (
-        <div className="flex min-w-0 flex-col gap-3 text-sm text-ink">
+        <div className="flex min-w-0 flex-col gap-4 text-[0.9375rem] text-ink">
             <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={components}>
                 {linkCitations(markdown, new Set(citationsByIndex.keys()))}
             </ReactMarkdown>
@@ -84,7 +83,7 @@ export default function AnswerMarkdown({ markdown, citations }: Props) {
 
 /** Titlurile din răspuns sunt mici: un răspuns e un mesaj, nu o pagină. */
 function Heading({ children }: { children?: ReactNode }) {
-    return <p className="font-semibold text-ink">{children}</p>;
+    return <p className="text-base font-semibold text-ink">{children}</p>;
 }
 
 /**

@@ -45,6 +45,7 @@ class AssistantTest extends TestCase
                     'symbol_name' => null,
                     'url' => 'https://github.com/ana/magazin/blob/'.self::SHA.'/docs/autentificare.md?plain=1#L1-L3',
                     'cited' => false,
+                    'snippet' => "# Autentificarea\n\nUtilizatorii intră în cont cu email și parolă.",
                 ],
                 [
                     'index' => 2,
@@ -54,6 +55,7 @@ class AssistantTest extends TestCase
                     'symbol_name' => 'LoginRequest.authenticate',
                     'url' => 'https://github.com/ana/magazin/blob/'.self::SHA.'/app/Http/Requests/Auth/LoginRequest.php#L41-L44',
                     'cited' => true,
+                    'snippet' => "public function authenticate(): void\n{\n    Auth::attempt(\$this->only('email', 'password'));\n}",
                 ],
                 [
                     'index' => 3,
@@ -63,6 +65,7 @@ class AssistantTest extends TestCase
                     'symbol_name' => 'LoginController.store',
                     'url' => 'https://github.com/ana/magazin/blob/'.self::SHA.'/app/Http/Controllers/Auth/LoginController.php#L12-L15',
                     'cited' => true,
+                    'snippet' => "public function store(LoginRequest \$request)\n{\n    \$request->authenticate();\n}",
                 ],
             ],
             'mode' => 'ai',
@@ -190,6 +193,20 @@ class AssistantTest extends TestCase
             "**[2]** `app/Http/Requests/Auth/LoginRequest.php`, lines 41–44 · `LoginRequest.authenticate`\n\n```php\npublic function authenticate(): void\n",
             $response->json('answer_markdown'),
         );
+    }
+
+    public function test_each_citation_carries_its_cited_lines_capped_at_twelve(): void
+    {
+        $repository = Repository::factory()->ready()->create(['last_sha' => self::SHA]);
+        $lines = array_map(fn (int $line): string => "// login {$line}", range(1, 25));
+        $this->chunk($repository, 'app/Login.php', 1, implode("\n", $lines));
+        $this->chunk($repository, 'app/LoginShort.php', 1, "// login a\n// login b");
+        app(CodeSearch::class)->rebuild($repository);
+
+        $citations = collect($this->postJson(route('repositories.assistant.ask', $repository), ['question' => 'Unde e login?'])->json('citations'))->keyBy('path');
+
+        $this->assertSame(implode("\n", array_slice($lines, 0, 12)), $citations['app/Login.php']['snippet']);
+        $this->assertSame("// login a\n// login b", $citations['app/LoginShort.php']['snippet']);
     }
 
     public function test_shows_the_first_twenty_lines_of_a_long_fragment_without_ai(): void

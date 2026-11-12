@@ -96,7 +96,14 @@ export function useAssistant(repositoryId: number) {
         setFailure(null);
     }, [http]);
 
+    /** A link that opens the Assistant page and asks this question (the page reads `?ask=`). */
+    const questionLink = useCallback(
+        (question: string): string => `${window.location.origin}/repositories/${repositoryId}/assistant?ask=${encodeURIComponent(question)}`,
+        [repositoryId],
+    );
+
     return {
+        questionLink,
         messages,
         isAsking: http.processing,
         error: failure?.message ?? null,

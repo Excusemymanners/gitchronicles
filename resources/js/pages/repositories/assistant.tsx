@@ -1,6 +1,7 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { useEffect, useRef } from 'react';
 import { useAssistantConversation } from '@/components/assistant/assistant-provider';
-import AssistantThread from '@/components/assistant/assistant-thread';
+import AssistantThread, { useStarterQuestions } from '@/components/assistant/assistant-thread';
 import ChapterEmptyState from '@/components/repository/chapter-empty-state';
 import { useI18n } from '@/hooks/use-i18n';
 import RepositoryLayout from '@/layouts/repository-layout';
@@ -16,6 +17,8 @@ export default function RepositoriesAssistant({ repository, workspace, completen
     const { t, rich } = useI18n();
     const conversation = useAssistantConversation();
     const hasConversation = conversation.messages.length > 0;
+    const isReady = workspace.assistant.is_indexed;
+    useAskFromUrl(isReady, conversation.ask);
 
     return (
         <RepositoryLayout>
@@ -47,16 +50,14 @@ export default function RepositoriesAssistant({ repository, workspace, completen
             <div className="mt-6">
                 {hasConversation ? (
                     <AssistantThread assistant={conversation} />
-                ) : !workspace.assistant.is_indexed && repository.status === 'ready' ? (
+                ) : !isReady && repository.status === 'ready' ? (
                     <NotIndexed completeness={completeness} />
+                ) : isReady ? (
+                    <EmptyThread ask={conversation.ask} />
                 ) : (
                     <div className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-muted">
-                        <p className="font-medium text-ink">
-                            {workspace.assistant.is_indexed ? t('assistant.readyTitle') : t('assistant.waitingTitle')}
-                        </p>
-                        <p className="mt-2">
-                            {workspace.assistant.is_indexed ? t('assistant.readyText') : t('assistant.waitingText')}
-                        </p>
+                        <p className="font-medium text-ink">{t('assistant.waitingTitle')}</p>
+                        <p className="mt-2">{t('assistant.waitingText')}</p>
                     </div>
                 )}
             </div>
@@ -83,5 +84,61 @@ function NotIndexed({ completeness }: { completeness: Completeness }) {
         <ChapterEmptyState title={t('assistant.notIndexedTitle')} offerRegenerate>
             {t('assistant.notIndexedText')}
         </ChapterEmptyState>
+    );
+}
+
+/**
+ * A shared link (`…/assistant?ask=<question>`) asks its question once the code is indexed, then the parameter is
+ * removed from the address so that reloading the page does not ask again.
+ */
+function useAskFromUrl(isReady: boolean, ask: (question: string) => boolean) {
+    const handled = useRef(false);
+
+    useEffect(() => {
+        if (!isReady || handled.current) {
+            return;
+        }
+
+        const url = new URL(window.location.href);
+        const question = url.searchParams.get('ask');
+
+        if (question === null) {
+            return;
+        }
+
+        handled.current = true;
+        url.searchParams.delete('ask');
+        // A client-side visit (no request) changes Inertia's own idea of the address too, so it does not put `?ask=` back.
+        router.replace({ url: url.pathname + url.search + url.hash, props: (current) => current, preserveScroll: true, preserveState: true });
+        ask(question);
+    }, [isReady, ask]);
+}
+
+/** The empty thread: what the assistant does, and the repository's real starter questions as a list. */
+function EmptyThread({ ask }: { ask: (question: string) => boolean }) {
+    const { t } = useI18n();
+    const starters = useStarterQuestions();
+
+    return (
+        <div className="max-w-2xl">
+            <h2 className="font-display text-heading text-ink">{t('assistant.thread.emptyTitle')}</h2>
+            <p className="mt-2 text-[0.9375rem] text-ink-muted">{t('assistant.thread.emptyText')}</p>
+            {starters.length > 0 && (
+                <ul aria-label={t('assistant.thread.starters')} className="mt-5 flex flex-col items-start gap-2">
+                    {starters.map((question) => (
+                        <li key={question} className="max-w-full">
+                            <button
+                                type="button"
+                                onClick={() => ask(question)}
+                                className="pressable cursor-pointer rounded-md bg-surface px-3 py-2 text-left text-sm text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                            >
+                                {question}
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <p className="mt-5 text-sm text-ink-subtle">{t('assistant.readyText')}</p>
+        </div>
     );
 }

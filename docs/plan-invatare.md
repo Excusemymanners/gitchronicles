@@ -267,6 +267,14 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Blocurile de cod au buton de copiere, dar nu și colorare sintactică: ar fi cerut o dependență nouă, iar un singur tuș de cerneală e mai calm.
   - Titlul paginii se desparte de restul textului, iar sub el vine o singură linie „cine a scris”; modelul, tokenii și costul stau într-un `<details>` și apar doar când există (date reale, nimic inventat).
   - Bara „Călătorie în timp” e o șină cu un inel pe commit (până la 24, peste rămâne cursorul) și e pliată implicit pe o linie; se deschide singură când e afișată o versiune veche.
+- 2026-11-12 — Asistentul: răspunsuri care se pot verifica. Decizii și motivele lor:
+  - Fiecare citare poartă `snippet`: primele 12 linii ale fragmentului indexat, luate din textul deja încărcat (fără interogare în plus). Previzualizarea arată codul real, fără să ceară GitHub-ului nimic.
+  - Cardul de previzualizare se desenează într-un portal cu `position: fixed` și se mută ca să rămână în fereastră (sub marcaj, sau deasupra dacă nu e loc). Un portal nu e tăiat de coloanele care derulează; în interiorul unui `dialog` deschis cardul intră în el, altfel stratul de sus al dialogului l-ar acoperi.
+  - Pe ecran tactil prima atingere deschide cardul, a doua urmează linkul; doar focusul de la tastatură (`:focus-visible`) deschide cardul, fiindcă o atingere dă și ea focus și ar sări peste primul pas. Esc închide cardul înaintea oricărui panou din jur.
+  - Răspunsul stă pe o șină cu semnul mărcii (cu halo cât se așteaptă, oprit la „reduce motion”); fără animație falsă de scriere. „Nu am găsit asta în cod” e o stare cinstită, cu întrebările de pornire ca pași următori.
+  - `?ask=` pune întrebarea o singură dată, apoi scoate parametrul cu o vizită Inertia pe partea clientului (`router.replace` cu `props`), nu cu `history.replaceState`: Inertia își rescrie singur adresa și ar fi pus parametrul la loc, iar o reîncărcare ar fi întrebat din nou.
+  - Întrebările de continuare (cel mult trei) sunt întrebările de pornire reale ale repository-ului, fără cele deja puse; nu se inventează nimic și nu există un apel AI în plus.
+
 - 2026-11-12 — Diagramele de citit: zoom, deplasare, export și noduri care duc la documentație. Decizii și motivele lor:
   - Zoom-ul și deplasarea stau într-un singur hook (`usePanZoom`, starea `{ scale, x, y }`), fără bibliotecă: Ctrl + rotița (și ciupirea de pe trackpad, pe care browserul o trimite tot ca Ctrl + rotița) mărește în jurul cursorului, rotița simplă lasă pagina să deruleze. Ascultătorul `wheel` e nativ și nepasiv, pentru că cel din React nu poate opri zoom-ul paginii.
   - „Potrivește” nu respectă limita de jos a zoom-ului: o diagramă foarte înaltă trebuie să încapă întreagă, iar limita 0,3–4 se aplică doar mărimilor alese de cititor.
