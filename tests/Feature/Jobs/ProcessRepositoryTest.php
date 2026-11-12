@@ -7,6 +7,7 @@ use App\Jobs\CloneRepository;
 use App\Jobs\ProcessRepository;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Queue;
@@ -88,7 +89,7 @@ class ProcessRepositoryTest extends TestCase
     {
         Storage::fake('local');
         $repository = Repository::factory()->create(['url' => Storage::disk('local')->path('missing-origin')]);
-        $message = 'Repository-ul nu există pe GitHub sau este privat. GitChronicle poate clona doar repository-uri publice.';
+        $message = StoredMessage::make('repositories.errors.not_public');
 
         ProcessRepository::dispatch($repository, ProcessingTrigger::Add);
 
@@ -121,7 +122,7 @@ class ProcessRepositoryTest extends TestCase
         $this->assertDatabaseHas('repositories', [
             'id' => $repository->id,
             'status' => 'failed',
-            'error' => 'Repository-ul nu are încă niciun commit, deci nu avem ce documenta.',
+            'error' => StoredMessage::make('repositories.errors.no_commits'),
         ]);
         $this->assertDatabaseHas('processing_runs', ['repository_id' => $repository->id, 'status' => 'failed']);
     }

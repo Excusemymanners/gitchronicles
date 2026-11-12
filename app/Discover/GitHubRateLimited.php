@@ -15,8 +15,8 @@ final class GitHubRateLimited extends GitHubRequestFailed
      */
     public function __construct(public readonly ?int $resetAt = null)
     {
-        $until = $resetAt === null ? '' : ' până la '.Carbon::createFromTimestamp($resetAt)->format('H:i:s').' UTC';
+        $until = $resetAt === null ? '' : ' until '.Carbon::createFromTimestamp($resetAt)->format('H:i:s').' UTC';
 
-        parent::__construct("Limita de cereri a API-ului GitHub e atinsă{$until}.");
+        parent::__construct("The GitHub API request limit is reached{$until}.");
     }
 }

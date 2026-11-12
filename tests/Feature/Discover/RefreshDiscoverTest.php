@@ -48,9 +48,9 @@ class RefreshDiscoverTest extends TestCase
         ]])]);
 
         $this->artisan('discover:refresh')
-            ->expectsOutputToContain('Noi și populare, pagina 1: 2 repository-uri')
-            ->expectsOutputToContain('Noi în Rust, pagina 1: 2 repository-uri')
-            ->expectsOutputToContain('Gata: 3 cereri către GitHub, 2 repository-uri văzute azi (2 noi), 2 notări pentru 2026-11-11')
+            ->expectsOutputToContain('New and popular, page 1: 2 repositories')
+            ->expectsOutputToContain('New in Rust, page 1: 2 repositories')
+            ->expectsOutputToContain('Done: 3 GitHub requests, 2 repositories seen today (2 new), 2 star counts recorded for 2026-11-11')
             ->assertSuccessful();
 
         $rocket = WatchedRepository::firstWhere('github_id', 101);
@@ -113,7 +113,7 @@ class RefreshDiscoverTest extends TestCase
         });
 
         $this->artisan('discover:refresh')
-            ->expectsOutputToContain('Noi și populare, pagina 2: 1 repository-uri')
+            ->expectsOutputToContain('New and popular, page 2: 1 repository')
             ->assertSuccessful();
 
         $pages = Http::recorded()->map(fn (array $pair) => [substr($pair[0]->data()['q'], 0, 8), (int) $pair[0]->data()['page']])->all();
@@ -129,7 +129,7 @@ class RefreshDiscoverTest extends TestCase
             ->push(['message' => 'API rate limit exceeded for 1.2.3.4.'], 403, ['X-RateLimit-Remaining' => '0', 'X-RateLimit-Reset' => (string) now()->addMinutes(10)->getTimestamp()]);
 
         $this->artisan('discover:refresh')
-            ->expectsOutputToContain('Oprit înainte de final: Limita de cereri a API-ului GitHub e atinsă până la 10:10:00 UTC.')
+            ->expectsOutputToContain('Stopped before the end: The GitHub API request limit is reached until 10:10:00 UTC.')
             ->assertFailed();
 
         // The 403 is not retried and the third search is never sent.
@@ -147,7 +147,7 @@ class RefreshDiscoverTest extends TestCase
             ->push(['items' => []], 200, ['X-RateLimit-Remaining' => '0', 'X-RateLimit-Reset' => (string) now()->addMinutes(30)->getTimestamp()]);
 
         $this->artisan('discover:refresh')
-            ->expectsOutputToContain('Limita de cereri a API-ului GitHub e atinsă până la 10:30:00 UTC.')
+            ->expectsOutputToContain('The GitHub API request limit is reached until 10:30:00 UTC.')
             ->assertFailed();
 
         // The first reset is 20 seconds away: the client waits for it (21 s) and sends the second search;
@@ -165,7 +165,7 @@ class RefreshDiscoverTest extends TestCase
             ->push(['items' => []]);
 
         $this->artisan('discover:refresh')
-            ->expectsOutputToContain('Gata: 3 cereri către GitHub, 1 repository-uri văzute azi')
+            ->expectsOutputToContain('Done: 3 GitHub requests, 1 repository seen today')
             ->assertSuccessful();
 
         Sleep::assertSequence([Sleep::for(1)->second(), Sleep::for(8)->seconds()]);
@@ -177,7 +177,7 @@ class RefreshDiscoverTest extends TestCase
         Http::fake(['api.github.com/*' => Http::response(['message' => 'Server Error'], 500)]);
 
         $this->artisan('discover:refresh')
-            ->expectsOutputToContain('Oprit înainte de final: GitHub a răspuns cu eroarea 500: Server Error')
+            ->expectsOutputToContain('Stopped before the end: GitHub answered with error 500: Server Error')
             ->assertFailed();
 
         // One request and two retries, after 1 and 3 seconds.
@@ -193,7 +193,7 @@ class RefreshDiscoverTest extends TestCase
         Http::fake(fn () => throw new ConnectionException('Could not resolve host: api.github.com'));
 
         $this->artisan('discover:refresh')
-            ->expectsOutputToContain('GitHub nu răspunde (fără rețea?)')
+            ->expectsOutputToContain('GitHub does not answer (no network?)')
             ->assertFailed();
 
         $this->assertSame(0, WatchedRepository::count());
@@ -244,8 +244,8 @@ class RefreshDiscoverTest extends TestCase
         ]);
 
         $this->artisan('discover:refresh')
-            ->expectsOutputToContain('gone/project nu mai există pe GitHub: nu îl mai urmărim')
-            ->expectsOutputToContain('1 repository-uri urmărite au rămas fără notare azi')
+            ->expectsOutputToContain('gone/project no longer exists on GitHub: no longer tracked')
+            ->expectsOutputToContain('1 tracked repository got no star count today')
             ->assertSuccessful();
 
         $this->assertSame('old/project-renamed', $older->fresh()->full_name);

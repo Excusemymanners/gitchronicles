@@ -80,17 +80,17 @@ final class RepositoryCompleteness
     public const FAILED = 'failed';
 
     /**
-     * The artifacts the processing pipeline makes, in its order, with their Romanian names for messages.
+     * The artifacts the processing pipeline makes, in its order, with their English names for the developer-facing commands.
      * Only these make a repository incomplete.
      *
      * @var array<string, string>
      */
     public const PIPELINE_ARTIFACTS = [
-        self::STRUCTURE => 'structura codului',
-        self::HISTORY => 'istoricul',
-        self::DOCUMENTATION => 'documentația',
-        self::DIAGRAMS => 'diagramele',
-        self::ASSISTANT => 'indexul asistentului',
+        self::STRUCTURE => 'code structure',
+        self::HISTORY => 'history',
+        self::DOCUMENTATION => 'documentation',
+        self::DIAGRAMS => 'diagrams',
+        self::ASSISTANT => 'assistant index',
     ];
 
     /**
@@ -204,14 +204,15 @@ final class RepositoryCompleteness
     }
 
     /**
-     * The missing artifacts as Romanian words for a sentence: „documentația, diagramele și istoricul”.
+     * The missing artifacts as English words for a command's output: "documentation, diagrams and history". The interface gets the codes (missing())
+     * and words them itself.
      */
     public function missingText(): string
     {
         $names = array_map(fn (string $artifact): string => self::PIPELINE_ARTIFACTS[$artifact], $this->missing());
         $last = array_pop($names);
 
-        return $names === [] ? (string) $last : implode(', ', $names).' și '.$last;
+        return $names === [] ? (string) $last : implode(', ', $names).' and '.$last;
     }
 
     /**
@@ -235,14 +236,13 @@ final class RepositoryCompleteness
      * The report for the pages (the Completeness type in TypeScript). "heals_automatically" also needs the
      * scheduled check to be turned on (UPDATES_CHECK_CRON), because the page promises that it will happen.
      *
-     * @return array{is_incomplete: bool, missing: list<string>, missing_text: string, heals_automatically: bool, artifacts: array<string, array{state: string, is_current: bool}>}
+     * @return array{is_incomplete: bool, missing: list<string>, heals_automatically: bool, artifacts: array<string, array{state: string, is_current: bool}>}
      */
     public function toArray(): array
     {
         return [
             'is_incomplete' => $this->isIncomplete(),
             'missing' => $this->missing(),
-            'missing_text' => $this->missingText(),
             'heals_automatically' => filled(config('gitchronicle.incremental.check_cron')) && $this->healsAutomatically(),
             'artifacts' => $this->artifacts,
         ];

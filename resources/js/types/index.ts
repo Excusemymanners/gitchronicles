@@ -192,7 +192,6 @@ export type Completeness = {
     is_incomplete: boolean;
     missing: ArtifactKey[];
     /** Lipsurile ca text, de exemplu „istoricul, documentația și diagramele”. */
-    missing_text: string;
     /** Adevărat când verificarea programată va porni singură o procesare completă. */
     heals_automatically: boolean;
     artifacts: Record<ArtifactKey, { state: ArtifactState; is_current: boolean }>;

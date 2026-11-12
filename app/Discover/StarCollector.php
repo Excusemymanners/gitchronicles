@@ -7,6 +7,7 @@ use App\Models\WatchedRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * The daily work of `discover:refresh`: find interesting repositories with the GitHub Search API and write
@@ -42,12 +43,12 @@ class StarCollector
         $weekAgo = $today->subDays(7)->toDateString();
 
         $searches = [
-            ['label' => 'Noi și populare', 'query' => "created:>={$monthAgo} stars:>=50"],
-            ['label' => 'Active, cu multe stele', 'query' => "pushed:>={$weekAgo} stars:>=1000"],
+            ['label' => 'New and popular', 'query' => "created:>={$monthAgo} stars:>=50"],
+            ['label' => 'Active, with many stars', 'query' => "pushed:>={$weekAgo} stars:>=1000"],
         ];
 
         foreach (config('gitchronicle.discover.languages') as $language) {
-            $searches[] = ['label' => "Noi în {$language}", 'query' => "language:\"{$language}\" created:>={$monthAgo} stars:>=10"];
+            $searches[] = ['label' => "New in {$language}", 'query' => "language:\"{$language}\" created:>={$monthAgo} stars:>=10"];
         }
 
         return $searches;
@@ -81,7 +82,7 @@ class StarCollector
                         $this->store($item, $day, $seen, $new);
                     }
 
-                    $report("{$search['label']}, pagina {$page}: ".count($result['items']).' repository-uri');
+                    $report("{$search['label']}, page {$page}: ".count($result['items']).' '.Str::plural('repository', count($result['items'])));
 
                     if (! $result['has_next_page']) {
                         break;
@@ -93,7 +94,7 @@ class StarCollector
                 $item = $this->github->repository($repository->full_name);
 
                 if ($item === null) {
-                    $report("{$repository->full_name} nu mai există pe GitHub: nu îl mai urmărim");
+                    $report("{$repository->full_name} no longer exists on GitHub: no longer tracked");
                     $repository->delete();
                     $removed++;
 

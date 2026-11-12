@@ -27,7 +27,7 @@ class GenerateRepositoryMediaTest extends TestCase
         $repository = Repository::factory()->ready()->create(['owner' => 'acme', 'name' => 'magazin']);
 
         $this->artisan('repositories:media', ['repository' => $repository->id, '--force' => true])
-            ->expectsOutputToContain("#{$repository->id} acme/magazin: am trimis video-ul și slide-urile în coada „media”")
+            ->expectsOutputToContain("#{$repository->id} acme/magazin: queued the video and slides on the media queue")
             ->assertSuccessful();
 
         Queue::assertPushedOn('media', GenerateMedia::class, fn (GenerateMedia $job): bool => $job->repository->is($repository) && $job->force && ! $job->renderNow);
@@ -64,10 +64,10 @@ class GenerateRepositoryMediaTest extends TestCase
         $pending = Repository::factory()->create();
 
         $this->artisan('repositories:media', ['repository' => 999])
-            ->expectsOutputToContain('Nu există niciun repository cu id-ul 999.')
+            ->expectsOutputToContain('There is no repository with id 999.')
             ->assertFailed();
         $this->artisan('repositories:media', ['repository' => $pending->id])
-            ->expectsOutputToContain('nu este încă gata (status: Queued)')
+            ->expectsOutputToContain('is not ready yet (status: Queued)')
             ->assertFailed();
 
         Queue::assertNothingPushed();

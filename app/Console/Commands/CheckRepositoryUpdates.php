@@ -52,7 +52,7 @@ class CheckRepositoryUpdates extends Command
             $remoteSha = RemoteHead::of($repository->url);
 
             if ($remoteSha === null) {
-                $this->warn("{$name}: GitHub nu a răspuns, încerc data viitoare.");
+                $this->warn("{$name}: GitHub did not answer, trying again next time.");
 
                 continue;
             }
@@ -63,27 +63,27 @@ class CheckRepositoryUpdates extends Command
 
             if ($isHealing && ! $completeness->healsAutomatically()) {
                 $this->line($completeness->isIncomplete()
-                    ? "{$name}: la zi (commitul {$shortSha}), dar lipsesc {$completeness->missingText()}; o procesare completă la acest commit nu le-a făcut, așa că nu o repet."
-                    : "{$name}: la zi (commitul {$shortSha}).");
+                    ? "{$name}: up to date (commit {$shortSha}), but missing {$completeness->missingText()}; a full processing at this commit did not make them, so it is not repeated."
+                    : "{$name}: up to date (commit {$shortSha}).");
 
                 continue;
             }
 
-            $reason = $isHealing ? "lipsesc {$completeness->missingText()}" : "commit nou ({$shortSha})";
+            $reason = $isHealing ? "missing {$completeness->missingText()}" : "new commit ({$shortSha})";
 
             if (! $updateRepository->handle($repository, ProcessingTrigger::Schedule)) {
-                $this->line("{$name}: {$reason}, dar ultima actualizare a pornit de curând; îl iau la verificarea următoare.");
+                $this->line("{$name}: {$reason}, but the last update started recently; it will be checked again next time.");
 
                 continue;
             }
 
             $this->info($completeness->isIncomplete()
-                ? "{$name}: {$reason}, am pornit o procesare completă."
-                : "{$name}: {$reason}, am pornit actualizarea.");
+                ? "{$name}: {$reason}, started a full processing."
+                : "{$name}: {$reason}, started the update.");
             $started++;
         }
 
-        $this->line("Verificate: {$repositories->count()}. Actualizări pornite: {$started}.");
+        $this->line("Checked: {$repositories->count()}. Updates started: {$started}.");
 
         return self::SUCCESS;
     }

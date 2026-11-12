@@ -31,7 +31,7 @@ class GrantAdminRole extends Command
         $user = User::firstWhere('email', $email);
 
         if ($user === null) {
-            $this->error("Nu există niciun cont cu adresa {$email}.");
+            $this->error("There is no account with the address {$email}.");
 
             return self::FAILURE;
         }
@@ -43,8 +43,8 @@ class GrantAdminRole extends Command
         $user->save();
 
         $this->info($isAdmin
-            ? "{$user->name} ({$email}) este acum administrator."
-            : "{$user->name} ({$email}) nu mai este administrator.");
+            ? "{$user->name} ({$email}) is now an administrator."
+            : "{$user->name} ({$email}) is no longer an administrator.");
 
         return self::SUCCESS;
     }

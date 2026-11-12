@@ -7,6 +7,7 @@ use App\Exceptions\RepositoryProcessingException;
 use App\Jobs\AnalyzeRepository;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Process;
@@ -71,7 +72,7 @@ class AnalyzeRepositoryTest extends TestCase
         $this->assertThrows(
             fn () => (new AnalyzeRepository($repository, $run))->handle(app(RepositoryAnalyzer::class)),
             RepositoryProcessingException::class,
-            'Analizorul de cod nu este instalat pe server, așa că nu am putut analiza codul.',
+            StoredMessage::make('repositories.errors.analyzer_missing'),
         );
         $this->assertDatabaseHas('repositories', ['id' => $repository->id, 'analyzed_at' => null]);
     }
@@ -88,7 +89,7 @@ class AnalyzeRepositoryTest extends TestCase
         $this->assertThrows(
             fn () => (new AnalyzeRepository($repository, $run))->handle(app(RepositoryAnalyzer::class)),
             RepositoryProcessingException::class,
-            'Nu am putut analiza codul repository-ului. Încearcă din nou.',
+            StoredMessage::make('repositories.errors.analysis_failed'),
         );
         $this->assertDatabaseCount('repository_files', 0);
         $this->assertDatabaseHas('processing_runs', ['id' => $run->id, 'files_analyzed' => 0]);
@@ -106,7 +107,7 @@ class AnalyzeRepositoryTest extends TestCase
         $this->assertThrows(
             fn () => (new AnalyzeRepository($repository, $run))->handle(app(RepositoryAnalyzer::class)),
             RepositoryProcessingException::class,
-            'Analiza codului a durat mai mult de 4 minute, așa că am oprit-o. Repository-ul este probabil prea mare.',
+            StoredMessage::make('repositories.errors.analysis_timeout', ['minutes' => 4]),
         );
     }
 

@@ -28,4 +28,23 @@ return [
         'consulting_started' => 'Am pornit analiza. Durează de obicei sub un minut.',
     ],
 
+    /*
+    | Mesajele de eroare păstrate: se salvează în repositories.error ca App\Support\StoredMessage
+    | și se afișează în limba vizitatorului.
+    */
+
+    'errors' => [
+        'unexpected' => 'A apărut o eroare neașteptată în timpul procesării. Încearcă din nou.',
+        'no_commits' => 'Repository-ul nu are încă niciun commit, deci nu avem ce documenta.',
+        'not_public' => 'Repository-ul nu există pe GitHub sau este privat. GitChronicle poate clona doar repository-uri publice.',
+        'clone_timeout' => 'Clonarea a durat mai mult de :minutes minute, așa că am oprit-o. Repository-ul este probabil prea mare.',
+        'fetch_timeout' => 'Aducerea commit-urilor noi a durat mai mult de :minutes minute, așa că am oprit-o. Repository-ul este probabil prea mare.',
+        'clone_failed' => 'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.',
+        'fetch_failed' => 'Nu am putut aduce commit-urile noi de pe GitHub. Încearcă din nou peste câteva minute.',
+        'history_failed' => 'Nu am putut citi istoricul git al repository-ului.',
+        'analyzer_missing' => 'Analizorul de cod nu este instalat pe server, așa că nu am putut analiza codul.',
+        'analysis_timeout' => 'Analiza codului a durat mai mult de :minutes minute, așa că am oprit-o. Repository-ul este probabil prea mare.',
+        'analysis_failed' => 'Nu am putut analiza codul repository-ului. Încearcă din nou.',
+    ],
+
 ];

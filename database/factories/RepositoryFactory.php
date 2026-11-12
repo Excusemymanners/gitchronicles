@@ -11,6 +11,7 @@ use App\Models\Module;
 use App\Models\Repository;
 use App\Models\RepositoryFile;
 use App\Models\User;
+use App\Support\StoredMessage;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -89,7 +90,7 @@ class RepositoryFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => RepositoryStatus::Failed,
-            'error' => 'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.',
+            'error' => StoredMessage::make('repositories.errors.clone_failed'),
         ]);
     }
 }

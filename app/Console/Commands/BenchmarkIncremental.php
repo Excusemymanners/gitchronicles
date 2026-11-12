@@ -86,13 +86,13 @@ class BenchmarkIncremental extends Command
         $commitCount = max(1, (int) $this->option('commits'));
 
         if ($source === null) {
-            $this->error("Nu există niciun repository cu id-ul {$this->argument('repository')}.");
+            $this->error("There is no repository with id {$this->argument('repository')}.");
 
             return self::FAILURE;
         }
 
         if (! is_dir($source->clonePath().'/.git')) {
-            $this->error("#{$source->id} {$source->owner}/{$source->name} nu are încă o clonă. Pornește întâi procesarea: php artisan repositories:process {$source->id}");
+            $this->error("#{$source->id} {$source->owner}/{$source->name} has no clone yet. Start the processing first: php artisan repositories:process {$source->id}");
 
             return self::FAILURE;
         }
@@ -100,7 +100,7 @@ class BenchmarkIncremental extends Command
         $commits = $this->newestCommits($source->clonePath(), $commitCount + 1);
 
         if (count($commits) < 2) {
-            $this->error('Repository-ul are un singur commit: nu avem ce compara.');
+            $this->error('The repository has only one commit: there is nothing to compare.');
 
             return self::FAILURE;
         }
@@ -114,7 +114,7 @@ class BenchmarkIncremental extends Command
             'generated_at' => now()->toIso8601String(),
             'ai_driver' => $this->option('ai') ? config('gitchronicle.ai_driver') : 'none',
             'characters_per_token' => $charactersPerToken,
-            'note' => 'tokens_estimated = context_characters / characters_per_token (o estimare); celelalte cifre sunt măsurate.',
+            'note' => 'tokens_estimated = context_characters / characters_per_token (an estimate); the other numbers are measured.',
             ...$results,
         ];
 
@@ -230,14 +230,14 @@ class BenchmarkIncremental extends Command
         $fromZero = $this->scratchCopy($source, $gitFolder, $source->url.'#de-la-zero');
 
         $first = array_shift($commits);
-        $this->line("Punctul de pornire: commitul {$this->short($first['sha'])}, procesat complet…");
+        $this->line("Starting point: commit {$this->short($first['sha'])}, fully processed…");
         $baseline = $this->process($incremental, ProcessingMode::Initial, null, $first['sha']);
 
         $rows = [];
         $previousSha = $first['sha'];
 
         foreach ($commits as $commit) {
-            $this->line("Commitul {$this->short($commit['sha'])}: incremental, apoi de la zero…");
+            $this->line("Commit {$this->short($commit['sha'])}: incremental, then from zero…");
 
             config(['gitchronicle.ai_driver' => $incrementalAiDriver]);
             $incrementalRun = $this->process($incremental, ProcessingMode::Incremental, $previousSha, $commit['sha']);
@@ -373,14 +373,14 @@ class BenchmarkIncremental extends Command
         $withTokens = $report['characters_per_token'] !== null;
 
         $this->newLine();
-        $this->info("Incremental vs. de la zero — {$report['repository']} (AI: {$report['ai_driver']})");
+        $this->info("Incremental vs. from zero — {$report['repository']} (AI: {$report['ai_driver']})");
 
         $this->table(
-            ['Commit', 'Fișiere schimbate', 'Module afectate', 'Incr.: timp', 'fișiere parsate', 'pagini scrise', 'caractere', 'Zero: timp', 'fișiere parsate', 'pagini scrise', 'caractere'],
+            ['Commit', 'Files changed', 'Modules affected', 'Incr.: time', 'files parsed', 'pages written', 'characters', 'Zero: time', 'files parsed', 'pages written', 'characters'],
             array_map(fn (array $commit): array => [
                 $this->short($commit['sha']),
                 "{$commit['files_changed']} din {$commit['files_total']}",
-                "{$commit['modules_affected']} din {$commit['modules_total']}".($commit['incremental']['mode'] === 'full' ? ' (rulare completă)' : ''),
+                "{$commit['modules_affected']} din {$commit['modules_total']}".($commit['incremental']['mode'] === 'full' ? ' (full run)' : ''),
                 $this->seconds($commit['incremental']['milliseconds']),
                 $commit['incremental']['files_parsed'],
                 $commit['incremental']['pages_written'],
@@ -398,20 +398,20 @@ class BenchmarkIncremental extends Command
         $incrementalCharacters = $total('incremental', 'context_characters');
         $fromZeroCharacters = $total('from_zero', 'context_characters');
 
-        $this->line('Total pe '.count($report['commits'])." commit-uri: incremental {$this->seconds($incrementalMs)}, de la zero {$this->seconds($fromZeroMs)}"
-            .($incrementalMs > 0 ? ' (de '.number_format($fromZeroMs / $incrementalMs, 1, ',', '.').' ori mai mult)' : '').'.');
-        $this->line('Pagini scrise: '.$total('incremental', 'pages_written').' incremental, '.$total('from_zero', 'pages_written').' de la zero. '
-            .'Caractere de context: '.number_format($incrementalCharacters, 0, ',', '.').' față de '.number_format($fromZeroCharacters, 0, ',', '.').'.');
+        $this->line('Total over '.count($report['commits'])." commits: incremental {$this->seconds($incrementalMs)}, from zero {$this->seconds($fromZeroMs)}"
+            .($incrementalMs > 0 ? ' ('.number_format($fromZeroMs / $incrementalMs, 1).' times more)' : '').'.');
+        $this->line('Pages written: '.$total('incremental', 'pages_written').' incremental, '.$total('from_zero', 'pages_written').' from zero. '
+            .'Context characters: '.number_format($incrementalCharacters).' versus '.number_format($fromZeroCharacters).'.');
 
         if ($total('incremental', 'input_tokens') > 0) {
-            $this->line('Tokeni reali (incremental, cu AI): '.number_format($total('incremental', 'input_tokens'), 0, ',', '.').' la intrare, '
-                .number_format($total('incremental', 'output_tokens'), 0, ',', '.').' la ieșire.');
+            $this->line('Real tokens (incremental, with AI): '.number_format($total('incremental', 'input_tokens')).' input, '
+                .number_format($total('incremental', 'output_tokens')).' output.');
         }
 
         $this->line($withTokens
-            ? "Tokenii din paranteze sunt ESTIMAȚI: caractere / {$report['characters_per_token']} (raport măsurat pe paginile scrise de Claude în această instalare)."
-            : 'Fără estimare de tokeni: încă nu există pagini scrise de Claude pe care să măsurăm raportul caractere/token.');
-        $this->line('Timpul = analiza codului + documentația + diagramele + indexul asistentului (fără clonare, fetch și importul commit-urilor).');
+            ? "The tokens in parentheses are ESTIMATED: characters / {$report['characters_per_token']} (ratio measured on the pages Claude wrote in this installation)."
+            : 'No token estimate: there are no pages written by Claude yet to measure the characters/token ratio on.');
+        $this->line('Time = code analysis + documentation + diagrams + assistant index (without cloning, fetching and importing the commits).');
     }
 
     /**
@@ -440,7 +440,7 @@ class BenchmarkIncremental extends Command
         Storage::disk('local')->put("{$name}.json", json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n");
         Storage::disk('local')->put("{$name}.csv", implode("\n", [implode(',', $header), ...$lines])."\n");
 
-        $this->info('Rezultatele sunt salvate în '.Storage::disk('local')->path("{$name}.json").' și .csv');
+        $this->info('Results saved to '.Storage::disk('local')->path("{$name}.json").' and .csv');
     }
 
     /**
@@ -448,7 +448,7 @@ class BenchmarkIncremental extends Command
      */
     private function seconds(int $milliseconds): string
     {
-        return number_format($milliseconds / 1000, 1, ',', '.').' s';
+        return number_format($milliseconds / 1000, 1).' s';
     }
 
     /**
@@ -460,7 +460,7 @@ class BenchmarkIncremental extends Command
     {
         $characters = number_format($run['context_characters'], 0, ',', '.');
 
-        return $withTokens ? "{$characters} (≈ ".number_format($run['tokens_estimated'], 0, ',', '.').' tokeni)' : $characters;
+        return $withTokens ? "{$characters} (≈ ".number_format($run['tokens_estimated']).' tokens)' : $characters;
     }
 
     /**

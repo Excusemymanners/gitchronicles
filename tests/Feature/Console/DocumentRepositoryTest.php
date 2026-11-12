@@ -22,12 +22,12 @@ class DocumentRepositoryTest extends TestCase
         ['repository' => $repository] = $this->shopRepository();
 
         $this->artisan('repositories:document', ['repository' => $repository->id])
-            ->expectsOutput('  src-models: scrisă din analiza codului')
-            ->expectsOutput("#{$repository->id} acme/magazin: 5 din 5 pagini scrise; 0 tokeni la intrare, 0 la ieșire.")
+            ->expectsOutput('  src-models: written from the code analysis')
+            ->expectsOutput("#{$repository->id} acme/magazin: 5 of 5 pages written; 0 input tokens, 0 output tokens.")
             ->assertSuccessful();
         $this->artisan('repositories:document', ['repository' => $repository->id])
-            ->expectsOutput('  src-models: neschimbată')
-            ->expectsOutput("#{$repository->id} acme/magazin: 0 din 5 pagini scrise; 0 tokeni la intrare, 0 la ieșire.")
+            ->expectsOutput('  src-models: unchanged')
+            ->expectsOutput("#{$repository->id} acme/magazin: 0 of 5 pages written; 0 input tokens, 0 output tokens.")
             ->assertSuccessful();
 
         $this->assertSame(5, Document::whereBelongsTo($repository)->count());
@@ -42,7 +42,7 @@ class DocumentRepositoryTest extends TestCase
         $repository->update(['documented_at' => null]);
 
         $this->artisan('repositories:document', ['repository' => $repository->id, '--force' => true, '--page' => ['overview', 'src-http']])
-            ->expectsOutput("#{$repository->id} acme/magazin: 2 din 2 pagini scrise; 0 tokeni la intrare, 0 la ieșire.")
+            ->expectsOutput("#{$repository->id} acme/magazin: 2 of 2 pages written; 0 input tokens, 0 output tokens.")
             ->assertSuccessful();
 
         $this->assertNull($repository->fresh()->documented_at);
@@ -65,13 +65,13 @@ class DocumentRepositoryTest extends TestCase
         ProcessingRun::factory()->for($busy)->create();
 
         $this->artisan('repositories:document', ['repository' => $notAnalyzed->id])
-            ->expectsOutput("#{$notAnalyzed->id} {$notAnalyzed->owner}/{$notAnalyzed->name} nu are încă analiza codului. Pornește întâi procesarea: php artisan repositories:process {$notAnalyzed->id}")
+            ->expectsOutput("#{$notAnalyzed->id} {$notAnalyzed->owner}/{$notAnalyzed->name} has no code analysis yet. Start the processing first: php artisan repositories:process {$notAnalyzed->id}")
             ->assertFailed();
         $this->artisan('repositories:document', ['repository' => $busy->id])
-            ->expectsOutput("#{$busy->id} acme/magazin se procesează chiar acum, îl las în pace.")
+            ->expectsOutput("#{$busy->id} acme/magazin is being processed right now, leaving it alone.")
             ->assertFailed();
         $this->artisan('repositories:document', ['repository' => 999])
-            ->expectsOutput('Nu există niciun repository cu id-ul 999.')
+            ->expectsOutput('There is no repository with id 999.')
             ->assertFailed();
         $this->assertDatabaseCount('documents', 0);
     }

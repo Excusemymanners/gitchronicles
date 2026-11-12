@@ -9,6 +9,7 @@ use App\Models\Repository;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 /**
  * Starts the processing pipeline by hand, for one repository, for every pending one or for every
@@ -45,7 +46,7 @@ class ProcessRepositories extends Command
 
         // Exactly one of the three ways to choose the repositories.
         if (count(array_filter([$repositoryId !== null, $allPending, $allIncomplete])) !== 1) {
-            $this->error('Dă fie id-ul unui repository (repositories:process 5), fie --all-pending, fie --all-incomplete.');
+            $this->error('Give either a repository id (repositories:process 5), or --all-pending, or --all-incomplete.');
 
             return self::FAILURE;
         }
@@ -63,7 +64,7 @@ class ProcessRepositories extends Command
             $repositories = Repository::query()->whereKey($repositoryId)->get();
 
             if ($repositories->isEmpty()) {
-                $this->error("Nu există niciun repository cu id-ul {$repositoryId}.");
+                $this->error("There is no repository with id {$repositoryId}.");
 
                 return self::FAILURE;
             }
@@ -75,7 +76,7 @@ class ProcessRepositories extends Command
             $name = "#{$repository->id} {$repository->owner}/{$repository->name}";
 
             if ($repository->isBeingProcessed()) {
-                $this->warn("{$name} se procesează chiar acum, îl las în pace.");
+                $this->warn("{$name} is being processed right now, leaving it alone.");
 
                 continue;
             }
@@ -85,7 +86,7 @@ class ProcessRepositories extends Command
             $startedCount++;
         }
 
-        $this->line("Am trimis {$startedCount} repository-uri în coadă. Le procesează un worker: php artisan queue:work");
+        $this->line("Queued {$startedCount} ".Str::plural('repository', $startedCount).'. A worker processes them: php artisan queue:work');
 
         return self::SUCCESS;
     }
@@ -106,13 +107,13 @@ class ProcessRepositories extends Command
             }
 
             $reprocessRepository->handle($repository, full: true);
-            $this->info("#{$repository->id} {$repository->owner}/{$repository->name}: lipsesc {$completeness->missingText()}, procesarea completă a pornit.");
+            $this->info("#{$repository->id} {$repository->owner}/{$repository->name}: missing {$completeness->missingText()}, the full processing started.");
             $startedCount++;
         }
 
         $this->line($startedCount === 0
-            ? 'Niciun repository gata nu are capitole lipsă.'
-            : "Am trimis {$startedCount} repository-uri în coadă. Le procesează un worker: php artisan queue:work");
+            ? 'No ready repository has missing chapters.'
+            : "Queued {$startedCount} ".Str::plural('repository', $startedCount).'. A worker processes them: php artisan queue:work');
 
         return self::SUCCESS;
     }

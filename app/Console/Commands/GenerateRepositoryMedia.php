@@ -38,7 +38,7 @@ class GenerateRepositoryMedia extends Command
         $repository = Repository::find($this->argument('repository'));
 
         if ($repository === null) {
-            $this->error("Nu există niciun repository cu id-ul {$this->argument('repository')}.");
+            $this->error("There is no repository with id {$this->argument('repository')}.");
 
             return self::FAILURE;
         }
@@ -46,7 +46,7 @@ class GenerateRepositoryMedia extends Command
         $name = "#{$repository->id} {$repository->owner}/{$repository->name}";
 
         if ($repository->status !== RepositoryStatus::Ready) {
-            $this->error("{$name} nu este încă gata (status: {$repository->status->label()}). Video-ul și slide-urile se fac după procesare.");
+            $this->error("{$name} is not ready yet (status: {$repository->status->label()}). The video and slides are made after processing.");
 
             return self::FAILURE;
         }
@@ -56,12 +56,12 @@ class GenerateRepositoryMedia extends Command
 
         if (! $this->option('now')) {
             GenerateMedia::dispatch($repository, $force, rewrite: $rewrite);
-            $this->info("{$name}: am trimis video-ul și slide-urile în coada „media”. Le face un worker: php artisan queue:work --queue=media");
+            $this->info("{$name}: queued the video and slides on the media queue. A worker makes them: php artisan queue:work --queue=media");
 
             return self::SUCCESS;
         }
 
-        $this->line("{$name}: fotografiez pagina de GitHub, scriu scenariul, apoi randez video-ul în fiecare limbă și slide-urile (durează câteva minute)…");
+        $this->line("{$name}: capturing the GitHub page, writing the script, then rendering the video in each language and the slides (takes a few minutes)…");
         GenerateMedia::dispatchSync($repository, $force, renderNow: true, rewrite: $rewrite);
 
         $failed = false;

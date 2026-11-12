@@ -82,7 +82,7 @@ class RepositoryCompletenessTest extends TestCase
         $completeness = RepositoryCompleteness::of($repository);
 
         $this->assertSame(['history', 'documentation', 'diagrams', 'assistant'], $completeness->missing());
-        $this->assertSame('istoricul, documentația, diagramele și indexul asistentului', $completeness->missingText());
+        $this->assertSame('history, documentation, diagrams and assistant index', $completeness->missingText());
         $this->assertSame(RepositoryCompleteness::READY, $completeness->state(RepositoryCompleteness::STRUCTURE));
     }
 

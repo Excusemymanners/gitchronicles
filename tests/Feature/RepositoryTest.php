@@ -10,6 +10,7 @@ use App\Models\ModuleDependency;
 use App\Models\Repository;
 use App\Models\RepositoryFile;
 use App\Models\User;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
@@ -442,6 +443,19 @@ class RepositoryTest extends TestCase
         Storage::disk('local')->assertExists("repositories/{$otherRepository->id}/README.md");
     }
 
+    public function test_a_failed_repository_shows_its_error_in_the_language_of_the_visitor(): void
+    {
+        $repository = Repository::factory()->failed()->create([
+            'error' => StoredMessage::make('repositories.errors.clone_timeout', ['minutes' => 4]),
+        ]);
+
+        $this->get("/repositories/{$repository->id}")->assertInertia(fn (Assert $page) => $page
+            ->where('repository.error', 'Cloning took more than 4 minutes, so it was stopped. The repository is probably too large.'));
+
+        $this->withHeaders(['Accept-Language' => 'ro'])->get("/repositories/{$repository->id}")->assertInertia(fn (Assert $page) => $page
+            ->where('repository.error', 'Clonarea a durat mai mult de 4 minute, așa că am oprit-o. Repository-ul este probabil prea mare.'));
+    }
+
     public function test_show_offers_retry_to_a_logged_in_user_when_the_processing_failed(): void
     {
         $repository = Repository::factory()->failed()->create();
@@ -453,7 +467,7 @@ class RepositoryTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('repositories/show')
             ->where('repository.status', 'failed')
-            ->where('repository.error', 'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.')
+            ->where('repository.error', 'The repository could not be cloned. Try again in a few minutes.')
             ->where('can_retry', true)
         );
     }

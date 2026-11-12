@@ -20,7 +20,7 @@ class ConsultRepositoryTest extends TestCase
     public function test_an_unknown_or_unready_repository_is_refused(): void
     {
         $this->artisan('repositories:consult', ['repository' => 999])
-            ->expectsOutput('Nu există niciun repository cu id-ul 999.')
+            ->expectsOutput('There is no repository with id 999.')
             ->assertFailed();
 
         $repository = Repository::factory()->create();
@@ -45,10 +45,10 @@ class ConsultRepositoryTest extends TestCase
         $this->makeClone($repository);
 
         $this->artisan('repositories:consult', ['repository' => $repository->id, '--now' => true])
-            ->expectsOutputToContain('scc: nu e instalat (composer consulting:install).')
-            ->expectsOutputToContain('OSV-Scanner 2.7.0: a rulat în')
-            ->expectsOutputToContain('Semgrep 1.182.1: a rulat în')
-            ->expectsOutputToContain('29 de probleme.')
+            ->expectsOutputToContain('scc: not installed (composer consulting:install).')
+            ->expectsOutputToContain('OSV-Scanner 2.7.0: ran in')
+            ->expectsOutputToContain('Semgrep 1.182.1: ran in')
+            ->expectsOutputToContain('29 findings.')
             ->assertSuccessful();
 
         $this->assertSame('ready', $repository->consultingReports()->sole()->status->value);
@@ -61,7 +61,7 @@ class ConsultRepositoryTest extends TestCase
         $this->makeClone($repository);
 
         $this->artisan('repositories:consult', ['repository' => $repository->id, '--now' => true])
-            ->expectsOutput('Raportul nu a putut fi făcut (not_installed).')
+            ->expectsOutput('The report could not be made (not_installed).')
             ->assertFailed();
     }
 }

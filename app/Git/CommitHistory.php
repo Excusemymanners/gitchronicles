@@ -91,7 +91,7 @@ final class CommitHistory
                 'git_output' => Str::limit($result->errorOutput(), 1000),
             ]);
 
-            throw new RepositoryProcessingException('Nu am putut citi istoricul git al repository-ului.');
+            throw RepositoryProcessingException::because('history_failed');
         }
 
         return self::parse($result->output(), $withLineCounts);

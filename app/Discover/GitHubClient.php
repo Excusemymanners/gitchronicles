@@ -136,7 +136,7 @@ class GitHubClient
         try {
             $response = $this->request()->get(self::API_URL.$path, $query);
         } catch (ConnectionException $exception) {
-            throw new GitHubRequestFailed('GitHub nu răspunde (fără rețea?): '.$exception->getMessage(), previous: $exception);
+            throw new GitHubRequestFailed('GitHub does not answer (no network?): '.$exception->getMessage(), previous: $exception);
         }
 
         $this->rememberTheLimit($resource, $response);
@@ -151,7 +151,7 @@ class GitHubClient
 
         $message = is_string($response->json('message')) ? ': '.Str::limit($response->json('message'), 200) : '';
 
-        throw new GitHubRequestFailed("GitHub a răspuns cu eroarea {$response->status()}{$message}");
+        throw new GitHubRequestFailed("GitHub answered with error {$response->status()}{$message}");
     }
 
     /**

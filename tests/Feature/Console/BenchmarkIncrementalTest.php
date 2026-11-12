@@ -30,8 +30,8 @@ class BenchmarkIncrementalTest extends TestCase
         $this->travelTo('2026-11-10 12:00:00');
 
         $this->artisan('gitchronicle:benchmark', ['repository' => $repository->id, '--commits' => 2])
-            ->expectsOutputToContain('Incremental vs. de la zero — acme/magazin (AI: none)')
-            ->expectsOutputToContain('Fără estimare de tokeni')
+            ->expectsOutputToContain('Incremental vs. from zero — acme/magazin (AI: none)')
+            ->expectsOutputToContain('No token estimate')
             ->assertSuccessful();
 
         $report = json_decode(Storage::disk('local')->get('benchmarks/acme-magazin-20261110-120000.json'), true);
@@ -80,7 +80,7 @@ class BenchmarkIncrementalTest extends TestCase
         $this->travelTo('2026-11-10 12:00:00');
 
         $this->artisan('gitchronicle:benchmark', ['repository' => $repository->id, '--commits' => 1])
-            ->expectsOutputToContain('Tokenii din paranteze sunt ESTIMAȚI: caractere / 3')
+            ->expectsOutputToContain('The tokens in parentheses are ESTIMATED: characters / 3')
             ->assertSuccessful();
 
         $report = json_decode(Storage::disk('local')->get('benchmarks/acme-magazin-20261110-120000.json'), true);
@@ -93,7 +93,7 @@ class BenchmarkIncrementalTest extends TestCase
     {
         $repository = Repository::factory()->create();
 
-        $this->artisan('gitchronicle:benchmark', ['repository' => 999])->expectsOutputToContain('Nu există niciun repository cu id-ul 999.')->assertFailed();
-        $this->artisan('gitchronicle:benchmark', ['repository' => $repository->id])->expectsOutputToContain('nu are încă o clonă')->assertFailed();
+        $this->artisan('gitchronicle:benchmark', ['repository' => 999])->expectsOutputToContain('There is no repository with id 999.')->assertFailed();
+        $this->artisan('gitchronicle:benchmark', ['repository' => $repository->id])->expectsOutputToContain('has no clone yet')->assertFailed();
     }
 }

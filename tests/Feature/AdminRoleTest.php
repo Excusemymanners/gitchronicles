@@ -42,12 +42,12 @@ class AdminRoleTest extends TestCase
         $user = User::factory()->create(['name' => 'Ana', 'email' => 'ana@example.com']);
 
         $this->artisan('users:admin', ['email' => 'ana@example.com'])
-            ->expectsOutput('Ana (ana@example.com) este acum administrator.')
+            ->expectsOutput('Ana (ana@example.com) is now an administrator.')
             ->assertSuccessful();
         $this->assertTrue($user->fresh()->is_admin);
 
         $this->artisan('users:admin', ['email' => 'ana@example.com', '--revoke' => true])
-            ->expectsOutput('Ana (ana@example.com) nu mai este administrator.')
+            ->expectsOutput('Ana (ana@example.com) is no longer an administrator.')
             ->assertSuccessful();
         $this->assertFalse($user->fresh()->is_admin);
     }
@@ -55,7 +55,7 @@ class AdminRoleTest extends TestCase
     public function test_the_command_fails_for_an_unknown_email(): void
     {
         $this->artisan('users:admin', ['email' => 'nimeni@example.com'])
-            ->expectsOutput('Nu există niciun cont cu adresa nimeni@example.com.')
+            ->expectsOutput('There is no account with the address nimeni@example.com.')
             ->assertFailed();
     }
 

@@ -105,7 +105,7 @@ class CloneRepository implements ShouldQueue
         $sha = $clone->head();
 
         if ($sha === null) {
-            $this->fail(new RepositoryProcessingException('Repository-ul nu are încă niciun commit, deci nu avem ce documenta.'));
+            $this->fail(RepositoryProcessingException::because('no_commits'));
 
             return;
         }
@@ -169,8 +169,7 @@ class CloneRepository implements ShouldQueue
             ]);
 
             $minutes = intdiv(self::CLONE_TIMEOUT_SECONDS, 60);
-            $what = $isUpdate ? 'Aducerea commit-urilor noi' : 'Clonarea';
-            $this->fail(new RepositoryProcessingException("{$what} a durat mai mult de {$minutes} minute, așa că am oprit-o. Repository-ul este probabil prea mare."));
+            $this->fail(RepositoryProcessingException::because($isUpdate ? 'fetch_timeout' : 'clone_timeout', ['minutes' => $minutes]));
 
             return false;
         }
@@ -187,14 +186,12 @@ class CloneRepository implements ShouldQueue
         ]);
 
         if ($this->isMissingOrPrivate($result->errorOutput())) {
-            $this->fail(new RepositoryProcessingException('Repository-ul nu există pe GitHub sau este privat. GitChronicle poate clona doar repository-uri publice.'));
+            $this->fail(RepositoryProcessingException::because('not_public'));
 
             return false;
         }
 
-        throw new RepositoryProcessingException($isUpdate
-            ? 'Nu am putut aduce commit-urile noi de pe GitHub. Încearcă din nou peste câteva minute.'
-            : 'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.');
+        throw RepositoryProcessingException::because($isUpdate ? 'fetch_failed' : 'clone_failed');
     }
 
     /**

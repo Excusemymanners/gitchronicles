@@ -56,8 +56,8 @@ class SelfHealingTest extends TestCase
         $repository = $this->incompleteRepository();
 
         $this->artisan('repositories:check-updates')
-            ->expectsOutputToContain("#{$repository->id} acme/magazin: lipsesc istoricul, documentația, diagramele și indexul asistentului, am pornit o procesare completă.")
-            ->expectsOutputToContain('Verificate: 1. Actualizări pornite: 1.')
+            ->expectsOutputToContain("#{$repository->id} acme/magazin: missing history, documentation, diagrams and assistant index, started a full processing.")
+            ->expectsOutputToContain('Checked: 1. Updates started: 1.')
             ->assertSuccessful();
 
         Queue::assertPushed(ProcessRepository::class, fn (ProcessRepository $job): bool => $job->repository->is($repository)
@@ -79,8 +79,8 @@ class SelfHealingTest extends TestCase
         ]);
 
         $this->artisan('repositories:check-updates')
-            ->expectsOutputToContain("#{$repository->id} acme/magazin: la zi (commitul aaaaaaa), dar lipsesc")
-            ->expectsOutputToContain('Actualizări pornite: 0.')
+            ->expectsOutputToContain("#{$repository->id} acme/magazin: up to date (commit aaaaaaa), but missing")
+            ->expectsOutputToContain('Updates started: 0.')
             ->assertSuccessful();
 
         Queue::assertNothingPushed();
@@ -95,7 +95,7 @@ class SelfHealingTest extends TestCase
         ProcessingRun::factory()->for($repository)->create(['status' => ProcessingRunStatus::Succeeded, 'to_sha' => self::SHA, 'started_at' => now()->subMinutes(2)]);
 
         $this->artisan('repositories:check-updates')
-            ->expectsOutputToContain('dar ultima actualizare a pornit de curând; îl iau la verificarea următoare.')
+            ->expectsOutputToContain('but the last update started recently; it will be checked again next time.')
             ->assertSuccessful();
 
         Queue::assertNothingPushed();
@@ -108,7 +108,7 @@ class SelfHealingTest extends TestCase
         $repository = $this->incompleteRepository();
 
         $this->artisan('repositories:check-updates')
-            ->expectsOutputToContain("#{$repository->id} acme/magazin: commit nou (bbbbbbb), am pornit o procesare completă.")
+            ->expectsOutputToContain("#{$repository->id} acme/magazin: new commit (bbbbbbb), started a full processing.")
             ->assertSuccessful();
 
         Queue::assertPushed(ProcessRepository::class, fn (ProcessRepository $job): bool => $job->full === true);

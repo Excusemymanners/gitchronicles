@@ -6,6 +6,7 @@ use App\Exceptions\RepositoryProcessingException;
 use App\Jobs\CloneRepository;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Process;
@@ -56,7 +57,7 @@ class CloneRepositoryTest extends TestCase
         $job->handle();
 
         $job->assertFailedWith(new RepositoryProcessingException(
-            'Repository-ul nu există pe GitHub sau este privat. GitChronicle poate clona doar repository-uri publice.',
+            StoredMessage::make('repositories.errors.not_public'),
         ));
     }
 
@@ -74,7 +75,7 @@ class CloneRepositoryTest extends TestCase
         $job->handle();
 
         $job->assertFailedWith(new RepositoryProcessingException(
-            'Clonarea a durat mai mult de 4 minute, așa că am oprit-o. Repository-ul este probabil prea mare.',
+            StoredMessage::make('repositories.errors.clone_timeout', ['minutes' => 4]),
         ));
     }
 
@@ -92,7 +93,7 @@ class CloneRepositoryTest extends TestCase
         $this->assertThrows(
             fn () => $job->handle(),
             RepositoryProcessingException::class,
-            'Nu am putut clona repository-ul. Încearcă din nou peste câteva minute.',
+            StoredMessage::make('repositories.errors.clone_failed'),
         );
         $job->assertNotFailed();
     }

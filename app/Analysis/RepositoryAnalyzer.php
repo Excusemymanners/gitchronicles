@@ -181,7 +181,7 @@ final class RepositoryAnalyzer
         if (! is_file($python)) {
             Log::error('The code analyzer is not installed. Run: composer analyzer:install', ['python' => $python]);
 
-            throw new RepositoryProcessingException('Analizorul de cod nu este instalat pe server, așa că nu am putut analiza codul.');
+            throw RepositoryProcessingException::because('analyzer_missing');
         }
 
         try {
@@ -200,7 +200,7 @@ final class RepositoryAnalyzer
 
             $minutes = intdiv(self::TIMEOUT_SECONDS, 60);
 
-            throw new RepositoryProcessingException("Analiza codului a durat mai mult de {$minutes} minute, așa că am oprit-o. Repository-ul este probabil prea mare.");
+            throw RepositoryProcessingException::because('analysis_timeout', ['minutes' => $minutes]);
         }
 
         $analysis = json_decode($result->output(), true);
@@ -212,7 +212,7 @@ final class RepositoryAnalyzer
                 'analyzer_output' => Str::limit($result->errorOutput(), 2000),
             ]);
 
-            throw new RepositoryProcessingException('Nu am putut analiza codul repository-ului. Încearcă din nou.');
+            throw RepositoryProcessingException::because('analysis_failed');
         }
 
         if (($analysis['errors'] ?? []) !== []) {

@@ -34,7 +34,7 @@ class DocumentRepository extends Command
         $repository = Repository::find($this->argument('repository'));
 
         if ($repository === null) {
-            $this->error("Nu există niciun repository cu id-ul {$this->argument('repository')}.");
+            $this->error("There is no repository with id {$this->argument('repository')}.");
 
             return self::FAILURE;
         }
@@ -42,13 +42,13 @@ class DocumentRepository extends Command
         $name = "#{$repository->id} {$repository->owner}/{$repository->name}";
 
         if ($repository->analyzed_at === null) {
-            $this->error("{$name} nu are încă analiza codului. Pornește întâi procesarea: php artisan repositories:process {$repository->id}");
+            $this->error("{$name} has no code analysis yet. Start the processing first: php artisan repositories:process {$repository->id}");
 
             return self::FAILURE;
         }
 
         if ($repository->isBeingProcessed()) {
-            $this->warn("{$name} se procesează chiar acum, îl las în pace.");
+            $this->warn("{$name} is being processed right now, leaving it alone.");
 
             return self::FAILURE;
         }
@@ -78,11 +78,11 @@ class DocumentRepository extends Command
             $cost = $page->costUsdEquivalent === null ? $cost : ($cost ?? 0) + $page->costUsdEquivalent;
 
             $this->line(match (true) {
-                $page->outdated => "  {$slug}: codul s-a schimbat, dar rămâne textul vechi al lui Claude, marcat ca depășit".($page->aiError === null ? ' (AI oprit)' : " (Claude: {$page->aiError})"),
-                ! $page->written => "  {$slug}: neschimbată",
-                $page->writer === 'ai' => "  {$slug}: scrisă de Claude ({$page->inputTokens} tokeni la intrare, {$page->outputTokens} la ieșire"
-                    .($page->costUsdEquivalent === null ? '' : ', '.number_format($page->costUsdEquivalent, 4).' $ pe API').')',
-                default => "  {$slug}: scrisă din analiza codului".($page->aiError === null ? '' : " (Claude: {$page->aiError})"),
+                $page->outdated => "  {$slug}: the code changed, but Claude's old text stays, marked as outdated".($page->aiError === null ? ' (AI is off)' : " (Claude: {$page->aiError})"),
+                ! $page->written => "  {$slug}: unchanged",
+                $page->writer === 'ai' => "  {$slug}: written by Claude ({$page->inputTokens} input tokens, {$page->outputTokens} output tokens"
+                    .($page->costUsdEquivalent === null ? '' : ', '.number_format($page->costUsdEquivalent, 4).' $ on the API').')',
+                default => "  {$slug}: written from the code analysis".($page->aiError === null ? '' : " (Claude: {$page->aiError})"),
             });
         }
 
@@ -90,9 +90,9 @@ class DocumentRepository extends Command
             $generator->finish($plan);
         }
 
-        $this->info("{$name}: {$written} din ".count($slugs).' pagini scrise; '
-            ."{$inputTokens} tokeni la intrare, {$outputTokens} la ieșire"
-            .($cost === null ? '.' : ', '.number_format($cost, 4).' $ dacă ar fi fost pe API.'));
+        $this->info("{$name}: {$written} of ".count($slugs).' pages written; '
+            ."{$inputTokens} input tokens, {$outputTokens} output tokens"
+            .($cost === null ? '.' : ', '.number_format($cost, 4).' $ if it had been on the API.'));
 
         return self::SUCCESS;
     }

@@ -28,4 +28,23 @@ return [
         'consulting_started' => 'Analysis started. It usually takes under a minute.',
     ],
 
+    /*
+    | Stored failure messages: saved in repositories.error as App\Support\StoredMessage
+    | and shown in the language of the visitor.
+    */
+
+    'errors' => [
+        'unexpected' => 'An unexpected error happened while processing. Try again.',
+        'no_commits' => 'The repository has no commits yet, so there is nothing to document.',
+        'not_public' => 'The repository does not exist on GitHub or it is private. GitChronicle can only clone public repositories.',
+        'clone_timeout' => 'Cloning took more than :minutes minutes, so it was stopped. The repository is probably too large.',
+        'fetch_timeout' => 'Fetching the new commits took more than :minutes minutes, so it was stopped. The repository is probably too large.',
+        'clone_failed' => 'The repository could not be cloned. Try again in a few minutes.',
+        'fetch_failed' => 'The new commits could not be fetched from GitHub. Try again in a few minutes.',
+        'history_failed' => 'The git history of the repository could not be read.',
+        'analyzer_missing' => 'The code analyzer is not installed on the server, so the code could not be analyzed.',
+        'analysis_timeout' => 'The code analysis took more than :minutes minutes, so it was stopped. The repository is probably too large.',
+        'analysis_failed' => 'The code of the repository could not be analyzed. Try again.',
+    ],
+
 ];

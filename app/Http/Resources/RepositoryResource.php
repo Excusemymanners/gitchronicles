@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -38,7 +39,7 @@ class RepositoryResource extends JsonResource
             'is_processing' => $this->status->isProcessing(),
             'default_branch' => $this->default_branch,
             'last_sha' => $this->last_sha,
-            'error' => $this->error,
+            'error' => StoredMessage::render($this->error),
             'cloned_at' => $this->cloned_at?->toIso8601String(),
             'analyzed_at' => $this->analyzed_at?->toIso8601String(),
             'documented_at' => $this->documented_at?->toIso8601String(),

@@ -32,8 +32,8 @@ class CheckRepositoryUpdatesTest extends TestCase
         $repository = Repository::factory()->complete()->create(['url' => 'https://github.com/acme/magazin', 'owner' => 'acme', 'name' => 'magazin', 'last_sha' => self::OLD_SHA]);
 
         $this->artisan('repositories:check-updates')
-            ->expectsOutputToContain("#{$repository->id} acme/magazin: commit nou (bbbbbbb), am pornit actualizarea.")
-            ->expectsOutputToContain('Verificate: 1. Actualizări pornite: 1.')
+            ->expectsOutputToContain("#{$repository->id} acme/magazin: new commit (bbbbbbb), started the update.")
+            ->expectsOutputToContain('Checked: 1. Updates started: 1.')
             ->assertSuccessful();
 
         Queue::assertPushed(ProcessRepository::class, fn (ProcessRepository $job): bool => $job->repository->is($repository) && $job->trigger === ProcessingTrigger::Schedule);
@@ -54,8 +54,8 @@ class CheckRepositoryUpdatesTest extends TestCase
         ProcessingRun::factory()->for($repository)->create(['status' => 'succeeded', 'started_at' => now()->subMinutes(2), 'finished_at' => now()->subMinute()]);
 
         $this->artisan('repositories:check-updates')
-            ->expectsOutputToContain("#{$repository->id} acme/magazin: commit nou (bbbbbbb), dar ultima actualizare a pornit de curând; îl iau la verificarea următoare.")
-            ->expectsOutputToContain('Verificate: 1. Actualizări pornite: 0.')
+            ->expectsOutputToContain("#{$repository->id} acme/magazin: new commit (bbbbbbb), but the last update started recently; it will be checked again next time.")
+            ->expectsOutputToContain('Checked: 1. Updates started: 0.')
             ->assertSuccessful();
 
         Queue::assertNothingPushed();
@@ -69,7 +69,7 @@ class CheckRepositoryUpdatesTest extends TestCase
         $repository = Repository::factory()->complete()->create(['owner' => 'acme', 'name' => 'magazin', 'last_sha' => self::OLD_SHA]);
 
         $this->artisan('repositories:check-updates')
-            ->expectsOutputToContain("#{$repository->id} acme/magazin: la zi (commitul aaaaaaa).")
+            ->expectsOutputToContain("#{$repository->id} acme/magazin: up to date (commit aaaaaaa).")
             ->assertSuccessful();
 
         Queue::assertNothingPushed();
@@ -83,7 +83,7 @@ class CheckRepositoryUpdatesTest extends TestCase
         Process::fake(['*' => Process::result(errorOutput: 'fatal: unable to access', exitCode: 128)]);
         Repository::factory()->ready()->create(['last_sha' => self::OLD_SHA]);
 
-        $this->artisan('repositories:check-updates')->expectsOutputToContain('GitHub nu a răspuns')->assertSuccessful();
+        $this->artisan('repositories:check-updates')->expectsOutputToContain('GitHub did not answer')->assertSuccessful();
 
         Queue::assertNothingPushed();
     }
@@ -98,10 +98,10 @@ class CheckRepositoryUpdatesTest extends TestCase
         Repository::factory()->create();
 
         $this->artisan('repositories:check-updates', ['repository' => $second->id])
-            ->expectsOutputToContain('Verificate: 1. Actualizări pornite: 1.')
+            ->expectsOutputToContain('Checked: 1. Updates started: 1.')
             ->assertSuccessful();
         $this->artisan('repositories:check-updates')
-            ->expectsOutputToContain('Verificate: 1. Actualizări pornite: 1.')
+            ->expectsOutputToContain('Checked: 1. Updates started: 1.')
             ->assertSuccessful();
 
         Queue::assertPushed(ProcessRepository::class, 2);

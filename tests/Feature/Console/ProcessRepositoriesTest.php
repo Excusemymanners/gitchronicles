@@ -51,7 +51,7 @@ class ProcessRepositoriesTest extends TestCase
         Bus::fake([ProcessRepository::class]);
 
         $this->artisan('repositories:process', ['repository' => $repository->id])
-            ->expectsOutput("#{$repository->id} octocat/hello-world se procesează chiar acum, îl las în pace.")
+            ->expectsOutput("#{$repository->id} octocat/hello-world is being processed right now, leaving it alone.")
             ->assertSuccessful();
 
         Bus::assertNotDispatched(ProcessRepository::class);
@@ -62,7 +62,7 @@ class ProcessRepositoriesTest extends TestCase
         Bus::fake([ProcessRepository::class]);
 
         $this->artisan('repositories:process', ['repository' => 999])
-            ->expectsOutput('Nu există niciun repository cu id-ul 999.')
+            ->expectsOutput('There is no repository with id 999.')
             ->assertFailed();
 
         Bus::assertNotDispatched(ProcessRepository::class);
@@ -77,8 +77,8 @@ class ProcessRepositoriesTest extends TestCase
         Bus::fake([ProcessRepository::class]);
 
         $this->artisan('repositories:process', ['--all-incomplete' => true])
-            ->expectsOutput("#{$incomplete->id} octocat/hello-world: lipsesc istoricul și documentația, procesarea completă a pornit.")
-            ->expectsOutputToContain('Am trimis 1 repository-uri în coadă.')
+            ->expectsOutput("#{$incomplete->id} octocat/hello-world: missing history and documentation, the full processing started.")
+            ->expectsOutputToContain('Queued 1 repository.')
             ->assertSuccessful();
 
         Bus::assertDispatchedTimes(ProcessRepository::class, 1);
@@ -97,7 +97,7 @@ class ProcessRepositoriesTest extends TestCase
         Bus::fake([ProcessRepository::class]);
 
         $this->artisan('repositories:process', ['--all-incomplete' => true])
-            ->expectsOutput('Niciun repository gata nu are capitole lipsă.')
+            ->expectsOutput('No ready repository has missing chapters.')
             ->assertSuccessful();
 
         Bus::assertNotDispatched(ProcessRepository::class);
@@ -126,7 +126,7 @@ class ProcessRepositoriesTest extends TestCase
         Bus::fake([ProcessRepository::class]);
 
         $this->artisan('repositories:process', $arguments)
-            ->expectsOutput('Dă fie id-ul unui repository (repositories:process 5), fie --all-pending, fie --all-incomplete.')
+            ->expectsOutput('Give either a repository id (repositories:process 5), or --all-pending, or --all-incomplete.')
             ->assertFailed();
 
         Bus::assertNotDispatched(ProcessRepository::class);

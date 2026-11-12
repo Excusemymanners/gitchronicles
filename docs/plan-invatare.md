@@ -283,6 +283,13 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Nodurile duc la documentație printr-un mic câmp nou, `meta.nodes` (id-ul nodului -> calea modulului), scris de constructorul diagramelor, care e singurul care știe cum a numerotat nodurile (m1, c3, …); resursa îl leagă de slug-ul paginii modulului și lasă deoparte modulele fără pagină, ca o cutie să nu fie legătură spre o pagină inexistentă.
   - Sub-navigația lipicioasă află secțiunea curentă din poziții (ultimul titlu de deasupra unei linii la 120 px sub marginea zonei derulabile), recalculat o dată pe cadru, ca la pagina de documentație.
 
+- 2026-11-12 — Mesajele păstrate de server: cheie de traducere, nu propoziție. Decizii și motivele lor:
+  - O eroare salvată în baza de date (`repositories.error`) se citește mai târziu, poate într-o altă limbă decât cea în care s-a întâmplat. De aceea se păstrează o cheie de traducere cu valorile ei reale, ca JSON (`{"key":"repositories.errors.clone_timeout","params":{"minutes":4}}`), iar textul se face abia la afișare, cu `__()`, în limba vizitatorului.
+  - O singură clasă mică, `StoredMessage`, are două metode: `make()` (cheie și valori -> șirul de salvat) și `render()` (șirul salvat -> text). Un șir care nu e un astfel de JSON (rânduri vechi sau mesajul brut al unei excepții neprevăzute) se întoarce neschimbat, deci datele vechi merg mai departe.
+  - `RepositoryProcessingException::because('cheie', [...])` face excepția cu mesajul gata pentru salvare; resursa care trimite repository-ul la interfață trece eroarea prin `render()`.
+  - Ce se vede doar în terminal (comenzile Artisan, mesajele colectorului Discover) este scris direct în engleză, fără chei: le citește dezvoltatorul, nu vizitatorul.
+  - `RepositoryCompleteness` nu mai construiește o frază în română: interfața primește codurile capitolelor lipsă (`missing`), iar fraza în engleză există doar pentru comenzi.
+
 ## Faza 7 — Diagrame C4 + prezentare
 - **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.
 - **Gata când:** pagina repository-ului arată diagramele Container și Component și pot descărca prezentarea.

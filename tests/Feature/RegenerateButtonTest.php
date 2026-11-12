@@ -119,7 +119,6 @@ class RegenerateButtonTest extends TestCase
                 ->assertInertia(fn (Assert $page) => $page
                     ->where('completeness.is_incomplete', true)
                     ->where('completeness.missing', ['history', 'documentation', 'diagrams', 'assistant'])
-                    ->where('completeness.missing_text', 'istoricul, documentația, diagramele și indexul asistentului')
                     ->where('completeness.heals_automatically', true)
                     ->where('completeness.artifacts.structure.state', 'ready')
                     ->where('completeness.artifacts.documentation.state', 'missing')
