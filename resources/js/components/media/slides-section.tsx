@@ -64,7 +64,7 @@ export default function SlidesSection({ slides }: Props) {
 
                     <div className="mt-5 flex flex-wrap gap-2">
                         <DownloadLink href={slides.downloads.pdf} label={t('media.slides.downloadPdf')} sizeBytes={slides.size_bytes} variant="primary" />
-                        <DownloadLink href={slides.downloads.pptx} label={t('media.slides.downloadPptx')} />
+                        <DownloadLink href={slides.downloads.pptx} label={t('media.slides.downloadPptx')} sizeBytes={slides.pptx_size_bytes} />
                     </div>
                 </div>
             )}

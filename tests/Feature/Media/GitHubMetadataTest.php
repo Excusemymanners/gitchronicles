@@ -27,6 +27,7 @@ class GitHubMetadataTest extends TestCase
             'topics' => ['shop', 'laravel'],
             'homepage' => 'https://magazin.example',
             'description' => 'Un magazin mic.',
+            'owner' => ['avatar_url' => 'https://avatars.githubusercontent.com/u/1'],
         ])]);
         $repository = Repository::factory()->ready()->create(['owner' => 'acme', 'name' => 'magazin']);
 
@@ -40,6 +41,7 @@ class GitHubMetadataTest extends TestCase
             'topics' => ['shop', 'laravel'],
             'homepage' => 'https://magazin.example',
             'description' => 'Un magazin mic.',
+            'avatar_url' => 'https://avatars.githubusercontent.com/u/1',
         ], $facts);
         Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/repos/acme/magazin'
             && $request->hasHeader('User-Agent', 'GitChronicle')
@@ -70,7 +72,7 @@ class GitHubMetadataTest extends TestCase
 
         $facts = app(GitHubMetadata::class)->for(Repository::factory()->ready()->create());
 
-        $this->assertSame(['stars' => 0, 'forks' => 0, 'language' => null, 'license' => null, 'topics' => [], 'homepage' => null, 'description' => null], $facts);
+        $this->assertSame(['stars' => 0, 'forks' => 0, 'language' => null, 'license' => null, 'topics' => [], 'homepage' => null, 'description' => null, 'avatar_url' => null], $facts);
     }
 
     public function test_a_failure_gives_null_and_is_tried_again_next_time(): void

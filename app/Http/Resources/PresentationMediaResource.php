@@ -61,6 +61,7 @@ class PresentationMediaResource extends JsonResource
                     'pptx' => $this->downloadUrl($slides, 'pptx'),
                 ],
                 'titles' => $slides->meta['slides'] ?? [],
+                'pptx_size_bytes' => $slides->meta['pptx_size_bytes'] ?? null,
             ],
             'is_working' => $assets->contains(fn (MediaAsset $asset): bool => $asset->status->isWorking()),
             'can_generate' => $request->user()?->can('generateMedia', $this->resource) ?? false,

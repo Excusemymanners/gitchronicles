@@ -4,6 +4,7 @@ namespace Tests\Concerns;
 
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 
@@ -80,6 +81,9 @@ trait FakesMediaTools
             'gitchronicle.media.voice.models' => ['ro' => $disk->path('voice/ro.onnx'), 'en' => $disk->path('voice/en.onnx')],
             'gitchronicle.media.capture.enabled' => true,
         ]);
+
+        // The slides download the owner's avatar and the README's logo: here nobody answers.
+        Http::fake(['github.com/*' => Http::response('', 404), '*.githubusercontent.com/*' => Http::response('', 404)]);
 
         Process::fake(function (PendingProcess $process) use ($failing, $clipSeconds) {
             $command = array_values((array) $process->command);

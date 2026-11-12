@@ -84,6 +84,8 @@ class RenderPresentationSlides implements ShouldQueue
             'meta' => [
                 'files' => $result['files'],
                 'slides' => $result['slides'],
+                'pptx_size_bytes' => $result['pptx_size_bytes'],
+                'accent' => $result['accent'],
                 'render_ms' => $result['render_ms'],
             ],
         ]);

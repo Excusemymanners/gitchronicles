@@ -27,7 +27,7 @@ final class GitHubMetadata
     /**
      * The facts of the repository, or null when GitHub could not be asked.
      *
-     * @return array{stars: int, forks: int, language: string|null, license: string|null, topics: list<string>, homepage: string|null, description: string|null}|null
+     * @return array{stars: int, forks: int, language: string|null, license: string|null, topics: list<string>, homepage: string|null, description: string|null, avatar_url?: string|null}|null
      */
     public function for(Repository $repository): ?array
     {
@@ -39,7 +39,7 @@ final class GitHubMetadata
     /**
      * One request to the API. GitHub asks every client for a User-Agent; the app's name is enough.
      *
-     * @return array{stars: int, forks: int, language: string|null, license: string|null, topics: list<string>, homepage: string|null, description: string|null}|null
+     * @return array{stars: int, forks: int, language: string|null, license: string|null, topics: list<string>, homepage: string|null, description: string|null, avatar_url?: string|null}|null
      */
     private function fetch(Repository $repository): ?array
     {
@@ -74,12 +74,21 @@ final class GitHubMetadata
             'topics' => array_values(array_filter($data['topics'] ?? [], 'is_string')),
             'homepage' => self::text($data['homepage'] ?? null),
             'description' => self::text($data['description'] ?? null),
+            'avatar_url' => self::https($data['owner']['avatar_url'] ?? null),
         ];
     }
 
     /**
      * A non-empty string from the JSON, or null.
      */
+    /**
+     * An address that starts with https://, or null (the avatar is downloaded, so nothing else is accepted).
+     */
+    private static function https(mixed $value): ?string
+    {
+        return is_string($value) && str_starts_with($value, 'https://') ? $value : null;
+    }
+
     private static function text(mixed $value): ?string
     {
         return is_string($value) && trim($value) !== '' ? trim($value) : null;

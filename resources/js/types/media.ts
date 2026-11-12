@@ -68,6 +68,8 @@ export type PresentationVideo = MediaState & {
 export type PresentationSlides = MediaState & {
     downloads: { pdf: string | null; pptx: string | null };
     titles: string[];
+    /** Mărimea fișierului PPTX; lipsește la prezentările făcute înainte să fie măsurată. */
+    pptx_size_bytes: number | null;
 };
 
 /** Prop-ul „media” al paginii „Video” (PresentationMediaResource în Laravel). */

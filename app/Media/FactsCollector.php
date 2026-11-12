@@ -49,7 +49,7 @@ final class FactsCollector
     /**
      * Modules inside these folders are not listed on the slides (they are not the application itself).
      */
-    private const SKIPPED_MODULE_FOLDERS = ['tests', 'test', '__tests__', 'spec', 'docs', 'doc', 'config'];
+    public const SKIPPED_MODULE_FOLDERS = ['tests', 'test', '__tests__', 'spec', 'docs', 'doc', 'config'];
 
     /**
      * The README file names looked for in the root folder, in this order.

@@ -1,10 +1,13 @@
-/* @theme gitchronicle */
+/* @theme repository */
 
 /*
- * Tema Marp a slide-urilor GitChronicle: fundal bleumarin, text alb, accentul albastru-lavandă al aplicației,
- * aceleași fonturi ca video-ul. Fișierele de font (url("fonts/…")) sunt înlocuite de SlideRenderer cu
- * conținutul lor în base64: Marp nu are voie să citească fișiere locale, iar PDF-ul trebuie să aibă fonturile.
- * Fiecare greutate are fișierul „latin” (â, î) și „latin-ext” (ă, ș, ț).
+ * Tema Marp a slide-urilor unui repository. Culorile NU sunt aici: fiecare prezentare își primește
+ * variabilele (--paper, --ink, --accent, --brand…) din „style:” din antet, calculate din culoarea
+ * repository-ului (SlidePalette). Aici sunt doar aspectul și cele opt machete: title, statement, bullets,
+ * cards, diagram, columns, code, facts, closing. Fonturile (url("fonts/…")) sunt înlocuite de
+ * SlideRenderer cu conținutul lor în base64: Marp nu are voie să citească fișiere locale.
+ *
+ * Scara tipografică (px): 84 titlu · 56 afirmație · 44 titlu de slide · 30 liste · 26 text · 22 detalii · 20 legende · 18 subsol.
  */
 
 @import 'default';
@@ -21,212 +24,153 @@
 @font-face { font-family: 'JetBrains Mono'; font-weight: 500; font-display: block; src: url("fonts/jetbrains-mono-latin-ext-500-normal.woff2") format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 
 section {
+    --paper: #fafafa; --surface: #f0f0f0; --line: #d8d8d8; --ink: #151515; --muted: #555555;
+    --accent: #2a5bd7; --on-accent: #ffffff; --accent-ink: #2347a8;
+    --brand: #14295f; --on-brand: #ffffff; --on-brand-muted: #c9d4f2; --brand-highlight: #9db4ff;
+
     width: 1280px;
     height: 720px;
-    padding: 64px 80px 72px;
-    background:
-        radial-gradient(900px 600px at 85% -10%, rgb(124 140 255 / 0.22) 0%, transparent 60%),
-        linear-gradient(160deg, #111a33 0%, #0a0e1a 70%);
-    color: #e8ebf4;
+    padding: 64px 88px 84px;
+    background: var(--paper);
+    color: var(--ink);
     font-family: 'Instrument Sans', sans-serif;
     font-size: 26px;
-    line-height: 1.45;
+    line-height: 1.4;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
+    justify-content: center;
+    overflow: hidden;
 }
 
-/* Numărul paginii, jos în dreapta (padding 0: regula Marpit l-ar împinge în conținut). */
+/* Bara subțire de accent de sus: singurul element care se repetă pe toate slide-urile cu conținut. */
+section::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; right: 0;
+    height: 10px;
+    background: var(--accent);
+}
+
 section::after {
     padding: 0;
-    right: 48px;
+    right: 88px;
     bottom: 30px;
     font-size: 18px;
-    color: #838ca4;
+    color: var(--muted);
 }
 
 footer {
-    left: 80px;
-    bottom: 28px;
+    left: 88px;
+    bottom: 30px;
     font-size: 18px;
-    color: #838ca4;
+    color: var(--muted);
 }
 
 h1, h2, h3 {
     font-family: 'Mona Sans', sans-serif;
-    color: #ffffff;
-    letter-spacing: -0.01em;
     margin: 0;
+    letter-spacing: -0.01em;
 }
 
 h1 { font-weight: 900; font-size: 84px; line-height: 1.02; }
-h2 { font-weight: 900; font-size: 52px; line-height: 1.08; margin-bottom: 32px; }
-h3 { font-weight: 700; font-size: 26px; color: #a3aeff; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+h2 { font-weight: 900; font-size: 44px; line-height: 1.12; margin-bottom: 30px; max-width: 1040px; }
+h3 { font-weight: 700; font-size: 20px; color: var(--accent-ink); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; }
 
-p { margin: 0 0 18px; }
-strong { color: #ffffff; font-weight: 600; }
-em { color: #a3aeff; font-style: normal; }
-a { color: #a3aeff; text-decoration: none; }
+p { margin: 0; }
+ul { list-style: none; margin: 0; padding: 0; }
+code { font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 0.86em; background: var(--surface); color: var(--accent-ink); border-radius: 6px; padding: 1px 7px; }
 
-ul, ol { margin: 0; padding-left: 1.1em; }
-li { margin: 6px 0; }
-li::marker { color: #7c8cff; }
-
-code {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 500;
-    background: rgb(232 235 244 / 0.08);
-    color: #e8ebf4;
-    padding: 2px 8px;
-    border-radius: 6px;
+.eyebrow {
+    font-weight: 600;
+    font-size: 20px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin-bottom: 14px;
 }
 
-pre {
-    background: #05070f;
-    border: 2px solid #253049;
-    border-radius: 16px;
-    padding: 26px 30px;
-    margin: 0 0 22px;
-}
+.lead { font-size: 28px; line-height: 1.4; color: var(--muted); max-width: 980px; }
+.caption { font-size: 20px; color: var(--muted); max-width: 1040px; margin-top: 12px; }
 
-pre code {
-    background: none;
-    padding: 0;
-    font-size: 30px;
-    color: #e8ebf4;
-}
+/* statement: o singură idee mare; textul lung primește litere mai mici, nu puncte de suspensie */
+section.statement h2 { font-size: 56px; line-height: 1.1; max-width: 1080px; margin-bottom: 28px; }
+section.statement.long h2 { font-size: 44px; }
+section.statement.xlong h2 { font-size: 36px; line-height: 1.2; }
+section.statement .lead { font-size: 28px; }
 
-/* Tabelele: tema implicită Marp le dă rânduri albe; aici sunt transparente, pe toată lățimea. */
-table {
-    display: table;
-    border-collapse: collapse;
-    width: 100%;
-    font-size: 24px;
-    margin-bottom: 22px;
-}
+/* bullets */
+section.bullets li { font-size: 30px; line-height: 1.3; padding-left: 38px; margin-bottom: 20px; position: relative; max-width: 1060px; }
+section.bullets li::before { content: ''; position: absolute; left: 0; top: 0.5em; width: 16px; height: 16px; border-radius: 4px; background: var(--accent); }
+section.roomy h2 { font-size: 54px; margin-bottom: 40px; }
+section.bullets.roomy li { font-size: 38px; margin-bottom: 28px; padding-left: 46px; }
+section.bullets.roomy li::before { width: 20px; height: 20px; top: 0.45em; }
 
-table tr, table tr:nth-child(2n), table thead tr {
-    background: transparent;
-    border: none;
-}
+/* cards: două sau trei coloane de carduri */
+.grid { display: grid; gap: 20px; }
+.grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; }
+.grid-5, .grid-6 { grid-template-columns: 1fr 1fr 1fr; }
+.grid li { background: var(--surface); border-left: 8px solid var(--accent); border-radius: 12px; padding: 20px 26px; display: flex; flex-direction: column; gap: 6px; }
+.grid li strong { font-family: 'Mona Sans', sans-serif; font-weight: 700; font-size: 26px; line-height: 1.15; color: var(--ink); }
+.grid li span { font-size: 22px; line-height: 1.3; color: var(--muted); }
+.grid-5 li, .grid-6 li { padding: 18px 22px; }
+.grid-5 li strong, .grid-6 li strong { font-size: 22px; }
+.grid-5 li span, .grid-6 li span { font-size: 20px; }
+section.cards.roomy .grid li strong { font-size: 32px; }
+section.cards.roomy .grid li span { font-size: 26px; }
 
-table th, table td {
-    border: none;
-    border-bottom: 1px solid #253049;
-    padding: 12px 16px;
-    text-align: left;
-    background: transparent;
-}
+/* diagram: titlu mic, apoi desenul pe tot restul slide-ului; unul înalt stă lângă titlu */
+section.diagram { justify-content: flex-start; padding: 40px 64px 64px; }
+section.diagram h2 { font-size: 32px; margin-bottom: 10px; max-width: none; }
+section.diagram .eyebrow { margin-bottom: 6px; font-size: 18px; }
+section.diagram figure { margin: 0; display: flex; justify-content: center; align-items: center; height: 470px; }
+section.diagram figure img { display: block; background: none; }
+section.diagram .caption { margin: 6px 0 0; font-size: 18px; max-width: none; }
+section.diagram.beside { flex-direction: row; align-items: center; justify-content: flex-start; gap: 40px; padding: 40px 64px 40px; }
+section.diagram.beside .text { width: 400px; flex: none; }
+section.diagram.beside h2 { font-size: 34px; margin-bottom: 18px; }
+section.diagram.beside figure { height: 590px; flex: 1; }
+section.diagram.beside .caption { font-size: 20px; }
 
-table th { color: #a3acc2; font-weight: 600; font-size: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
-table td { color: #e8ebf4; }
-table td:not(:first-child), table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+/* columns */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+.bars li { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; align-items: baseline; margin-bottom: 18px; }
+.bars .name { font-weight: 600; font-size: 26px; }
+.bars .detail { font-size: 20px; color: var(--muted); text-align: right; grid-column: 2; grid-row: 1; }
+.bars .bar { grid-column: 1; grid-row: 2; height: 12px; border-radius: 6px; background: var(--surface); overflow: hidden; margin-top: 6px; }
+.bars .bar i { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+.bars .share { grid-column: 2; grid-row: 2; font-size: 20px; color: var(--accent-ink); font-weight: 600; text-align: right; }
+.tags { display: flex; flex-wrap: wrap; gap: 12px; }
+.tags li { background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 6px 20px; font-size: 24px; font-weight: 600; }
 
-img { background: transparent; }
+/* code */
+section.code.roomy pre { font-size: 36px; }
+section.code pre { margin: 0; background: var(--brand); color: var(--on-brand); border-radius: 14px; padding: 28px 36px; font-size: 28px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+section.code pre code { background: none; color: inherit; padding: 0; font-size: 1em; }
 
-.muted, section .muted { color: #a3acc2; }
+/* facts */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.stats li { background: var(--surface); border-radius: 12px; padding: 18px 22px; border-top: 6px solid var(--accent); }
+.stats strong { display: block; font-family: 'Mona Sans', sans-serif; font-weight: 900; font-size: 44px; line-height: 1.1; color: var(--ink); }
+.stats span { font-size: 20px; color: var(--muted); }
+.files li { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 12px 0; border-bottom: 2px solid var(--line); font-size: 22px; }
+.files li span { color: var(--muted); font-size: 20px; white-space: nowrap; }
 
-/* Logo-ul mic din colțul fiecărui slide (antetul Marp; coperta și finalul nu îl au). */
-header {
-    top: 44px;
-    right: 64px;
-    left: auto;
-}
+/* title și closing: fundalul de culoarea repository-ului */
+section.title, section.closing { background: var(--brand); color: var(--on-brand); padding: 72px 96px; justify-content: center; }
+section.title::before, section.closing::before { height: 14px; background: var(--brand-highlight); }
+section.title h1, section.closing h1 { color: var(--on-brand); }
+section.title .eyebrow, section.closing .eyebrow { color: var(--brand-highlight); }
+section.title .lead { color: var(--on-brand-muted); margin-top: 24px; }
+section.title.long .lead { font-size: 22px; }
+section.title .marks { display: flex; align-items: center; gap: 24px; margin-bottom: 36px; }
+section.title .avatar { width: 150px; height: 150px; border-radius: 24px; border: 4px solid var(--on-brand); background: var(--on-brand); object-fit: cover; }
+section.title .logo { display: flex; align-items: center; justify-content: center; background: #ffffff; border-radius: 20px; padding: 18px 26px; }
+section.title .logo img { display: block; background: none; }
+section.title .tags { margin-top: 36px; }
+section.title .tags li { background: transparent; border-color: var(--brand-highlight); color: var(--on-brand); font-size: 22px; }
 
-header img { border-radius: 10px; }
-
-/* --- Coperta --- */
-section.lead {
-    justify-content: center;
-    padding-left: 96px;
-}
-
-section.lead h1 { font-size: 104px; margin: 28px 0 12px; }
-section.lead p { font-size: 30px; max-width: 980px; color: #c9cfdd; }
-section.lead img { border-radius: 28px; }
-
-/* --- Ce îl face special: lista devine carduri pe coloane --- */
-section.features ol {
-    list-style: none;
-    padding: 0;
-    margin-bottom: 24px;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-}
-
-section.features.columns-2 ol { grid-template-columns: repeat(2, 1fr); }
-section.features.columns-1 ol { grid-template-columns: 1fr; }
-
-section.features li {
-    margin: 0;
-    padding: 28px;
-    border-radius: 20px;
-    background: rgb(232 235 244 / 0.05);
-    border: 2px solid #253049;
-    font-size: 24px;
-    color: #c9cfdd;
-}
-
-section.features li strong {
-    display: block;
-    font-family: 'Mona Sans', sans-serif;
-    font-weight: 700;
-    font-size: 30px;
-    line-height: 1.15;
-    margin-bottom: 12px;
-    color: #ffffff;
-}
-
-/* --- Cifrele: lista devine un rând de numere mari --- */
-section.stats ul {
-    list-style: none;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 28px 32px;
-}
-
-section.stats li {
-    margin: 0;
-    padding: 24px 28px;
-    border-radius: 18px;
-    background: rgb(232 235 244 / 0.05);
-    border: 2px solid #253049;
-    color: #a3acc2;
-    font-size: 22px;
-}
-
-section.stats li strong {
-    display: block;
-    font-family: 'Mona Sans', sans-serif;
-    font-weight: 900;
-    font-size: 58px;
-    line-height: 1.05;
-    color: #ffffff;
-}
-
-/* --- Diagrama --- */
-section.diagram h2 { margin-bottom: 20px; }
-section.diagram p { margin-bottom: 14px; }
-section.diagram p:has(img) { text-align: center; margin: 24px 0 32px; }
-section.diagram .muted { font-size: 20px; }
-
-/* --- Finalul --- */
-section.closing {
-    justify-content: center;
-    align-items: flex-start;
-    padding-left: 96px;
-}
-
-section.closing img { border-radius: 22px; }
-section.closing h1 { font-size: 72px; margin: 20px 0 28px; }
-section.closing .muted { font-size: 22px; }
-section.closing .url {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 30px;
-    color: #ffffff;
-    background: #4c5bd4;
-    padding: 14px 28px;
-    border-radius: 999px;
-}
+section.closing h1 { font-size: 72px; margin-bottom: 40px; }
+.links li { display: flex; flex-direction: column; margin-bottom: 20px; }
+.links li span { font-size: 20px; color: var(--on-brand-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+.links li strong { font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 34px; color: var(--on-brand); }
+.credit { position: absolute; left: 96px; bottom: 34px; font-size: 18px; color: var(--on-brand-muted); }

@@ -6,7 +6,7 @@
  * logo-uri de tehnologii ca aplicația (resources/js/lib/diagram-icons.json) și culorile temei întunecate
  * a aplicației, ca diagrama să se vadă bine pe fundalul bleumarin al slide-urilor. Nu folosește internetul.
  *
- * Folosire: node diagram.mjs <cod.mmd> <imagine.png> <iconite.json>
+ * Folosire: node diagram.mjs <cod.mmd> <imagine.png> <iconite.json> [paleta.json]
  */
 
 import { readFileSync } from 'node:fs';
@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
-const [codePath, outputPath, iconsPath] = process.argv.slice(2);
+const [codePath, outputPath, iconsPath] = process.argv.slice(2, 5);
 
 if (!codePath || !outputPath || !iconsPath || !process.env.CHROME_PATH) {
     console.error('Folosire: CHROME_PATH=… node diagram.mjs <cod.mmd> <imagine.png> <iconite.json>');
@@ -33,19 +33,27 @@ const fontFace = (weight, subset) => {
     return `@font-face { font-family: 'Instrument Sans'; font-weight: ${weight}; src: url(data:font/woff2;base64,${data}) format('woff2'); }`;
 };
 
-/** Clasele C4 în varianta întunecată, aceleași ca în resources/js/lib/mermaid.ts (DARK_CLASS_STYLES). */
-const DARK_CLASS_STYLES = {
-    person: 'fill:#1e3a8a,stroke:#60a5fa,color:#e8ebf4',
-    system: 'fill:#1e3a8a,stroke:#60a5fa,color:#e8ebf4',
-    containerBox: 'fill:#1e3a8a,stroke:#60a5fa,color:#e8ebf4',
-    component: 'fill:#1d4ed8,stroke:#60a5fa,color:#ffffff',
-    externalBox: 'fill:#26304a,stroke:#4a5675,color:#e8ebf4',
-    more: 'fill:none,stroke:#4a5675,stroke-dasharray:4 3,color:#a3acc2',
-    boundary: 'fill:none,stroke:#838ca4,stroke-dasharray:6 4',
+/**
+ * Culorile diagramei vin din paleta repository-ului (SlidePalette): fundalul slide-ului e hârtia lui, iar
+ * casetele au culoarea lui de accent. Fără paletă (al patrulea argument) se folosesc culori neutre.
+ */
+const palette = process.argv[5]
+    ? JSON.parse(readFileSync(process.argv[5], 'utf8'))
+    : { paper: '#fafafa', surface: '#f0f0f0', line: '#d0d0d0', ink: '#151515', muted: '#555555', accent: '#2a5bd7', onAccent: '#ffffff', accentInk: '#2347a8', brand: '#14295f', onBrand: '#ffffff' };
+
+/** Clasele C4 ca în resources/js/lib/mermaid.ts, dar cu paleta slide-ului. */
+const CLASS_STYLES = {
+    person: `fill:${palette.brand},stroke:${palette.brand},color:${palette.onBrand}`,
+    system: `fill:${palette.brand},stroke:${palette.brand},color:${palette.onBrand}`,
+    containerBox: `fill:${palette.accent},stroke:${palette.accentInk},color:${palette.onAccent}`,
+    component: `fill:${palette.accent},stroke:${palette.accentInk},color:${palette.onAccent}`,
+    externalBox: `fill:${palette.surface},stroke:${palette.muted},color:${palette.ink}`,
+    more: `fill:none,stroke:${palette.muted},stroke-dasharray:4 3,color:${palette.muted}`,
+    boundary: `fill:none,stroke:${palette.muted},stroke-dasharray:6 4`,
 };
 
-const darkCode = code.replace(/^(\s*classDef\s+)([\w-]+)(\s+).*$/gm, (line, start, name, space) =>
-    name in DARK_CLASS_STYLES ? `${start}${name}${space}${DARK_CLASS_STYLES[name]}` : line,
+const themedCode = code.replace(/^(\s*classDef\s+)([\w-]+)(\s+).*$/gm, (line, start, name, space) =>
+    name in CLASS_STYLES ? `${start}${name}${space}${CLASS_STYLES[name]}` : line,
 );
 
 const browser = await puppeteer.launch({
@@ -64,33 +72,33 @@ try {
     </style></head><body><div id="diagram"></div></body></html>`);
     await page.addScriptTag({ path: join(here, '..', 'node_modules', 'mermaid', 'dist', 'mermaid.min.js') });
 
-    await page.evaluate(async (source, iconPack) => {
+    await page.evaluate(async (source, iconPack, pal) => {
         const mermaid = window.mermaid;
         mermaid.registerIconPacks([{ name: 'logos', icons: iconPack }]);
         mermaid.initialize({
             startOnLoad: false,
             securityLevel: 'strict',
             theme: 'base',
-            darkMode: true,
+            darkMode: false,
             fontFamily: "'Instrument Sans', sans-serif",
             themeVariables: {
                 fontFamily: "'Instrument Sans', sans-serif",
-                fontSize: '15px',
-                background: '#111727',
-                mainBkg: '#1a2440',
-                primaryColor: '#1a2440',
-                primaryTextColor: '#e8ebf4',
-                primaryBorderColor: '#4a5675',
-                nodeBorder: '#4a5675',
-                nodeTextColor: '#e8ebf4',
-                secondaryColor: '#172036',
-                tertiaryColor: '#0a0e1a',
-                textColor: '#e8ebf4',
-                titleColor: '#a3acc2',
-                lineColor: '#838ca4',
-                clusterBkg: '#111727',
-                clusterBorder: '#253049',
-                edgeLabelBackground: '#111727',
+                fontSize: '16px',
+                background: pal.paper,
+                mainBkg: pal.surface,
+                primaryColor: pal.surface,
+                primaryTextColor: pal.ink,
+                primaryBorderColor: pal.muted,
+                nodeBorder: pal.muted,
+                nodeTextColor: pal.ink,
+                secondaryColor: pal.surface,
+                tertiaryColor: pal.paper,
+                textColor: pal.ink,
+                titleColor: pal.muted,
+                lineColor: pal.muted,
+                clusterBkg: pal.paper,
+                clusterBorder: pal.line,
+                edgeLabelBackground: pal.paper,
             },
         });
 
@@ -106,7 +114,7 @@ try {
         }
 
         document.getElementById('diagram').innerHTML = svg;
-    }, darkCode, icons);
+    }, themedCode, icons, palette);
 
     const element = await page.$('#diagram');
     await element.screenshot({ path: outputPath, omitBackground: true });

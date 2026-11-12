@@ -40,10 +40,11 @@ class RenderPresentationSlidesTest extends TestCase
         ]);
         $asset = MediaAsset::sole();
         $this->assertSame(['pdf' => "{$directory}/slides.pdf", 'pptx' => "{$directory}/slides.pptx"], $asset->meta['files']);
-        $this->assertSame(['magazin', 'What it does', 'Architecture', 'In numbers', 'Closing'], $asset->meta['slides']);
+        $this->assertSame(['magazin', 'The project at a glance', 'Explore the project'], $asset->meta['slides']);
+        $this->assertSame(6, $asset->meta['pptx_size_bytes']);
         Storage::disk('local')->assertExists(["{$directory}/slides.pdf", "{$directory}/slides.pptx"]);
         Storage::disk('local')->assertMissing("{$directory}/work-slides");
-        $this->assertSame(['diagram', 'marp', 'marp'], array_map($this->toolOf(...), $this->toolCommands));
+        $this->assertSame(['marp', 'unknown', 'marp', 'marp'], array_map($this->toolOf(...), $this->toolCommands));
     }
 
     public function test_marp_gets_a_self_contained_deck_and_safe_options(): void
@@ -53,40 +54,26 @@ class RenderPresentationSlidesTest extends TestCase
 
         RenderPresentationSlides::dispatch($repository, $this->facts(), $this->scenes(), 'abc123');
 
-        [$pdf, $pptx] = $this->commandsOf('marp');
+        [, $pdf, $pptx] = $this->commandsOf('marp');
         $this->assertSame('--no-stdin', $pdf[2]);
         $this->assertStringEndsWith('/deck.md', $pdf[3]);
         $this->assertLessThan(array_search('--theme-set', $pdf, true), array_search($pdf[3], $pdf, true));
         $this->assertContains('--no-config-file', $pdf);
         $this->assertNotContains('--allow-local-files', $pdf);
-        $this->assertNotContains('--html', $pdf);
         $this->assertSame('/usr/bin/google-chrome', $this->argumentAfter($pdf, '--browser-path'));
         $this->assertContains('--pdf', $pdf);
         $this->assertContains('--pptx', $pptx);
 
-        $this->assertStringContainsString('/* @theme gitchronicle */', $this->toolInputs['theme']);
+        $this->assertStringContainsString('/* @theme repository */', $this->toolInputs['theme']);
         $this->assertDoesNotMatchRegularExpression('/url\("fonts\/[a-z0-9-]+\.woff2"\)/', $this->toolInputs['theme']);
         $this->assertSame(10, substr_count($this->toolInputs['theme'], 'url("data:font/woff2;base64,'));
-        $this->assertStringContainsString('![w:132](data:image/png;base64,', $this->toolInputs['deck']);
-        $this->assertStringContainsString("## Containere\n\n![w:400](data:image/png;base64,", $this->toolInputs['deck']);
+        $this->assertStringContainsString('theme: repository', $this->toolInputs['deck']);
+        $this->assertStringContainsString('footer: "acme/magazin"', $this->toolInputs['deck']);
+        $this->assertStringNotContainsString('logo.png', $this->toolInputs['deck']);
 
-        [$diagram] = $this->commandsOf('diagram');
-        $this->assertStringEndsWith('resources/js/lib/diagram-icons.json', $diagram[4]);
         $environment = $this->toolEnvironments[0];
         $this->assertSame('/usr/bin/google-chrome', $environment['CHROME_PATH']);
         $this->assertSame(Storage::disk('local')->path('hyperframes/home'), $environment['HOME']);
-    }
-
-    public function test_a_diagram_that_cannot_be_drawn_only_loses_its_slide(): void
-    {
-        $this->fakeMediaTools(failing: ['diagram']);
-        $repository = Repository::factory()->ready()->create();
-
-        RenderPresentationSlides::dispatch($repository, $this->facts(), $this->scenes(), 'abc123');
-
-        $asset = MediaAsset::sole();
-        $this->assertSame('ready', $asset->status->value);
-        $this->assertSame(['magazin', 'What it does', 'In numbers', 'Closing'], $asset->meta['slides']);
     }
 
     public function test_a_failed_marp_marks_the_slides_failed(): void
@@ -115,7 +102,7 @@ class RenderPresentationSlidesTest extends TestCase
             'description' => 'Un magazin mic.', 'github' => null, 'license' => null, 'languages' => [], 'modules' => [],
             'stats' => ['files' => 12, 'lines' => 3400, 'modules' => 3], 'history' => null, 'start_command' => null,
             'commands' => [], 'technologies' => [],
-            'diagram' => ['type' => 'container', 'title' => 'Containere', 'caption' => null, 'mermaid' => "flowchart LR\n  a --> b\n"],
+            'diagram' => null,
         ];
     }
 
