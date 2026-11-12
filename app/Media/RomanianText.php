@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
  * - a text for the screen or the voice has no control characters, no emoji (the fonts have none)
  *   and no runs of spaces or new lines;
  * - a count of things follows the Romanian grammar: „1 stea”, „2 stele”, „20 de stele”.
+ *
+ * EnglishText has the same counting and joining rules for the English video.
  */
 final class RomanianText
 {
@@ -57,6 +59,28 @@ final class RomanianText
         $digits = $formatted ? self::number($number) : (string) $number;
 
         return $digits.($needsDe ? ' de ' : ' ').$many;
+    }
+
+    /**
+     * A count the way a presenter says it: exact under a thousand, then rounded down and honest about it:
+     * „peste 2 mii de stele”, „peste 82 de mii de stele”, „peste un milion de descărcări”.
+     */
+    public static function spokenCount(int $number, string $one, string $many): string
+    {
+        if ($number < 1000) {
+            return self::count($number, $one, $many, formatted: false);
+        }
+
+        $isMillions = $number >= 1_000_000;
+        $value = intdiv($number, $isMillions ? 1_000_000 : 1000);
+        $isExact = $number === $value * ($isMillions ? 1_000_000 : 1000);
+
+        $amount = match (true) {
+            $value === 1 => $isMillions ? 'un milion' : 'o mie',
+            default => self::count($value, '', $isMillions ? 'milioane' : 'mii', formatted: false),
+        };
+
+        return ($isExact ? '' : 'peste ')."{$amount} de {$many}";
     }
 
     /**

@@ -1,4 +1,5 @@
 import { useId, useRef } from 'react';
+import type { ReactNode } from 'react';
 import DownloadLink from '@/components/media/download-link';
 import MediaStatusBadge from '@/components/media/media-status-badge';
 import SceneList from '@/components/media/scene-list';
@@ -8,16 +9,18 @@ import type { PresentationVideo } from '@/types/media';
 
 type Props = {
     video: PresentationVideo;
+    /** Comutatorul de limbă (English / Română), când video-ul există în mai multe limbi. */
+    languageSwitch?: ReactNode;
     /** „proprietar/nume”, pentru numele video-ului citit de cititoarele de ecran. */
     repositoryName: string;
 };
 
 /**
- * Video-ul de prezentare: playerul vertical (9:16, ca un reel) cu poster și subtitrări, ce știm despre
+ * Video-ul de prezentare în limba aleasă: playerul vertical (9:16, ca un reel) cu poster și subtitrări, ce știm despre
  * el (durata, cine a scris textele, vocea, muzica), descărcarea și lista scenelor cu sursele lor.
  * Cât timp se randează sau dacă a eșuat, în locul playerului apare starea lui.
  */
-export default function VideoSection({ video, repositoryName }: Props) {
+export default function VideoSection({ video, repositoryName, languageSwitch = null }: Props) {
     const headingId = useId();
     const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -38,6 +41,7 @@ export default function VideoSection({ video, repositoryName }: Props) {
                     Video de prezentare
                 </h2>
                 <MediaStatusBadge status={video.status} label={video.status_label} />
+                {languageSwitch}
             </div>
 
             {video.status === 'failed' && (
@@ -52,7 +56,7 @@ export default function VideoSection({ video, repositoryName }: Props) {
                     <p className="text-sm text-ink-muted">
                         {video.status === 'pending'
                             ? 'Video-ul așteaptă la rând. Randarea pornește imediat ce workerul e liber.'
-                            : 'Se scrie scenariul, se înregistrează vocea și se randează cadrele. Durează în jur de un minut.'}
+                            : 'Se înregistrează vocea și se randează cadrele peste pagina de GitHub. Durează în jur de un minut.'}
                     </p>
                 </div>
             )}
@@ -71,7 +75,7 @@ export default function VideoSection({ video, repositoryName }: Props) {
                                 className="block aspect-9/16 w-full"
                             >
                                 <source src={video.src} type="video/mp4" />
-                                {video.captions && <track kind="captions" src={video.captions} srcLang="ro" label="Română" default />}
+                                {video.captions && <track kind="captions" src={video.captions} srcLang={video.language} label={video.language_label} default />}
                                 Browserul tău nu poate reda video-ul. Îl poți descărca mai jos.
                             </video>
                         </div>
@@ -94,7 +98,7 @@ export default function VideoSection({ video, repositoryName }: Props) {
                                 <dd className="text-ink">
                                     {video.writer === 'ai'
                                         ? 'Scrise de Claude doar din sursele repository-ului; fiecare propoziție are citatul ei mai jos.'
-                                        : 'Luate direct din descriere și din cifre, fără AI.'}
+                                        : 'Luate direct din descriere, din README și din cifre, fără AI.'}
                                 </dd>
                                 <dt className="text-ink-subtle">Voce</dt>
                                 <dd className="text-ink">{video.voice ? `${video.voice} (sinteză vocală, pe server)` : 'Fără voce: doar muzică și subtitrări.'}</dd>
@@ -103,6 +107,7 @@ export default function VideoSection({ video, repositoryName }: Props) {
                             </dl>
 
                             {video.note && <p className="mt-3 text-sm text-ink-muted">{video.note}</p>}
+                            {video.capture_note && <p className="mt-3 text-sm text-ink-muted">{video.capture_note} Video-ul folosește scene tipografice.</p>}
 
                             {video.is_stale && (
                                 <p className="mt-3 rounded-lg border border-warning-line bg-warning-soft px-3 py-2 text-sm text-warning-ink">

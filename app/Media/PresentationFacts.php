@@ -27,6 +27,7 @@ final readonly class PresentationFacts
      * @param  list<array{command: string, source: string}>  $commands  the commands the manifests define (ProjectFacts)
      * @param  list<string>  $technologies  the technologies of the „Containere” diagram ("Laravel 13", "React 19")
      * @param  array{type: string, title: string, caption: string|null, mermaid: string}|null  $diagram  the diagram for the slides
+     * @param  list<string>  $headings  the headings of the README, in order (the sections a scene can be about)
      */
     public function __construct(
         public string $owner,
@@ -45,6 +46,7 @@ final readonly class PresentationFacts
         public array $commands,
         public array $technologies,
         public ?array $diagram,
+        public array $headings = [],
     ) {}
 
     /**
@@ -109,6 +111,44 @@ final readonly class PresentationFacts
         $readme = $this->sources['README.md']['text'] ?? null;
 
         return $readme !== null && trim($text) !== '' && str_contains(Str::squish($readme), Str::squish($text));
+    }
+
+    /**
+     * The README heading with this text (compared like a quote), exactly as the README writes it, or null.
+     */
+    public function findHeading(?string $text): ?string
+    {
+        $needle = PageCapture::comparable((string) $text);
+
+        foreach ($this->headings as $heading) {
+            if ($needle !== '' && PageCapture::comparable($heading) === $needle) {
+                return $heading;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * What the video shows and says, in the form it shows it, as one hash. GenerateMedia compares it with
+     * the hash of the existing video: after an update that changed nothing the video is built from (the
+     * sources' text, the names, the numbers as they are rounded for the voice, the month of the last
+     * commit), the video is not rendered again.
+     */
+    public function videoFingerprint(): string
+    {
+        $rounded = fn (?int $number): ?string => $number === null ? null : EnglishText::spokenCount($number, 'x', 'x');
+
+        return hash('sha256', json_encode([
+            $this->owner, $this->name, $this->description, $this->license, $this->headings,
+            array_map(fn (array $source): string => $source['text'], $this->sources),
+            $rounded($this->github['stars'] ?? null), $rounded($this->github['forks'] ?? null),
+            array_map(fn (array $language): array => [$language['name'], $language['percent']], $this->languages),
+            array_column($this->modules, 'path'), $this->stats['modules'],
+            $rounded($this->history['commit_count'] ?? null), $rounded($this->history['contributor_count'] ?? null),
+            isset($this->history['last_commit_at']) ? substr($this->history['last_commit_at'], 0, 7) : null,
+            $this->startCommand['command'] ?? null,
+        ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
     }
 
     /**

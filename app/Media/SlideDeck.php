@@ -8,8 +8,9 @@ use Carbon\CarbonImmutable;
  * Writes the slides of a repository as Marp Markdown, from the same real data as the video: the facts
  * (PresentationFacts::summary()) and the scenes of the script. The slides, in order:
  *
- * the cover → „Ce face” → „Ce îl face special” → „Arhitectura” (the diagram) → „Tehnologii” →
- * „Module” → „În cifre” → „Istoric” → „Cum începi” → the closing.
+ * the cover → What it does → What makes it special → Architecture (the diagram) → Technologies →
+ * Modules → In numbers → History → Get started → the closing. The deck is generated content, so its
+ * fixed labels are English, like the documentation (only the video is made in two languages).
  *
  * A slide whose data is not known is left out. Marp cuts what does not fit on a slide, so every list
  * is capped and every text is cut (MarpText::text()). Every value from the repository is escaped;
@@ -52,7 +53,7 @@ final class SlideDeck
             '---',
             'marp: true',
             'theme: gitchronicle',
-            'lang: ro',
+            'lang: en',
             'paginate: true',
             // The document's title (the PDF's metadata): plain text, without anything that looks like markup.
             'title: '.json_encode(preg_replace('/[<>"\\\\]/', '', RomanianText::clean("{$facts['owner']}/{$facts['name']}")).' · GitChronicle', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -108,12 +109,12 @@ final class SlideDeck
 
         $source = $problem['source']['label'] ?? null;
 
-        return self::slide('Ce face', [
-            '## Ce face',
+        return self::slide('What it does', [
+            '## What it does',
             $description === null ? null : MarpText::text($description, 320),
-            $problem === null ? null : '### Ce rezolvă',
-            $problem === null ? null : '**'.MarpText::text($problem['text'], 160).'**',
-            $source === null ? null : '<span class="muted">Sursa: '.MarpText::text($source, 60).'</span>',
+            $problem === null ? null : '### The problem it solves',
+            $problem === null ? null : '**'.MarpText::text($problem['text'], 190).'**',
+            $source === null ? null : '<span class="muted">Source: '.MarpText::text($source, 60).'</span>',
         ]);
     }
 
@@ -134,16 +135,16 @@ final class SlideDeck
         $items = [];
 
         foreach ($features as $position => $feature) {
-            $items[] = ($position + 1).'. **'.MarpText::text($feature['title'], 40).'** '.MarpText::text($feature['text'], 120);
+            $items[] = ($position + 1).'. **'.MarpText::text($feature['title'] ?? $feature['label'], 40).'** '.MarpText::text($feature['text'], 180);
         }
 
         $sources = array_values(array_unique(array_filter(array_map(fn (array $feature): ?string => $feature['source']['label'] ?? null, $features))));
 
-        return self::slide('Ce îl face special', [
+        return self::slide('What makes it special', [
             '<!-- _class: features columns-'.count($features).' -->',
-            '## Ce îl face special',
+            '## What makes it special',
             implode("\n", $items),
-            $sources === [] ? null : '<span class="muted">Surse: '.MarpText::text(implode(', ', $sources), 80).'</span>',
+            $sources === [] ? null : '<span class="muted">Sources: '.MarpText::text(implode(', ', $sources), 80).'</span>',
         ]);
     }
 
@@ -164,7 +165,7 @@ final class SlideDeck
         $scale = min(self::DIAGRAM_MAX_WIDTH / $diagram['width'], self::DIAGRAM_MAX_HEIGHT / $diagram['height']);
         $width = (int) floor($diagram['width'] * $scale);
 
-        return self::slide('Arhitectura', [
+        return self::slide('Architecture', [
             '<!-- _class: diagram -->',
             '## '.MarpText::text($facts['diagram']['title'], 60),
             "![w:{$width}]({$diagram['uri']})",
@@ -185,14 +186,14 @@ final class SlideDeck
         }
 
         $rows = array_map(
-            fn (array $language): string => '| '.MarpText::text($language['name'], 30).' | '.RomanianText::number($language['files']).' | '.RomanianText::number($language['lines'])." | {$language['percent']}% |",
+            fn (array $language): string => '| '.MarpText::text($language['name'], 30).' | '.EnglishText::number($language['files']).' | '.EnglishText::number($language['lines'])." | {$language['percent']}% |",
             $facts['languages'],
         );
 
-        return self::slide('Tehnologii', [
-            '## Tehnologii',
-            $rows === [] ? null : "| Limbaj | Fișiere | Linii | Din cod |\n|---|---|---|---|\n".implode("\n", $rows),
-            $facts['technologies'] === [] ? null : '**Găsite în manifeste:** '.implode(' · ', array_map(
+        return self::slide('Technologies', [
+            '## Technologies',
+            $rows === [] ? null : "| Language | Files | Lines | Share of code |\n|---|---|---|---|\n".implode("\n", $rows),
+            $facts['technologies'] === [] ? null : '**Found in the manifests:** '.implode(' · ', array_map(
                 fn (string $technology): string => MarpText::text($technology, 30),
                 array_slice($facts['technologies'], 0, 10),
             )),
@@ -212,14 +213,14 @@ final class SlideDeck
         }
 
         $rows = array_map(
-            fn (array $module): string => '| '.MarpText::text($module['path'], 50).' | '.RomanianText::number($module['files']).' | '.RomanianText::number($module['lines']).' |',
+            fn (array $module): string => '| '.MarpText::text($module['path'], 50).' | '.EnglishText::number($module['files']).' | '.EnglishText::number($module['lines']).' |',
             $facts['modules'],
         );
 
-        return self::slide('Module', [
-            '## Cele mai mari module',
+        return self::slide('Modules', [
+            '## The largest modules',
             "| Modul | Fișiere | Linii |\n|---|---|---|\n".implode("\n", $rows),
-            '<span class="muted">Din '.RomanianText::count($facts['stats']['modules'], 'modul', 'module').' găsite de analiza codului; fără teste, documentație și configurare.</span>',
+            '<span class="muted">Of the '.EnglishText::count($facts['stats']['modules'], 'module', 'modules').' found by the code analysis; tests, documentation and configuration left out.</span>',
         ]);
     }
 
@@ -234,12 +235,12 @@ final class SlideDeck
         $stars = $facts['github']['stars'] ?? 0;
 
         $numbers = array_filter([
-            'fișiere analizate' => $facts['stats']['files'],
-            'linii de cod' => $facts['stats']['lines'],
-            'module' => $facts['stats']['modules'],
-            'commit-uri importate' => $facts['history']['commit_count'] ?? 0,
-            'contribuitori' => $facts['history']['contributor_count'] ?? 0,
-            'stele pe GitHub' => $stars,
+            'files analysed' => $facts['stats']['files'],
+            'lines of code' => $facts['stats']['lines'],
+            'modules' => $facts['stats']['modules'],
+            'commits imported' => $facts['history']['commit_count'] ?? 0,
+            'contributors' => $facts['history']['contributor_count'] ?? 0,
+            'stars on GitHub' => $stars,
         ]);
 
         if ($numbers === []) {
@@ -249,12 +250,12 @@ final class SlideDeck
         $items = [];
 
         foreach ($numbers as $label => $number) {
-            $items[] = '- **'.RomanianText::number($number)."** {$label}";
+            $items[] = '- **'.EnglishText::number($number)."** {$label}";
         }
 
-        return self::slide('În cifre', [
+        return self::slide('In numbers', [
             '<!-- _class: stats -->',
-            '## În cifre',
+            '## In numbers',
             implode("\n", $items),
         ]);
     }
@@ -275,15 +276,15 @@ final class SlideDeck
 
         $contributors = array_map(fn (string $name): string => MarpText::text($name, 40), $history['contributors']);
 
-        return self::slide('Istoric', [
-            '## Istoric',
+        return self::slide('History', [
+            '## History',
             implode("\n", array_filter([
-                '- Primul commit importat: **'.self::date($history['first_commit_at']).'**',
-                '- Cel mai recent commit: **'.self::date($history['last_commit_at']).'**',
-                '- **'.RomanianText::count($history['commit_count'], 'commit', 'commit-uri').'** de la **'.RomanianText::count($history['contributor_count'], 'contribuitor', 'contribuitori').'**',
-                $contributors === [] ? null : '- Cele mai multe commit-uri: '.implode(', ', $contributors),
+                '- First imported commit: **'.self::date($history['first_commit_at']).'**',
+                '- Latest commit: **'.self::date($history['last_commit_at']).'**',
+                '- **'.EnglishText::count($history['commit_count'], 'commit', 'commits').'** by **'.EnglishText::count($history['contributor_count'], 'contributor', 'contributors').'**',
+                $contributors === [] ? null : '- Most commits: '.implode(', ', $contributors),
             ])),
-            '<span class="muted">Din istoricul git al repository-ului.</span>',
+            '<span class="muted">From the repository\'s git history.</span>',
         ]);
     }
 
@@ -310,10 +311,10 @@ final class SlideDeck
             return null;
         }
 
-        return self::slide('Cum începi', [
-            '## Cum începi',
+        return self::slide('Get started', [
+            '## Get started',
             $readmeCommand === null ? null : "```\n{$readmeCommand}\n```",
-            $readmeCommand === null ? null : '<span class="muted">Prima comandă din README.</span>',
+            $readmeCommand === null ? null : '<span class="muted">The first command of the README.</span>',
             $others === [] ? null : "### Alte comenzi definite în proiect\n\n".implode("\n", $others),
         ]);
     }
@@ -330,15 +331,15 @@ final class SlideDeck
         $cta = self::scene($scenes, 'cta');
         $commit = $facts['sha'] === null ? '' : ' · commit '.substr($facts['sha'], 0, 7);
 
-        return self::slide('Final', [
+        return self::slide('Closing', [
             '<!-- _class: closing -->',
             '<!-- _paginate: false -->',
             '<!-- _header: "" -->',
             '<!-- _footer: "" -->',
             "![w:96]({$logo})",
-            '# '.MarpText::text($cta['text'] ?? 'Vezi proiectul pe GitHub.', 80),
+            '# '.MarpText::text($cta['text'] ?? 'See the project on GitHub.', 80),
             '<span class="url">'.MarpText::text(preg_replace('#\Ahttps?://#', '', $facts['url']), 100).'</span>',
-            '<span class="muted">Prezentare generată de GitChronicle din datele reale ale repository-ului'.$commit.'.</span>',
+            '<span class="muted">Deck generated by GitChronicle from the repository\'s real data'.$commit.'.</span>',
         ]);
     }
 
@@ -375,6 +376,6 @@ final class SlideDeck
      */
     private static function date(string $iso): string
     {
-        return CarbonImmutable::parse($iso)->setTimezone(config('app.timezone'))->locale('ro')->translatedFormat('j F Y');
+        return CarbonImmutable::parse($iso)->setTimezone(config('app.timezone'))->locale('en')->translatedFormat('j F Y');
     }
 }

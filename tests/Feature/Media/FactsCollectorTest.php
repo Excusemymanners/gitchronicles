@@ -68,7 +68,9 @@ class FactsCollectorTest extends TestCase
         $this->assertStringContainsString('coș de cumpărături și plăți online', $facts->sources['README.md']['text']);
         $this->assertSame('https://github.com/acme/magazin/blob/'.str_repeat('a', 40).'/README.md', $facts->sources['README.md']['url']);
         $this->assertSame("/repositories/{$repository->id}/docs", $facts->sources['Despre proiect']['url']);
-        $this->assertStringContainsString("Stele: 42\nLimbaj principal: PHP\nLicență: Apache-2.0\nSubiecte: shop", $facts->sources['GitHub']['text']);
+        $this->assertStringContainsString("Main language: PHP\nLicense: Apache-2.0\nTopics: shop", $facts->sources['GitHub']['text']);
+        // The star count changes daily: it must not be part of the text that decides a new AI call or a new render.
+        $this->assertStringNotContainsString('42', $facts->sources['GitHub']['text']);
         $this->assertSame(42, $facts->github['stars']);
         $this->assertSame('Apache-2.0', $facts->license);
         $this->assertSame('PHP', $facts->languages[0]['name']);

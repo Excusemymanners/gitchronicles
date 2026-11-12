@@ -12,6 +12,7 @@ use App\Http\Controllers\Repository\DiagramsController;
 use App\Http\Controllers\Repository\DocsController;
 use App\Http\Controllers\Repository\DownloadConsultingReportController;
 use App\Http\Controllers\Repository\DownloadReadmeController;
+use App\Http\Controllers\Repository\GenerateMediaController;
 use App\Http\Controllers\Repository\MediaController;
 use App\Http\Controllers\Repository\MediaFileController;
 use App\Http\Controllers\Repository\RunConsultingController;
@@ -55,6 +56,9 @@ Route::prefix('repositories/{repository}')->name('repositories.')->group(functio
     // „Video”: the presentation video and the slides (bonus), and the routes that serve their files
     // from the private disk (the video with Range support, so the player can seek).
     Route::get('media', MediaController::class)->name('media');
+    Route::post('media/generate', GenerateMediaController::class)
+        ->middleware(['auth', 'throttle:repositories'])
+        ->name('media.generate');
     Route::get('media/video', [MediaFileController::class, 'video'])->name('media.video');
     Route::get('media/poster', [MediaFileController::class, 'poster'])->name('media.poster');
     Route::get('media/captions', [MediaFileController::class, 'captions'])->name('media.captions');

@@ -17,21 +17,21 @@ class SlideDeckTest extends TestCase
         $deck = SlideDeck::build($this->facts(), $this->scenes(), self::LOGO, ['uri' => 'data:image/png;base64,RElBRw==', 'width' => 1296, 'height' => 360]);
 
         $this->assertSame(
-            ['magazin', 'Ce face', 'Ce îl face special', 'Arhitectura', 'Tehnologii', 'Module', 'În cifre', 'Istoric', 'Cum începi', 'Final'],
+            ['magazin', 'What it does', 'What makes it special', 'Architecture', 'Technologies', 'Modules', 'In numbers', 'History', 'Get started', 'Closing'],
             $deck['titles'],
         );
         $markdown = $deck['markdown'];
-        $this->assertStringStartsWith("---\nmarp: true\ntheme: gitchronicle\nlang: ro\npaginate: true\n", $markdown);
+        $this->assertStringStartsWith("---\nmarp: true\ntheme: gitchronicle\nlang: en\npaginate: true\n", $markdown);
         $this->assertSame(9, substr_count($markdown, "\n\n---\n\n"));
         $this->assertStringContainsString("# magazin\n\nMagazinul mic care ține minte coșul.", $markdown);
-        $this->assertStringContainsString("### Ce rezolvă\n\n**Cumperi fără să îți faci cont.**\n\n<span class=\"muted\">Sursa: README.md</span>", $markdown);
-        $this->assertStringContainsString("<!-- _class: features columns-2 -->\n\n## Ce îl face special\n\n1. **Coș care nu uită** Ține minte produsele.\n2. **Plăți fără cont** Plătești cu cardul.", $markdown);
+        $this->assertStringContainsString("### The problem it solves\n\n**Cumperi fără să îți faci cont.**\n\n<span class=\"muted\">Source: README.md</span>", $markdown);
+        $this->assertStringContainsString("<!-- _class: features columns-2 -->\n\n## What makes it special\n\n1. **Coș care nu uită** Ține minte produsele.\n2. **Plăți fără cont** Plătești cu cardul.", $markdown);
         $this->assertStringContainsString("## Containere\n\n![w:1100](data:image/png;base64,RElBRw==)\n\n<span class=\"muted\">Părțile aplicației.</span>", $markdown);
-        $this->assertStringContainsString("| PHP | 9 | 2.800 | 82% |\n| TypeScript | 3 | 600 | 18% |", $markdown);
-        $this->assertStringContainsString('**Găsite în manifeste:** Laravel 13 · React 19', $markdown);
-        $this->assertStringContainsString('| src/Models | 2 | 1.400 |', $markdown);
-        $this->assertStringContainsString("- **12** fișiere analizate\n- **3.400** linii de cod\n- **3** module\n- **25** commit-uri importate\n- **2** contribuitori\n- **1.234** stele pe GitHub", $markdown);
-        $this->assertStringContainsString("- Primul commit importat: **1 octombrie 2026**\n- Cel mai recent commit: **10 noiembrie 2026**\n- **25 de commit-uri** de la **2 contribuitori**\n- Cele mai multe commit-uri: Ana, Dan", $markdown);
+        $this->assertStringContainsString("| PHP | 9 | 2,800 | 82% |\n| TypeScript | 3 | 600 | 18% |", $markdown);
+        $this->assertStringContainsString('**Found in the manifests:** Laravel 13 · React 19', $markdown);
+        $this->assertStringContainsString('| src/Models | 2 | 1,400 |', $markdown);
+        $this->assertStringContainsString("- **12** files analysed\n- **3,400** lines of code\n- **3** modules\n- **25** commits imported\n- **2** contributors\n- **1,234** stars on GitHub", $markdown);
+        $this->assertStringContainsString("- First imported commit: **1 October 2026**\n- Latest commit: **10 November 2026**\n- **25 commits** by **2 contributors**\n- Most commits: Ana, Dan", $markdown);
         $this->assertStringContainsString("```\ncomposer install\n```", $markdown);
         $this->assertStringContainsString('- `composer run test` — composer.json', $markdown);
         $this->assertStringContainsString("# Încearcă magazinul chiar azi.\n\n<span class=\"url\">github.com/acme/magazin</span>", $markdown);
@@ -50,14 +50,14 @@ class SlideDeckTest extends TestCase
 
         $deck = SlideDeck::build($facts, $scenes, self::LOGO);
 
-        $this->assertSame(['magazin', 'Final'], $deck['titles']);
+        $this->assertSame(['magazin', 'Closing'], $deck['titles']);
     }
 
     public function test_a_diagram_that_could_not_be_drawn_leaves_its_slide_out(): void
     {
         $deck = SlideDeck::build($this->facts(), $this->scenes(), self::LOGO, null);
 
-        $this->assertNotContains('Arhitectura', $deck['titles']);
+        $this->assertNotContains('Architecture', $deck['titles']);
     }
 
     public function test_a_tall_diagram_is_scaled_by_its_height(): void

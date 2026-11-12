@@ -10,9 +10,9 @@ export type SceneSource = {
 
 /** O scenă a video-ului: când se vede, ce scrie pe ecran, ce spune vocea și sursa textului. */
 export type VideoScene = {
-    /** Tipul scenei: hook, problem, feature, start, proof, cta. */
+    /** Tipul scenei: hook, problem, feature, built, proof, start, cta. */
     key: string;
-    /** Numele scenei în română, de exemplu „Ce rezolvă”. */
+    /** Numele scenei în limba video-ului, de exemplu „The problem” sau „Ce rezolvă”. */
     label: string;
     start_ms: number;
     end_ms: number;
@@ -39,8 +39,14 @@ type MediaState = {
     is_stale: boolean;
 };
 
-/** Video-ul de prezentare. Adresele fișierelor sunt `null` cât timp video-ul nu e gata. */
+/** Limba unui video: codul din MediaLanguage (Laravel). */
+export type MediaLanguage = 'en' | 'ro';
+
+/** Video-ul de prezentare într-o limbă. Adresele fișierelor sunt `null` cât timp video-ul nu e gata. */
 export type PresentationVideo = MediaState & {
+    language: MediaLanguage;
+    /** Numele limbii, în limba ei: „English”, „Română”. */
+    language_label: string;
     duration_ms: number | null;
     src: string | null;
     poster: string | null;
@@ -53,6 +59,8 @@ export type PresentationVideo = MediaState & {
     note: string | null;
     /** Vocea care citește textele; `null` = video fără voce. */
     voice: string | null;
+    /** De ce pagina de GitHub nu a putut fi fotografiată (video-ul are atunci scene tipografice); `null` = a fost. */
+    capture_note: string | null;
     scenes: VideoScene[];
 };
 
@@ -64,9 +72,13 @@ export type PresentationSlides = MediaState & {
 
 /** Prop-ul „media” al paginii „Video” (PresentationMediaResource în Laravel). */
 export type PresentationMedia = {
-    /** `null` până când video-ul a fost pornit prima dată. */
-    video: PresentationVideo | null;
+    /** Câte un video pentru fiecare limbă pornită vreodată, limba implicită prima; gol până la prima generare. */
+    videos: PresentationVideo[];
+    /** Limba arătată prima. */
+    default_language: MediaLanguage;
     slides: PresentationSlides | null;
     /** Adevărat cât timp ceva e în coadă sau în lucru: pagina se reîmprospătează singură. */
     is_working: boolean;
+    /** Adevărat când vizitatorul e autentificat și poate porni o generare (RepositoryPolicy::generateMedia). */
+    can_generate: boolean;
 };

@@ -106,13 +106,20 @@ return [
     |
     | Made on the "media" queue after a repository is ready (GenerateMedia), with the Node tools of
     | renderers/ (composer media:install): HyperFrames for the video, Marp for the slides, Piper
-    | for the Romanian voice. Chrome and FFmpeg come from this computer (paths below).
+    | for the voices. Chrome and FFmpeg come from this computer (paths below).
     |
     | - auto_generate: start the media after every processing run (tests: false, phpunit.xml);
     | - hyperframes_home: where HyperFrames and Chrome keep their cache and settings (it becomes
     |   HOME for them), so nothing is written to the home folder of the user running the worker;
     | - workers: how many Chrome pages capture the frames in parallel;
-    | - voice: the Piper model and its speed (length_scale below 1 speaks faster).
+    | - languages: the languages the video is narrated in ("en", "ro"); the first is the default
+    |   shown on the page. Each one needs its Piper voice model (voice.models);
+    | - max_seconds: the longest video; when the narration is longer, the last features are left out;
+    | - capture: the photo of the repository's real GitHub page that the video scrolls through
+    |   (renderers/capture/github.mjs). Off, or when GitHub cannot be reached, the video falls back
+    |   to typographic scenes. max_height is how much of the page is photographed, in CSS pixels;
+    | - voice: Piper's Python, the model of each language and its speed (length_scale below 1
+    |   speaks faster).
     |
     */
 
@@ -126,10 +133,23 @@ return [
         'ffprobe_path' => env('MEDIA_FFPROBE_PATH', '/usr/bin/ffprobe'),
         'hyperframes_home' => env('MEDIA_HYPERFRAMES_HOME', storage_path('app/hyperframes')),
         'workers' => (int) env('MEDIA_RENDER_WORKERS', 4),
+        'languages' => array_values(array_filter(array_map('trim', explode(',', (string) env('MEDIA_LANGUAGES', 'en,ro'))))),
+        'max_seconds' => (float) env('MEDIA_MAX_SECONDS', 60),
+        'capture' => [
+            'enabled' => (bool) env('MEDIA_CAPTURE', true),
+            'max_height' => (int) env('MEDIA_CAPTURE_MAX_HEIGHT', 20000),
+            'timeout' => (int) env('MEDIA_CAPTURE_TIMEOUT', 100),
+        ],
         'voice' => [
             'python' => env('MEDIA_PIPER_PYTHON', base_path('renderers/tts/.venv/bin/python')),
-            'model' => env('MEDIA_PIPER_MODEL', base_path('renderers/tts/voices/ro_RO-mihai-medium.onnx')),
-            'length_scale' => (float) env('MEDIA_VOICE_LENGTH_SCALE', 0.85),
+            'models' => [
+                'ro' => env('MEDIA_PIPER_MODEL', base_path('renderers/tts/voices/ro_RO-mihai-medium.onnx')),
+                'en' => env('MEDIA_PIPER_MODEL_EN', base_path('renderers/tts/voices/en_US-ljspeech-high.onnx')),
+            ],
+            'length_scale' => [
+                'ro' => (float) env('MEDIA_VOICE_LENGTH_SCALE', 0.85),
+                'en' => (float) env('MEDIA_VOICE_LENGTH_SCALE_EN', 0.92),
+            ],
         ],
     ],
 

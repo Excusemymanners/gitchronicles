@@ -28,6 +28,26 @@ final class ToolEnvironment
     }
 
     /**
+     * The variables of the worker that a tool may keep when it must not see the others (isolated()).
+     */
+    private const KEPT_VARIABLES = ['PATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TZ'];
+
+    /**
+     * The variables for a tool that opens pages from the internet (the GitHub page capture): the ones of
+     * variables(), and every other variable of the worker removed (false = not passed to the child), so
+     * the application's keys and passwords from .env never reach the browser.
+     *
+     * @return array<string, string|false>
+     */
+    public static function isolated(): array
+    {
+        $inherited = array_keys([...getenv(), ...$_ENV]);
+        $removed = array_fill_keys(array_diff($inherited, self::KEPT_VARIABLES), false);
+
+        return [...$removed, ...self::variables()];
+    }
+
+    /**
      * The variables for one run of a tool.
      *
      * @return array<string, string|false>

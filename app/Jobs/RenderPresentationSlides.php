@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\MediaKind;
+use App\Enums\MediaLanguage;
 use App\Enums\MediaStatus;
 use App\Media\SlideRenderer;
 use App\Models\MediaAsset;
@@ -13,7 +14,8 @@ use Throwable;
 
 /**
  * Renders the slides of a repository (SlideRenderer: Marp, PDF and PPTX) from the same facts and
- * script as the video, and records the result in media_assets: the files and the title of every slide.
+ * script as the video, in English (generated content is written in English), and records the result in
+ * media_assets: the files and the title of every slide.
  *
  * Like the video job, a failure of a tool marks the row "failed" instead of being thrown to the queue.
  */
@@ -45,7 +47,7 @@ class RenderPresentationSlides implements ShouldQueue
      * Create a new job instance.
      *
      * @param  array<string, mixed>  $facts  PresentationFacts::summary()
-     * @param  list<array<string, mixed>>  $scenes  the scenes of the script
+     * @param  list<array<string, mixed>>  $scenes  the English scenes of the script (PresentationScript::scenesFor())
      * @param  string|null  $sourceSha  the commit the facts were gathered from
      */
     public function __construct(
@@ -62,8 +64,8 @@ class RenderPresentationSlides implements ShouldQueue
      */
     public function handle(SlideRenderer $renderer): void
     {
-        $asset = $this->repository->mediaAsset(MediaKind::Slides);
-        $asset->fill(['status' => MediaStatus::Running, 'source_sha' => $this->sourceSha, 'error' => null])->save();
+        $asset = $this->repository->slidesAsset();
+        $asset->fill(['status' => MediaStatus::Running, 'language' => MediaLanguage::En, 'source_sha' => $this->sourceSha, 'error' => null])->save();
 
         try {
             $result = $renderer->render($this->repository, $this->facts, $this->scenes);

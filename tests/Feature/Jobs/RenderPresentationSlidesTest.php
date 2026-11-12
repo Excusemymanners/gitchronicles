@@ -40,7 +40,7 @@ class RenderPresentationSlidesTest extends TestCase
         ]);
         $asset = MediaAsset::sole();
         $this->assertSame(['pdf' => "{$directory}/slides.pdf", 'pptx' => "{$directory}/slides.pptx"], $asset->meta['files']);
-        $this->assertSame(['magazin', 'Ce face', 'Arhitectura', 'În cifre', 'Final'], $asset->meta['slides']);
+        $this->assertSame(['magazin', 'What it does', 'Architecture', 'In numbers', 'Closing'], $asset->meta['slides']);
         Storage::disk('local')->assertExists(["{$directory}/slides.pdf", "{$directory}/slides.pptx"]);
         Storage::disk('local')->assertMissing("{$directory}/work-slides");
         $this->assertSame(['diagram', 'marp', 'marp'], array_map($this->toolOf(...), $this->toolCommands));
@@ -86,7 +86,7 @@ class RenderPresentationSlidesTest extends TestCase
 
         $asset = MediaAsset::sole();
         $this->assertSame('ready', $asset->status->value);
-        $this->assertSame(['magazin', 'Ce face', 'În cifre', 'Final'], $asset->meta['slides']);
+        $this->assertSame(['magazin', 'What it does', 'In numbers', 'Closing'], $asset->meta['slides']);
     }
 
     public function test_a_failed_marp_marks_the_slides_failed(): void

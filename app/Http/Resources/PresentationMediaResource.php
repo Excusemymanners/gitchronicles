@@ -3,15 +3,17 @@
 namespace App\Http\Resources;
 
 use App\Enums\MediaKind;
+use App\Enums\MediaLanguage;
 use App\Models\MediaAsset;
 use App\Models\Repository;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * What the „Video” page shows (the PresentationMedia type in TypeScript): the video with its files,
- * its scenes and where every sentence comes from, and the slides with their downloads. Each one is null
- * until its row exists in media_assets (nothing was generated or queued yet).
+ * What the „Video” page shows (the PresentationMedia type in TypeScript): the video of every language with
+ * its files, its scenes and where every sentence comes from, the slides with their downloads, and whether
+ * the visitor may start a generation. A video or the slides are missing until their row exists in
+ * media_assets (nothing was generated or queued yet).
  *
  * The addresses are relative to the site and carry "?v=" with the time of the generation, so the browser
  * never shows an old video after a new one was made.
@@ -23,17 +25,23 @@ class PresentationMediaResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @return array{video: array<string, mixed>|null, slides: array<string, mixed>|null, is_working: bool}
+     * @return array{videos: list<array<string, mixed>>, default_language: string, slides: array<string, mixed>|null, is_working: bool, can_generate: bool}
      */
     public function toArray(Request $request): array
     {
-        $assets = $this->mediaAssets()->get()->keyBy(fn (MediaAsset $asset): string => $asset->kind->value);
-        $video = $assets->get(MediaKind::Video->value);
-        $slides = $assets->get(MediaKind::Slides->value);
+        $assets = $this->mediaAssets()->get();
+        $slides = $assets->firstWhere('kind', MediaKind::Slides);
+        $videos = $assets->where('kind', MediaKind::Video);
+
+        // The configured languages first, in their order; then a video left from a language no longer configured.
+        $configured = array_column(MediaLanguage::configured(), 'value');
+        $videos = $videos->sortBy(fn (MediaAsset $video): int => ($position = array_search($video->language->value, $configured, true)) === false ? 99 : $position)->values();
 
         return [
-            'video' => $video === null ? null : [
+            'videos' => $videos->map(fn (MediaAsset $video): array => [
                 ...$this->state($video),
+                'language' => $video->language->value,
+                'language_label' => $video->language->label(),
                 'duration_ms' => $video->duration_ms,
                 'src' => $this->fileUrl($video, 'mp4', 'repositories.media.video'),
                 'poster' => $this->fileUrl($video, 'poster', 'repositories.media.poster'),
@@ -42,8 +50,10 @@ class PresentationMediaResource extends JsonResource
                 'writer' => $video->meta['writer'] ?? null,
                 'note' => $video->meta['note'] ?? null,
                 'voice' => $video->meta['voice'] ?? null,
+                'capture_note' => $video->meta['capture']['reason'] ?? null,
                 'scenes' => array_map($this->scene(...), $video->meta['scenes'] ?? []),
-            ],
+            ])->all(),
+            'default_language' => $videos->first()?->language->value ?? MediaLanguage::default()->value,
             'slides' => $slides === null ? null : [
                 ...$this->state($slides),
                 'downloads' => [
@@ -53,6 +63,7 @@ class PresentationMediaResource extends JsonResource
                 'titles' => $slides->meta['slides'] ?? [],
             ],
             'is_working' => $assets->contains(fn (MediaAsset $asset): bool => $asset->status->isWorking()),
+            'can_generate' => $request->user()?->can('generateMedia', $this->resource) ?? false,
         ];
     }
 
@@ -107,7 +118,7 @@ class PresentationMediaResource extends JsonResource
             return null;
         }
 
-        return route($routeName, ['repository' => $this->id, 'v' => $asset->generated_at?->timestamp], absolute: false);
+        return route($routeName, ['repository' => $this->id, 'lang' => $asset->language->value, 'v' => $asset->generated_at?->timestamp], absolute: false);
     }
 
     /**
@@ -119,6 +130,10 @@ class PresentationMediaResource extends JsonResource
             return null;
         }
 
-        return route('repositories.media.download', ['repository' => $this->id, 'format' => $format], absolute: false);
+        return route('repositories.media.download', [
+            'repository' => $this->id,
+            'format' => $format,
+            ...($asset->kind === MediaKind::Video ? ['lang' => $asset->language->value] : []),
+        ], absolute: false);
     }
 }

@@ -1,0 +1,356 @@
+{
+ "version": 1,
+ "url": "https://github.com/excusemymanners/gitchronicles",
+ "captured_at": "2026-11-12T06:24:56.547Z",
+ "viewport": {
+  "width": 432,
+  "scale": 3
+ },
+ "page": {
+  "height": 9319,
+  "captured_height": 9319,
+  "background": "rgb(13, 17, 23)",
+  "color_scheme": "dark"
+ },
+ "tiles": [
+  {
+   "file": "page-00.png",
+   "y": 0,
+   "height": 1200
+  }
+ ],
+ "landmarks": {
+  "name": {
+   "text": "gitchronicles",
+   "x": 48,
+   "y": 168,
+   "w": 113,
+   "h": 27
+  },
+  "about": null,
+  "stars": {
+   "text": "0 stars",
+   "x": 16,
+   "y": 398,
+   "w": 68,
+   "h": 21
+  },
+  "forks": {
+   "text": "0 forks",
+   "x": 212,
+   "y": 398,
+   "w": 69,
+   "h": 21
+  },
+  "files": {
+   "text": "",
+   "x": 16,
+   "y": 591,
+   "w": 400,
+   "h": 450
+  },
+  "commit": {
+   "text": "ExcusemymannersFișierele locale ale uneltelor de dezvoltare nu se mai urcă în reposi…Open commit detailsNov 10, 2026",
+   "x": 29,
+   "y": 554,
+   "w": 296,
+   "h": 21
+  },
+  "languages": {
+   "text": "PHP76.9% · TypeScript21.9% · Other1.2%",
+   "x": 16,
+   "y": 9008,
+   "w": 392,
+   "h": 106
+  },
+  "readme": {
+   "text": "",
+   "x": 33,
+   "y": 1138,
+   "w": 366,
+   "h": 7569
+  }
+ },
+ "headings": [
+  {
+   "level": 1,
+   "text": "GitChronicle",
+   "x": 33,
+   "y": 1264,
+   "w": 366,
+   "h": 51
+  },
+  {
+   "level": 2,
+   "text": "Ce face",
+   "x": 33,
+   "y": 1631,
+   "w": 366,
+   "h": 38
+  },
+  {
+   "level": 2,
+   "text": "Stare",
+   "x": 33,
+   "y": 2393,
+   "w": 366,
+   "h": 38
+  },
+  {
+   "level": 2,
+   "text": "Tehnologii",
+   "x": 33,
+   "y": 2543,
+   "w": 366,
+   "h": 38
+  },
+  {
+   "level": 2,
+   "text": "Plan de dezvoltare",
+   "x": 33,
+   "y": 6413,
+   "w": 366,
+   "h": 38
+  },
+  {
+   "level": 2,
+   "text": "Mod de lucru",
+   "x": 33,
+   "y": 8048,
+   "w": 366,
+   "h": 38
+  },
+  {
+   "level": 2,
+   "text": "Rulare locală",
+   "x": 33,
+   "y": 8354,
+   "w": 366,
+   "h": 38
+  }
+ ],
+ "images": [],
+ "blocks": [
+  {
+   "kind": "h1",
+   "text": "GitChronicle",
+   "x": 33,
+   "y": 1264,
+   "w": 366,
+   "h": 51
+  },
+  {
+   "kind": "p",
+   "text": "Asistent AI care documentează automat un repository GitHub și ține documentația la zi pe baza istoricului git: după prima indexare, procesează doar ce s-a schimbat de la ultimul commit indexat, nu tot proiectul de la zero.",
+   "x": 33,
+   "y": 1331,
+   "w": 366,
+   "h": 120
+  },
+  {
+   "kind": "p",
+   "text": "Proiect de licență — Tehnologia Informației, 2026–2027.",
+   "x": 33,
+   "y": 1467,
+   "w": 366,
+   "h": 48
+  },
+  {
+   "kind": "li",
+   "text": "Planul complet al lucrării: docs/licenta.md",
+   "x": 65,
+   "y": 1531,
+   "w": 334,
+   "h": 24
+  },
+  {
+   "kind": "li",
+   "text": "Planul de învățare, pas cu pas: docs/plan-invatare.md",
+   "x": 65,
+   "y": 1559,
+   "w": 334,
+   "h": 48
+  },
+  {
+   "kind": "h2",
+   "text": "Ce face",
+   "x": 33,
+   "y": 1631,
+   "w": 366,
+   "h": 38
+  },
+  {
+   "kind": "li",
+   "text": "Documentație în stil DeepWiki: o pagină pentru fiecare modul, cu navigare și căutare.",
+   "x": 65,
+   "y": 1685,
+   "w": 334,
+   "h": 72
+  },
+  {
+   "kind": "li",
+   "text": "Diagrame de arhitectură C4 (Context, Container, Component), generate din codul proiectului.",
+   "x": 65,
+   "y": 1761,
+   "w": 334,
+   "h": 72
+  },
+  {
+   "kind": "li",
+   "text": "Asistent pe cod: răspunde la întrebări despre repository și citează fișierul și liniile exacte.",
+   "x": 65,
+   "y": 1837,
+   "w": 334,
+   "h": 72
+  },
+  {
+   "kind": "li",
+   "text": "Actualizare incrementală: la fiecare push se regenerează doar paginile afectate.",
+   "x": 65,
+   "y": 1913,
+   "w": 334,
+   "h": 48
+  },
+  {
+   "kind": "li",
+   "text": "Time travel: un slider prin istoria commit-urilor arată cum arătau documentația și arhitectura la orice moment.",
+   "x": 65,
+   "y": 1965,
+   "w": 334,
+   "h": 72
+  },
+  {
+   "kind": "li",
+   "text": "Prezentare: slide-uri despre repository (PDF/PPTX).",
+   "x": 65,
+   "y": 2041,
+   "w": 334,
+   "h": 48
+  },
+  {
+   "kind": "li",
+   "text": "Discover / leaderboard (bonus): repository-uri interesante, clasate după cât de repede câștigă stele.",
+   "x": 65,
+   "y": 2093,
+   "w": 334,
+   "h": 72
+  },
+  {
+   "kind": "li",
+   "text": "Video scurt (bonus) generat pentru un repository.",
+   "x": 65,
+   "y": 2169,
+   "w": 334,
+   "h": 48
+  },
+  {
+   "kind": "li",
+   "text": "Postări automate pe Instagram (bonus): zilnic, un Reel cu „repo-ul zilei” din leaderboard.",
+   "x": 65,
+   "y": 2221,
+   "w": 334,
+   "h": 72
+  },
+  {
+   "kind": "li",
+   "text": "Consultanță (bonus): raport cu bug-uri, vulnerabilități și zonele de cod schimbate cel mai des.",
+   "x": 65,
+   "y": 2297,
+   "w": 334,
+   "h": 72
+  },
+  {
+   "kind": "h2",
+   "text": "Stare",
+   "x": 33,
+   "y": 2393,
+   "w": 366,
+   "h": 38
+  },
+  {
+   "kind": "p",
+   "text": "Faza curentă: Faza 3 — Joburi: clonarea (Faza 2 gata, verificată și în browser). Progresul pe pași e în docs/plan-invatare.md.",
+   "x": 33,
+   "y": 2447,
+   "w": 366,
+   "h": 72
+  },
+  {
+   "kind": "pre",
+   "text": "composer install cp .env.example .env php artisan key:generate php artisan migrate npm install",
+   "x": 33,
+   "y": 8449,
+   "w": 228,
+   "h": 131,
+   "lines": [
+    {
+     "text": "composer install",
+     "x": 49,
+     "y": 8467,
+     "w": 131,
+     "h": 15
+    },
+    {
+     "text": "cp .env.example .env",
+     "x": 49,
+     "y": 8486,
+     "w": 163,
+     "h": 15
+    },
+    {
+     "text": "php artisan key:generate",
+     "x": 49,
+     "y": 8506,
+     "w": 196,
+     "h": 15
+    },
+    {
+     "text": "php artisan migrate",
+     "x": 49,
+     "y": 8526,
+     "w": 155,
+     "h": 15
+    },
+    {
+     "text": "npm install",
+     "x": 49,
+     "y": 8545,
+     "w": 90,
+     "h": 15
+    }
+   ]
+  },
+  {
+   "kind": "pre",
+   "text": "php artisan serve # aplicația, pe http://127.0.0.1:8000 npm run dev # Vite: CSS/JS și reîncărcare automată",
+   "x": 33,
+   "y": 8635,
+   "w": 322,
+   "h": 71,
+   "lines": [
+    {
+     "text": "php artisan serve # aplicația, pe http://127.0.0.1:8000",
+     "x": 49,
+     "y": 8653,
+     "w": 465,
+     "h": 15
+    },
+    {
+     "text": "npm run dev # Vite: CSS/JS și reîncărcare automată",
+     "x": 49,
+     "y": 8673,
+     "w": 473,
+     "h": 15
+    }
+   ]
+  }
+ ],
+ "social": {
+  "file": "social.png",
+  "custom": false
+ },
+ "avatar": {
+  "file": "avatar.png"
+ },
+ "blocked_requests": 17
+}

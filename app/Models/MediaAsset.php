@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MediaKind;
+use App\Enums\MediaLanguage;
 use App\Enums\MediaStatus;
 use Database\Factories\MediaAssetFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,15 +13,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Throwable;
 
 /**
- * The presentation video or the slides of a repository (bonus): one row per repository and kind.
+ * The presentation video or the slides of a repository (bonus): one row per repository, kind and language —
+ * the video exists once for every language of App\Enums\MediaLanguage, the slides once.
  *
  * The files live on the "local" disk (storage/app/private), in media/{repository_id}/: "path" is the main
- * file (video.mp4, slides.pdf) and meta["files"] lists every file by format ("mp4", "poster", "vtt",
+ * file (video-en.mp4, slides.pdf) and meta["files"] lists every file by format ("mp4", "poster", "vtt",
  * "pdf", "pptx"), which is what the download route serves. They are deleted together with the repository.
  *
- * repository_id is not fillable: a row is found or made through the relationship, with $repository->mediaAsset($kind).
+ * repository_id is not fillable: a row is found or made through the relationship, with
+ * $repository->videoAsset($language) or $repository->slidesAsset().
  */
-#[Fillable(['kind', 'status', 'path', 'source_sha', 'duration_ms', 'size_bytes', 'error', 'meta', 'generated_at'])]
+#[Fillable(['kind', 'language', 'status', 'path', 'source_sha', 'duration_ms', 'size_bytes', 'error', 'meta', 'generated_at'])]
 class MediaAsset extends Model
 {
     /** @use HasFactory<MediaAssetFactory> */
@@ -40,6 +43,7 @@ class MediaAsset extends Model
     {
         return [
             'kind' => MediaKind::class,
+            'language' => MediaLanguage::class,
             'status' => MediaStatus::class,
             'meta' => 'array',
             'generated_at' => 'datetime',

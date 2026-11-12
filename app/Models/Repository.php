@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MediaKind;
+use App\Enums\MediaLanguage;
 use App\Enums\ProcessingRunStatus;
 use App\Enums\RepositoryStatus;
 use App\Search\CodeSearch;
@@ -161,7 +162,7 @@ class Repository extends Model
     }
 
     /**
-     * The presentation video and the slides (one row of each kind at most).
+     * The presentation video (one row per language) and the slides (one row).
      *
      * @return HasMany<MediaAsset, $this>
      */
@@ -181,11 +182,20 @@ class Repository extends Model
     }
 
     /**
-     * The video or the slides of this repository: the saved row, or a new one (not saved yet) of that kind.
+     * The video of this repository in one language: the saved row, or a new one (not saved yet).
      */
-    public function mediaAsset(MediaKind $kind): MediaAsset
+    public function videoAsset(MediaLanguage $language): MediaAsset
     {
-        return $this->mediaAssets()->firstOrNew(['kind' => $kind]);
+        return $this->mediaAssets()->firstOrNew(['kind' => MediaKind::Video, 'language' => $language]);
+    }
+
+    /**
+     * The slides of this repository: the saved row (whatever language the deck was written in), or a new
+     * one (not saved yet).
+     */
+    public function slidesAsset(): MediaAsset
+    {
+        return $this->mediaAssets()->firstOrNew(['kind' => MediaKind::Slides]);
     }
 
     /**

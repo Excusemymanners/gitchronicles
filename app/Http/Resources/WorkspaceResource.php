@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\ConsultingStatus;
 use App\Enums\MediaKind;
+use App\Enums\MediaLanguage;
 use App\Enums\MediaStatus;
 use App\Enums\RepositoryStatus;
 use App\Git\HistoryStatistics;
@@ -97,7 +98,10 @@ class WorkspaceResource extends JsonResource
         $statistics = app(HistoryStatistics::class);
         $activity = $statistics->activity($this->resource);
         $hotspots = $activity === null ? [] : $statistics->hotspots($this->resource, self::SHOWN_HOTSPOTS);
-        $media = $this->mediaAssets()->get()->keyBy(fn (MediaAsset $asset): string => $asset->kind->value);
+        // One row per kind for the cards: of the videos, the one in the default language (keyBy keeps the last).
+        $media = $this->mediaAssets()->get()
+            ->sortBy(fn (MediaAsset $asset): int => $asset->language === MediaLanguage::default() ? 1 : 0)
+            ->keyBy(fn (MediaAsset $asset): string => $asset->kind->value);
         $consulting = $this->consultingReports()->latest('id')->first();
 
         $groups = [
@@ -165,7 +169,7 @@ class WorkspaceResource extends JsonResource
             'status_label' => $video->status->label(),
             'poster' => $video->file('poster') === null
                 ? null
-                : route('repositories.media.poster', ['repository' => $this->id, 'v' => $video->generated_at?->timestamp], absolute: false),
+                : route('repositories.media.poster', ['repository' => $this->id, 'lang' => $video->language->value, 'v' => $video->generated_at?->timestamp], absolute: false),
             'duration_ms' => $video->status === MediaStatus::Ready ? $video->duration_ms : null,
         ];
     }

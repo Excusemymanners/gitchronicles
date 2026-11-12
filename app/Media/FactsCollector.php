@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  *   both cut to a budget, without image and badge lines that say nothing;
  * - GitHub's stars, language, license and topics (GitHubMetadata; null without network);
  * - the languages, modules and sizes of the code analysis, the git history (HistoryStatistics);
- * - the first command of a README code block, the commands of the manifests (ProjectFacts);
+ * - the README's headings and the first command of a README code block, the commands of the manifests (ProjectFacts);
  * - the technologies and the Mermaid code of the „Containere” (else „Straturi”) diagram.
  *
  * Nothing is estimated: what is missing stays null or empty.
@@ -101,7 +101,7 @@ final class FactsCollector
 
         if (is_string($overview) && trim($overview) !== '') {
             $sources['Despre proiect'] = [
-                'text' => Str::limit(trim($overview), self::OVERVIEW_CHARACTERS, '…', preserveWords: true),
+                'text' => self::cut(trim($overview), self::OVERVIEW_CHARACTERS),
                 'url' => route('repositories.docs', $repository, absolute: false),
             ];
         }
@@ -128,6 +128,7 @@ final class FactsCollector
             commands: array_map(fn (array $command): array => ['command' => $command['command'], 'source' => $command['source']], $projectFacts->commands),
             technologies: $this->technologies($repository),
             diagram: $this->diagram($repository),
+            headings: $readme === null ? [] : $this->headings($readme),
         );
     }
 
@@ -147,31 +148,66 @@ final class FactsCollector
             }
 
             $lines = array_filter(
-                preg_split('/\R/', RomanianText::commaBelow($text)) ?: [],
+                preg_split('/\R/u', RomanianText::commaBelow($text)) ?: [],
                 fn (string $line): bool => preg_match('/\A\s*(!\[|\[!\[|<img|<p\b|<\/p>|<a\b|<\/a>|<br|<!--)/i', $line) !== 1,
             );
             $text = trim(preg_replace("/\n{3,}/", "\n\n", implode("\n", $lines)) ?? '');
 
-            return $text === '' ? [null, null] : [$name, Str::limit($text, self::README_CHARACTERS, '…', preserveWords: true)];
+            return $text === '' ? [null, null] : [$name, self::cut($text, self::README_CHARACTERS)];
         }
 
         return [null, null];
     }
 
     /**
-     * GitHub's answer as short lines of text, so the AI can quote it like any other source.
+     * A long Markdown text cut to a budget at the end of a line, with „…” on its own line. The lines are
+     * kept as they are (Str::limit() with whole words would join them into one), because the headings and
+     * the code blocks of the README are found by their lines.
+     */
+    private static function cut(string $text, int $characters): string
+    {
+        if (mb_strlen($text) <= $characters) {
+            return $text;
+        }
+
+        $kept = mb_substr($text, 0, $characters);
+        $lastLine = mb_strrpos($kept, "\n");
+
+        return rtrim($lastLine === false ? $kept : mb_substr($kept, 0, $lastLine))."\n…";
+    }
+
+    /**
+     * The headings of the README ("# Title", up to four #), outside code blocks, without Markdown marks
+     * or emoji: the sections a scene of the video can be about.
+     *
+     * @return list<string>
+     */
+    private function headings(string $readme): array
+    {
+        $withoutCode = preg_replace('/^[ \t]*(```|~~~).*?^[ \t]*\1[^\n]*$/ms', '', $readme) ?? $readme;
+        preg_match_all('/^#{1,4}[ \t]+(.+?)[ \t]*#*$/m', $withoutCode, $matches);
+
+        return array_values(array_filter(array_map(
+            fn (string $heading): string => RomanianText::clean(str_replace(['*', '`', '_'], '', preg_replace('/\[([^\]]*)\]\([^)]*\)/', '$1', $heading) ?? $heading)),
+            $matches[1],
+        )));
+    }
+
+    /**
+     * GitHub's answer as short lines of text, so the AI can quote it like any other source. The stars and
+     * the forks are left out on purpose: they change every day, and this text decides whether the AI is
+     * asked again and whether the video is rendered again; the numbers scene takes them straight from the facts.
      *
      * @param  array{stars: int, forks: int, language: string|null, license: string|null, topics: list<string>, homepage: string|null, description: string|null}  $github
      */
     private function gitHubLines(array $github): string
     {
         return implode("\n", array_filter([
-            $github['description'] === null ? null : "Descriere: {$github['description']}",
-            "Stele: {$github['stars']}",
-            $github['language'] === null ? null : "Limbaj principal: {$github['language']}",
-            $github['license'] === null ? null : "Licență: {$github['license']}",
-            $github['topics'] === [] ? null : 'Subiecte: '.implode(', ', $github['topics']),
-            $github['homepage'] === null ? null : "Site: {$github['homepage']}",
+            $github['description'] === null ? null : "Description: {$github['description']}",
+            $github['language'] === null ? null : "Main language: {$github['language']}",
+            $github['license'] === null ? null : "License: {$github['license']}",
+            $github['topics'] === [] ? null : 'Topics: '.implode(', ', $github['topics']),
+            $github['homepage'] === null ? null : "Website: {$github['homepage']}",
         ]));
     }
 
@@ -186,7 +222,7 @@ final class FactsCollector
         preg_match_all('/^[ \t]*(```|~~~)[^\n]*\n(.*?)^[ \t]*\1/ms', $readme, $blocks);
 
         foreach ($blocks[2] as $block) {
-            foreach (preg_split('/\R/', $block) ?: [] as $line) {
+            foreach (preg_split('/\R/u', $block) ?: [] as $line) {
                 $command = trim(preg_replace('/\s+#.*\z/', '', preg_replace('/\A\s*[$>]\s+/', '', $line) ?? '') ?? '');
                 $firstWord = strtolower(strtok($command, ' ') ?: '');
 

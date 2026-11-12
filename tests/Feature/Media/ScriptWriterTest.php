@@ -5,6 +5,7 @@ namespace Tests\Feature\Media;
 use App\Ai\AiException;
 use App\Ai\NullTextGenerator;
 use App\Ai\TextGenerator;
+use App\Enums\MediaLanguage;
 use App\Media\PresentationFacts;
 use App\Media\ScriptWriter;
 use Tests\Support\FakeTextGenerator;
@@ -12,15 +13,15 @@ use Tests\TestCase;
 
 /**
  * The script of the video: Claude's JSON (always FakeTextGenerator here) is kept only where every scene
- * quotes the context it received; everything else falls back to the scenes built from the facts.
+ * quotes the context it received, in both languages from one call; everything else comes from the facts.
  */
 class ScriptWriterTest extends TestCase
 {
-    private const README = "# Magazin\n\nUn magazin mic, cu coș de cumpărături și plăți online.\n\n"
-        ."- **Coș** care ține minte produsele între vizite.\n- Plăți cu cardul, fără cont.\n- Facturi PDF trimise pe e-mail.\n\n"
-        ."```bash\ncomposer install\n```\n";
+    private const README = "# Magazin\n\nA small shop with a cart that remembers 3 products and online payments.\n\n"
+        ."## Features\n\n- **Cart** that remembers the products between visits.\n- Card payments, without an account.\n\n"
+        ."## Install\n\n```bash\ncomposer install\n```\n";
 
-    public function test_scenes_whose_quotes_are_in_the_context_become_the_script(): void
+    public function test_one_call_gives_the_story_in_both_languages_with_verified_anchors(): void
     {
         $this->app->instance(TextGenerator::class, $ai = new FakeTextGenerator(["```json\n".json_encode($this->answer(), JSON_UNESCAPED_UNICODE)."\n```"]));
 
@@ -29,189 +30,144 @@ class ScriptWriterTest extends TestCase
         $ai->assertSentCount(1);
         $this->assertStringContainsString('Repository: acme/magazin', $ai->requests[0]['user']);
         $this->assertStringContainsString("### README.md\n\n# Magazin", $ai->requests[0]['user']);
-        $this->assertStringContainsString('"source"', $ai->requests[0]['system']);
-        $this->assertSame('ai', $script->writer);
-        $this->assertSame('claude-opus-5-5', $script->model);
-        $this->assertSame([], $script->rejected);
-        $this->assertSame(['hook', 'problem', 'feature', 'feature', 'start', 'proof', 'cta'], array_column($script->scenes, 'key'));
+        $this->assertStringContainsString('"quote"', $ai->requests[0]['system']);
+        $this->assertSame(['ai', 'claude-opus-5-5', []], [$script->writer, $script->model, $script->rejected]);
+        $this->assertSame(['hook', 'problem', 'feature', 'feature', 'built', 'proof', 'start', 'cta'], array_column($script->scenes, 'key'));
 
-        [$hook, $problem, $first, $second, $start, $proof, $cta] = $script->scenes;
-        $this->assertSame(['acme /', 'magazin', 'Magazinul mic care ține minte coșul.', 'ține minte'], [$hook['kicker'], $hook['title'], $hook['text'], $hook['accent']]);
-        $this->assertSame($hook['text'], $hook['narration']);
-        $this->assertSame(['label' => 'README.md', 'quote' => 'Un magazin mic, cu coș de cumpărături și plăți online.', 'url' => 'https://github.com/acme/magazin/blob/abc/README.md'], $hook['source']);
-        $this->assertSame('Ce rezolvă', $problem['label']);
-        $this->assertSame([1, 2, 'Coș care nu uită', 'Plăți fără cont'], [$first['index'], $first['count'], $first['title'], $second['title']]);
-        $this->assertSame('Coș care nu uită. Ține minte produsele între vizite.', $first['narration']);
-        $this->assertSame('composer install', $start['command']);
-        $this->assertSame('README.md', $start['source']['label']);
-        $this->assertSame(1234, $proof['stars']);
-        $this->assertSame('github.com/acme/magazin', $cta['url']);
-        $this->assertSame('Încearcă magazinul chiar azi.', $cta['text']);
+        $english = $script->scenesFor(MediaLanguage::En);
+        $romanian = $script->scenesFor(MediaLanguage::Ro);
+
+        $this->assertSame(['What it is', 'A small shop that remembers your cart.'], [$english[0]['label'], $english[0]['narration']]);
+        $this->assertSame(['Ce este', 'Un magazin mic care îți ține minte coșul.'], [$romanian[0]['label'], $romanian[0]['narration']]);
+        $this->assertSame(['label' => 'README.md', 'quote' => 'A small shop with a cart', 'url' => 'https://github.com/acme/magazin/blob/abc/README.md'], $english[0]['source']);
+        $this->assertSame(['Features', 1, 2, 'A cart that remembers', 'Coș care nu uită'], [$english[2]['heading'], $english[2]['index'], $english[2]['count'], $english[2]['title'], $romanian[2]['title']]);
+        // An unknown heading is forgotten, the scene stays.
+        $this->assertNull($english[3]['heading']);
+        $this->assertSame(['composer install', 'Install it with Composer.'], [$english[6]['command'], $english[6]['narration']]);
+        $this->assertArrayNotHasKey('en', $english[0]);
+        $this->assertSame($this->answer(), $script->answer);
+        $this->assertSame(ScriptWriter::contextHash($this->facts()), $script->contextHash);
     }
 
-    public function test_a_scene_with_an_invented_quote_or_a_long_text_is_dropped(): void
+    public function test_a_scene_with_an_invented_quote_a_long_text_or_its_own_number_is_dropped(): void
     {
         $answer = $this->answer();
-        $answer['problem']['source'] = 'Cel mai rapid magazin din lume, folosit de milioane.';
-        $answer['features'][0]['text'] = str_repeat('foarte lung ', 10);
-        $answer['features'][] = ['title' => 'Facturi', 'text' => 'Facturi trimise pe e-mail.', 'source' => 'Facturi PDF trimise pe e-mail.'];
+        $answer['problem']['quote'] = 'The fastest shop in the world, used by millions.';
+        $answer['features'][0]['ro'] = str_repeat('foarte lung ', 20);
+        $answer['features'][1]['en'] = 'Pay by card in 5 seconds.';
+        $answer['features'][] = ['heading' => null, 'title_en' => 'Three products', 'title_ro' => 'Trei produse', 'en' => 'It remembers 3 products.', 'ro' => 'Ține minte 3 produse.', 'quote' => 'a cart that remembers 3 products'];
+        $answer['start']['command'] = 'npm install';
         $this->app->instance(TextGenerator::class, new FakeTextGenerator([json_encode($answer)]));
 
         $script = app(ScriptWriter::class)->write($this->facts());
 
-        $this->assertSame(['hook', 'feature', 'feature', 'start', 'proof', 'cta'], array_column($script->scenes, 'key'));
-        $this->assertSame(['Plăți fără cont', 'Facturi'], [$script->scenes[1]['title'], $script->scenes[2]['title']]);
-        $this->assertSame([1, 2], [$script->scenes[1]['index'], $script->scenes[2]['index']]);
-        $this->assertSame(['problem', 'feature 1'], array_column($script->rejected, 'scene'));
-        $this->assertSame('Citatul-sursă nu apare în textele trimise.', $script->rejected[0]['reason']);
+        $this->assertSame(['hook', 'feature', 'built', 'proof', 'start', 'cta'], array_column($script->scenes, 'key'));
+        $this->assertSame(['problem', 'feature 1', 'feature 2', 'start'], array_column($script->rejected, 'scene'));
+        $this->assertStringContainsString('cifra 5', $script->rejected[2]['reason']);
+        // The number 3 is in the quote, so the scene that says it stays; the README's own command replaces the invented one.
+        $english = $script->scenesFor(MediaLanguage::En);
+        $this->assertSame(['It remembers 3 products.', 1, 1], [$english[1]['narration'], $english[1]['index'], $english[1]['count']]);
+        $this->assertSame(['composer install', 'To try it yourself, the README starts with this command.'], [$english[4]['command'], $english[4]['narration']]);
     }
 
-    public function test_an_unusable_opening_closing_or_command_is_replaced_by_the_template_one(): void
-    {
-        $answer = $this->answer();
-        $answer['hook']['source'] = 'scurt';
-        $answer['cta'] = null;
-        $answer['start']['command'] = 'rm -rf /';
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator([json_encode($answer)]));
-
-        $script = app(ScriptWriter::class)->write($this->facts());
-
-        $scenes = collect($script->scenes)->keyBy('key');
-        $this->assertSame('Un magazin mic, cu coș de cumpărături și plăți online.', $scenes['hook']['text']);
-        $this->assertSame('Vezi proiectul pe GitHub.', $scenes['cta']['text']);
-        $this->assertSame('composer install', $scenes['start']['command']);
-        $this->assertSame('Pornești cu o comandă din README.', $scenes['start']['text']);
-        $this->assertSame(['hook', 'cta', 'start'], array_column($script->rejected, 'scene'));
-    }
-
-    public function test_texts_get_comma_below_letters_and_lose_emoji_and_a_foreign_accent(): void
-    {
-        $answer = $this->answer();
-        $answer['hook']['text'] = 'Coşul care ţine minte 🚀';
-        $answer['hook']['accent'] = 'altceva';
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator([json_encode($answer)]));
-
-        $hook = app(ScriptWriter::class)->write($this->facts())->scenes[0];
-
-        $this->assertSame('Coșul care ține minte', $hook['text']);
-        $this->assertNull($hook['accent']);
-    }
-
-    public function test_an_answer_that_is_not_json_gives_the_template_script(): void
-    {
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator(['Iată scenariul: hook, problemă, final.']));
-
-        $script = app(ScriptWriter::class)->write($this->facts());
-
-        $this->assertSame('template', $script->writer);
-        $this->assertSame(['hook', 'start', 'proof', 'cta'], array_column($script->scenes, 'key'));
-        $this->assertNotNull($script->note);
-    }
-
-    public function test_without_ai_the_script_comes_from_the_description_and_the_numbers(): void
+    public function test_without_ai_the_script_is_built_from_the_facts_in_both_languages(): void
     {
         $this->app->instance(TextGenerator::class, new NullTextGenerator);
 
         $script = app(ScriptWriter::class)->write($this->facts());
 
         $this->assertSame('template', $script->writer);
-        $this->assertNull($script->model);
-        [$hook, $start, $proof, $cta] = $script->scenes;
-        $this->assertSame('Un magazin mic, cu coș de cumpărături și plăți online.', $hook['text']);
-        $this->assertSame($hook['text'], $hook['narration']);
-        $this->assertSame('README.md', $hook['source']['label']);
-        $this->assertSame('composer install', $start['command']);
-        $this->assertSame(['Pe GitHub', 1234, ['PHP', 'TypeScript', 'MIT']], [$proof['label'], $proof['stars'], $proof['chips']]);
-        $this->assertSame('Are 1234 de stele pe GitHub, e scris în PHP și TypeScript și are licența MIT.', $proof['narration']);
-        $this->assertSame('12 fișiere și 3.400 de linii de cod, analizate de GitChronicle', $proof['note']);
-        $this->assertSame('Îl găsești pe GitHub, la adresa de pe ecran.', $cta['narration']);
+        $this->assertStringContainsString('Generarea cu AI este oprită', (string) $script->note);
+        $this->assertSame(['hook', 'feature', 'built', 'proof', 'start', 'cta'], array_column($script->scenes, 'key'));
+
+        $english = $script->scenesFor(MediaLanguage::En);
+        $romanian = $script->scenesFor(MediaLanguage::Ro);
+
+        // The English description is read by the English voice only; the Romanian one says the name.
+        $this->assertSame('Magazin. A small shop with online payments.', $english[0]['narration']);
+        $this->assertSame('Acesta este magazin, de la acme, pe GitHub.', $romanian[0]['narration']);
+        $this->assertSame('A small shop with online payments.', $romanian[0]['text']);
+        $this->assertSame([['Features', 'Install'], 'Its README walks you through Features and Install.'], [$english[1]['headings'], $english[1]['narration']]);
+        $this->assertSame('Under the hood it is written mostly in PHP and TypeScript, organised in 12 modules.', $english[2]['narration']);
+        $this->assertSame('Sub capotă e scris mai ales în PHP și TypeScript, organizat în 12 module.', $romanian[2]['narration']);
+        $this->assertSame('On GitHub it has over 1 thousand stars and 56 forks. 3 contributors made 214 commits. The latest one is from November 2026.', $english[3]['narration']);
+        $this->assertSame('Pe GitHub are peste o mie de stele și 56 de forkuri. 3 contribuitori au făcut 214 commituri. Cel mai recent e din noiembrie 2026.', $romanian[3]['narration']);
+        $this->assertSame([['value' => '214', 'label' => 'commits'], ['value' => '3', 'label' => 'contributors'], ['value' => 'November 2026', 'label' => 'latest commit']], $english[3]['stats']);
+        $this->assertSame('github.com/acme/magazin', $english[5]['url']);
+        $this->assertStringContainsString('GitChronicle', $english[5]['narration']);
     }
 
-    public function test_a_failing_ai_gives_the_template_script_with_its_reason(): void
+    public function test_the_same_sources_reuse_the_answer_without_a_new_call(): void
     {
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator(exception: new AiException(AiException::LIMIT_MESSAGE, retryable: true)));
+        $this->app->instance(TextGenerator::class, $ai = new FakeTextGenerator([json_encode($this->answer())]));
+        $writer = app(ScriptWriter::class);
+        $first = $writer->write($this->facts());
 
+        $again = $writer->write($this->facts(stars: 99999), $first->toArray());
+
+        $ai->assertSentCount(1);
+        $this->assertSame('ai', $again->writer);
+        $this->assertSame('A small shop that remembers your cart.', $again->scenesFor(MediaLanguage::En)[0]['narration']);
+        $this->assertStringContainsString('over 99 thousand stars', $again->scenesFor(MediaLanguage::En)[5]['narration']);
+
+        // Other sources: the old answer is not trusted any more, Claude is asked again.
+        $writer->write($this->facts(readme: self::README."\nNew paragraph.\n"), $first->toArray());
+        $ai->assertSentCount(2);
+    }
+
+    public function test_a_failed_call_or_an_unusable_answer_falls_back_to_the_template(): void
+    {
+        $this->app->instance(TextGenerator::class, new FakeTextGenerator(['I cannot answer with JSON.']));
+        $this->assertSame('template', app(ScriptWriter::class)->write($this->facts())->writer);
+
+        $this->app->instance(TextGenerator::class, new FakeTextGenerator(exception: new AiException('Claude nu a răspuns la timp.')));
         $script = app(ScriptWriter::class)->write($this->facts());
-
-        $this->assertSame('template', $script->writer);
-        $this->assertSame(AiException::LIMIT_MESSAGE, $script->note);
-    }
-
-    public function test_an_english_description_is_shown_but_the_romanian_voice_only_says_the_name(): void
-    {
-        $this->app->instance(TextGenerator::class, new NullTextGenerator);
-        $description = 'A small shop with a shopping cart: it remembers the products between visits and it sends the invoices by e-mail to every single customer.';
-
-        $hook = app(ScriptWriter::class)->write($this->facts(description: $description))->scenes[0];
-
-        $this->assertSame('A small shop with a shopping cart.', $hook['text']);
-        $this->assertSame('Acesta este magazin.', $hook['narration']);
-    }
-
-    public function test_a_repository_with_nothing_to_quote_never_calls_the_ai_and_shows_only_what_is_known(): void
-    {
-        $this->app->instance(TextGenerator::class, $ai = new FakeTextGenerator);
-        $facts = new PresentationFacts(
-            owner: 'acme', name: 'gol', url: 'https://github.com/acme/gol', sha: null, description: null, sources: [],
-            github: null, license: null, languages: [], modules: [], stats: ['files' => 0, 'lines' => 0, 'modules' => 0],
-            history: null, startCommand: null, commands: [], technologies: [], diagram: null,
-        );
-
-        $script = app(ScriptWriter::class)->write($facts);
-
-        $ai->assertSentCount(0);
-        $this->assertSame(['hook', 'cta'], array_column($script->scenes, 'key'));
-        $this->assertNull($script->scenes[0]['text']);
-        $this->assertNull($script->scenes[0]['source']);
+        $this->assertSame(['template', 'Claude nu a răspuns la timp.'], [$script->writer, $script->note]);
     }
 
     /**
-     * A valid answer of Claude for the facts below.
+     * A good answer: every quote is a piece of the README above.
      *
      * @return array<string, mixed>
      */
     private function answer(): array
     {
         return [
-            'hook' => ['text' => 'Magazinul mic care ține minte coșul.', 'accent' => 'ține minte', 'source' => 'Un magazin mic, cu coș de cumpărături și plăți online.'],
-            'problem' => ['text' => 'Cumperi fără să îți faci cont.', 'accent' => 'fără', 'source' => 'Plăți cu cardul, fără cont.'],
+            'hook' => ['en' => 'A small shop that remembers your cart.', 'ro' => 'Un magazin mic care îţi ține minte coșul.', 'quote' => 'A small shop with a cart'],
+            'problem' => ['en' => 'Carts are usually lost between visits.', 'ro' => 'De obicei, coșul se pierde între vizite.', 'quote' => 'remembers the products between visits'],
             'features' => [
-                ['title' => 'Coș care nu uită', 'text' => 'Ține minte produsele între vizite.', 'accent' => 'nu uită', 'source' => 'Coș care ține minte produsele între vizite.'],
-                ['title' => 'Plăți fără cont', 'text' => 'Plătești cu cardul, direct.', 'accent' => null, 'source' => 'plăți cu cardul, fără cont'],
+                ['heading' => 'Features', 'title_en' => 'A cart that remembers', 'title_ro' => 'Coș care nu uită', 'en' => 'The cart keeps your products between visits.', 'ro' => 'Coșul îți păstrează produsele între vizite.', 'quote' => '**Cart** that remembers the products between visits.'],
+                ['heading' => 'Pricing', 'title_en' => 'No account needed', 'title_ro' => 'Fără cont', 'en' => 'Pay by card without an account.', 'ro' => 'Plătești cu cardul, fără cont.', 'quote' => 'Card payments, without an account.'],
             ],
-            'start' => ['text' => 'Îl pornești cu o singură comandă.', 'command' => 'composer install', 'source' => 'composer install'],
-            'cta' => ['text' => 'Încearcă magazinul chiar azi.', 'accent' => 'chiar azi', 'source' => 'Un magazin mic, cu coș de cumpărături'],
+            'start' => ['en' => 'Install it with Composer.', 'ro' => 'Îl instalezi cu Composer.', 'command' => 'composer install'],
         ];
     }
 
     /**
-     * The facts of a small shop with a README, 1234 stars and an MIT license.
+     * The facts of a small shop repository.
      */
-    private function facts(string $description = 'Un magazin mic, cu coș de cumpărături și plăți online.'): PresentationFacts
+    private function facts(int $stars = 1234, string $readme = self::README): PresentationFacts
     {
+        $url = 'https://github.com/acme/magazin/blob/abc/README.md';
+
         return new PresentationFacts(
             owner: 'acme',
             name: 'magazin',
             url: 'https://github.com/acme/magazin',
             sha: 'abc',
-            description: $description,
-            sources: [
-                'README.md' => ['text' => self::README, 'url' => 'https://github.com/acme/magazin/blob/abc/README.md'],
-                'GitHub' => ['text' => "Stele: 1234\nLimbaj principal: PHP\nLicență: MIT", 'url' => 'https://github.com/acme/magazin'],
-            ],
-            github: ['stars' => 1234, 'forks' => 5, 'language' => 'PHP', 'license' => 'MIT', 'topics' => [], 'homepage' => null, 'description' => null],
+            description: 'A small shop with online payments.',
+            sources: ['README.md' => ['text' => $readme, 'url' => $url]],
+            github: ['stars' => $stars, 'forks' => 56, 'language' => 'PHP', 'license' => 'MIT', 'topics' => [], 'homepage' => null, 'description' => 'A small shop with online payments.'],
             license: 'MIT',
-            languages: [
-                ['name' => 'PHP', 'files' => 9, 'lines' => 2800, 'percent' => 82],
-                ['name' => 'TypeScript', 'files' => 3, 'lines' => 600, 'percent' => 18],
-            ],
-            modules: [['path' => 'src/Models', 'files' => 2, 'lines' => 14]],
-            stats: ['files' => 12, 'lines' => 3400, 'modules' => 3],
-            history: null,
-            startCommand: ['command' => 'composer install', 'url' => 'https://github.com/acme/magazin/blob/abc/README.md'],
+            languages: [['name' => 'PHP', 'files' => 40, 'lines' => 3000, 'percent' => 70], ['name' => 'TypeScript', 'files' => 10, 'lines' => 900, 'percent' => 21], ['name' => 'Markdown', 'files' => 3, 'lines' => 400, 'percent' => 9]],
+            modules: [['path' => 'app/Cart', 'files' => 9, 'lines' => 700]],
+            stats: ['files' => 53, 'lines' => 4300, 'modules' => 12],
+            history: ['commit_count' => 214, 'contributor_count' => 3, 'first_commit_at' => '2026-01-05T10:00:00+00:00', 'last_commit_at' => '2026-11-02T10:00:00+00:00', 'contributors' => ['Ana', 'Bogdan']],
+            startCommand: ['command' => 'composer install', 'url' => $url],
             commands: [],
-            technologies: [],
+            technologies: ['Laravel 13'],
             diagram: null,
+            headings: ['Magazin', 'Features', 'Install'],
         );
     }
 }

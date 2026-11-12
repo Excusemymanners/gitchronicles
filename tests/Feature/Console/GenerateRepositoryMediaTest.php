@@ -40,11 +40,11 @@ class GenerateRepositoryMediaTest extends TestCase
         ['repository' => $repository] = $this->shopRepository();
 
         $this->artisan('repositories:media', ['repository' => $repository->id, '--now' => true])
-            ->expectsOutputToContain("slides: Gata — storage/app/private/media/{$repository->id}/slides.pdf")
-            ->expectsOutputToContain("video: Gata — storage/app/private/media/{$repository->id}/video.mp4")
+            ->expectsOutputToContain("slides (en): Gata — storage/app/private/media/{$repository->id}/slides.pdf")
+            ->expectsOutputToContain("video (en): Gata — storage/app/private/media/{$repository->id}/video-en.mp4")
             ->assertSuccessful();
 
-        $this->assertSame(2, MediaAsset::where('status', 'ready')->count());
+        $this->assertSame(3, MediaAsset::where('status', 'ready')->count());
     }
 
     public function test_now_fails_when_a_render_fails(): void
@@ -54,7 +54,7 @@ class GenerateRepositoryMediaTest extends TestCase
         ['repository' => $repository] = $this->shopRepository();
 
         $this->artisan('repositories:media', ['repository' => $repository->id, '--now' => true])
-            ->expectsOutputToContain('slides: Eroare')
+            ->expectsOutputToContain('slides (en): Eroare')
             ->assertFailed();
     }
 

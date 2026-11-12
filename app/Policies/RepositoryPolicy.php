@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\ConsultingStatus;
+use App\Enums\MediaStatus;
 use App\Enums\RepositoryStatus;
 use App\Models\Repository;
 use App\Models\User;
@@ -20,7 +21,7 @@ class RepositoryPolicy
      *
      * @var list<string>
      */
-    private const STATE_RULES = ['retry', 'checkUpdates', 'regenerate', 'runConsulting'];
+    private const STATE_RULES = ['retry', 'checkUpdates', 'regenerate', 'generateMedia', 'runConsulting'];
 
     /**
      * An administrator (users.is_admin) may do on every repository what its owner may do, for example
@@ -81,6 +82,20 @@ class RepositoryPolicy
     public function regenerate(User $user, Repository $repository): bool
     {
         return in_array($repository->status, [RepositoryStatus::Ready, RepositoryStatus::Failed], true);
+    }
+
+    /**
+     * Determine whether the user can start the presentation video and the slides („Generează video și
+     * slide-uri”, „Regenerează”).
+     *
+     * Any logged-in user may, like „Verifică actualizări”: the repository is public and the media are
+     * made only from its real data. It is allowed only while the repository is ready (the media need the
+     * finished analysis) and while no video or deck is already waiting or being rendered.
+     */
+    public function generateMedia(User $user, Repository $repository): bool
+    {
+        return $repository->status === RepositoryStatus::Ready
+            && ! $repository->mediaAssets()->whereIn('status', [MediaStatus::Pending, MediaStatus::Running])->exists();
     }
 
     /**

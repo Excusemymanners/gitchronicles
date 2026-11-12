@@ -2,9 +2,12 @@
 
 namespace App\Jobs;
 
-use App\Enums\MediaKind;
+use App\Enums\MediaLanguage;
 use App\Enums\MediaStatus;
 use App\Media\FactsCollector;
+use App\Media\GitHubCapture;
+use App\Media\PageCapture;
+use App\Media\PresentationFacts;
 use App\Media\ScriptWriter;
 use App\Media\ToolEnvironment;
 use App\Models\MediaAsset;
@@ -15,20 +18,26 @@ use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
 /**
- * Starts the presentation video and the slides of a repository. It is not a step of the processing
- * pipeline: FinishProcessing queues it after the repository is already "ready", on the separate "media"
- * queue, so a slow or failed render never delays or breaks the documentation.
+ * Starts the presentation video (one per language) and the slides of a repository. It is not a step of
+ * the processing pipeline: FinishProcessing queues it after the repository is already "ready", on the
+ * separate "media" queue, so a slow or failed render never delays or breaks the documentation.
  *
  * What it does:
  *
- * 1. nothing, when both the video and the slides were already made (or are being made) from the current
+ * 1. nothing, when the videos and the slides were already made (or are being made) from the current
  *    commit — unless $force;
- * 2. marks both as pending in media_assets, for the current commit, so the page shows „În așteptare”;
- * 3. gathers the real facts (FactsCollector) and writes the script (ScriptWriter: Claude, or the template);
- * 4. queues the two render jobs, each with the data it needs. They are independent: if the video fails,
- *    the slides are still made.
+ * 2. gathers the real facts (FactsCollector) and photographs the repository's GitHub page (GitHubCapture);
+ * 3. compares the hash of everything the video is built from (the texts of the sources, the facts in the
+ *    form the video shows them, what the photo of the page says, the languages) with the hash kept with
+ *    the existing videos: after an update that changed none of it, the videos are only marked as made
+ *    for the new commit — no AI call, no render;
+ * 4. marks what will be made as pending in media_assets, so the page shows „În așteptare”;
+ * 5. writes the script once for all languages (ScriptWriter: Claude, or the template). While the sources
+ *    did not change, the texts Claude already wrote are used again instead of a new call — unless $rewrite;
+ * 6. queues one video render per language and the slides render, each with the data it needs. They are
+ *    independent: if one fails, the others are still made.
  *
- * $renderNow runs the two render jobs right here instead of queueing them (`media:generate --now`).
+ * $renderNow runs the render jobs right here instead of queueing them (`repositories:media --now`).
  */
 class GenerateMedia implements ShouldBeUnique, ShouldQueue
 {
@@ -40,15 +49,22 @@ class GenerateMedia implements ShouldBeUnique, ShouldQueue
     public const NOT_INSTALLED_MESSAGE = 'Uneltele pentru video și slide-uri nu sunt instalate pe server (composer media:install).';
 
     /**
+     * Changing how the video looks or is told (the composition, the scenes) makes the old videos
+     * outdated even when the repository did not change: this number is part of the input hash.
+     */
+    public const VIDEO_VERSION = 3;
+
+    /**
      * One attempt: the only slow part is the AI call, which already falls back to the template.
      */
     public int $tries = 1;
 
     /**
-     * The maximum number of seconds the job may run: one AI call (ClaudeCodeGenerator stops after 300).
-     * With $renderNow the renders run inside this job too, so `media:generate --now` is not for a worker.
+     * The maximum number of seconds the job may run: the photo of the GitHub page (config
+     * gitchronicle.media.capture.timeout) and one AI call (ClaudeCodeGenerator stops after 300).
+     * With $renderNow the renders run inside this job too, so `repositories:media --now` is not for a worker.
      */
-    public int $timeout = 420;
+    public int $timeout = 540;
 
     /**
      * If the repository was deleted while the job waited in the queue, drop the job silently.
@@ -62,11 +78,16 @@ class GenerateMedia implements ShouldBeUnique, ShouldQueue
 
     /**
      * Create a new job instance.
+     *
+     * @param  bool  $force  make everything again, even when it exists for the current commit (with a new photo of the page)
+     * @param  bool  $renderNow  render here instead of queueing the render jobs
+     * @param  bool  $rewrite  ask the AI for new texts even when the sources did not change
      */
     public function __construct(
         public Repository $repository,
         public bool $force = false,
         public bool $renderNow = false,
+        public bool $rewrite = false,
     ) {
         $this->onQueue(config('gitchronicle.media.queue'));
     }
@@ -82,36 +103,64 @@ class GenerateMedia implements ShouldBeUnique, ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(FactsCollector $collector, ScriptWriter $writer): void
+    public function handle(FactsCollector $collector, ScriptWriter $writer, GitHubCapture $capturer): void
     {
         $repository = $this->repository;
         $sha = $repository->last_sha;
+        $languages = MediaLanguage::configured();
 
-        if (! $this->force && $this->isUpToDate($sha)) {
+        $videos = array_map(fn (MediaLanguage $language): MediaAsset => $repository->videoAsset($language), $languages);
+        $slides = $repository->slidesAsset();
+
+        $needsVideos = $this->force || ! $this->areCurrent($videos, $sha);
+        $needsSlides = $this->force || ! $this->areCurrent([$slides], $sha);
+
+        if (! $needsVideos && ! $needsSlides) {
             return;
         }
 
-        $assets = [$repository->mediaAsset(MediaKind::Video), $repository->mediaAsset(MediaKind::Slides)];
-
-        foreach ($assets as $asset) {
-            $asset->fill(['status' => MediaStatus::Pending, 'source_sha' => $sha, 'error' => null])->save();
-        }
-
         if (! ToolEnvironment::isInstalled()) {
-            foreach ($assets as $asset) {
-                $asset->markFailed(self::NOT_INSTALLED_MESSAGE);
+            foreach ([...($needsVideos ? $videos : []), ...($needsSlides ? [$slides] : [])] as $asset) {
+                $asset->fill(['status' => MediaStatus::Failed, 'source_sha' => $sha, 'error' => self::NOT_INSTALLED_MESSAGE])->save();
             }
 
             return;
         }
 
         $facts = $collector->collect($repository);
-        $script = $writer->write($facts);
+        $capture = $needsVideos ? $capturer->capture($repository, fresh: $this->force) : PageCapture::missing(GitHubCapture::FAILED_REASON);
+        $inputHash = self::inputHash($facts, $capture, $languages);
 
-        $renders = [
-            new RenderPresentationVideo($repository, $script->toArray(), $sha),
-            new RenderPresentationSlides($repository, $facts->summary(), $script->scenes, $sha),
-        ];
+        if ($needsVideos && ! $this->force && $this->wereMadeFrom($videos, $inputHash)) {
+            // Nothing the video shows has changed: the same files now stand for the new commit.
+            foreach ($videos as $video) {
+                $video->update(['source_sha' => $sha]);
+            }
+
+            $needsVideos = false;
+        }
+
+        if (! $needsVideos && ! $needsSlides) {
+            return;
+        }
+
+        foreach ([...($needsVideos ? $videos : []), ...($needsSlides ? [$slides] : [])] as $asset) {
+            $asset->fill(['status' => MediaStatus::Pending, 'source_sha' => $sha, 'error' => null])->save();
+        }
+
+        $script = $writer->write($facts, $this->rewrite ? null : $this->previousScript($videos));
+        $renders = [];
+
+        if ($needsVideos) {
+            foreach ($languages as $language) {
+                $renders[] = new RenderPresentationVideo($repository, $script->toArray(), $language->value, $sha, $inputHash, $capture->isAvailable() ? null : $capture->reason);
+            }
+        }
+
+        if ($needsSlides) {
+            // The slides are generated content: they are written in English, like the documentation.
+            $renders[] = new RenderPresentationSlides($repository, $facts->summary(), $script->scenesFor(MediaLanguage::En), $sha);
+        }
 
         foreach ($renders as $render) {
             $this->renderNow ? dispatch_sync($render) : dispatch($render);
@@ -130,16 +179,69 @@ class GenerateMedia implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Whether the video and the slides both exist for this commit: ready, or still being made.
-     * A failed one is made again.
+     * The hash of everything the videos are built from: what the facts show (PresentationFacts::videoFingerprint()),
+     * what the photo of the GitHub page says (PageCapture::fingerprint()), the languages and the version of
+     * the video itself.
+     *
+     * @param  list<MediaLanguage>  $languages
      */
-    private function isUpToDate(?string $sha): bool
+    public static function inputHash(PresentationFacts $facts, PageCapture $capture, array $languages): string
     {
-        $current = $this->repository->mediaAssets()
-            ->where('source_sha', $sha)
-            ->whereIn('status', [MediaStatus::Ready, MediaStatus::Pending, MediaStatus::Running])
-            ->count();
+        return hash('sha256', implode('|', [
+            self::VIDEO_VERSION,
+            $facts->videoFingerprint(),
+            $capture->fingerprint(),
+            implode(',', array_column($languages, 'value')),
+        ]));
+    }
 
-        return $current === count(MediaKind::cases());
+    /**
+     * Whether every asset exists for this commit: ready, or still being made. A failed one is made again.
+     *
+     * @param  list<MediaAsset>  $assets
+     */
+    private function areCurrent(array $assets, ?string $sha): bool
+    {
+        foreach ($assets as $asset) {
+            if (! $asset->exists || $asset->source_sha !== $sha || $asset->status === MediaStatus::Failed) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether every video is ready and was built from exactly this input.
+     *
+     * @param  list<MediaAsset>  $videos
+     */
+    private function wereMadeFrom(array $videos, string $inputHash): bool
+    {
+        foreach ($videos as $video) {
+            if (! $video->exists || $video->status !== MediaStatus::Ready || ($video->meta['input_hash'] ?? null) !== $inputHash) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * The script kept with an existing video (the AI's answer and the hash of what it was given), so the
+     * writer can use the same texts again.
+     *
+     * @param  list<MediaAsset>  $videos
+     * @return array<string, mixed>|null
+     */
+    private function previousScript(array $videos): ?array
+    {
+        foreach ($videos as $video) {
+            if (is_array($video->meta['script'] ?? null)) {
+                return $video->meta['script'];
+            }
+        }
+
+        return null;
     }
 }
