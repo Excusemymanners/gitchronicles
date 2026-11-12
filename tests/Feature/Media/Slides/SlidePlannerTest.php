@@ -206,4 +206,14 @@ class SlidePlannerTest extends TestCase
             'recent' => ['commits' => [['subject' => 'Fix the cart total', 'date' => '2026-11-10']]],
         ];
     }
+
+    public function test_a_sentence_that_introduces_a_list_is_left_out(): void
+    {
+        $markdown = "HyperFrames turns HTML into video. You can use it in three ways:\n\n- one\n- two\n\nThe README lists these parts:\n\n- a\n\nIt is licensed under Apache-2.0.";
+
+        $this->assertSame(
+            ['HyperFrames turns HTML into video.', 'It is licensed under Apache-2.0.'],
+            DocText::sentences($markdown),
+        );
+    }
 }

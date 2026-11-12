@@ -102,7 +102,11 @@ final class DocText
             return [];
         }
 
-        return array_values(array_filter(array_map(fn (string $sentence): string => self::withoutLeadIn(trim($sentence)), preg_split('/(?<=[.!?])\s+(?=[A-Z0-9`"„(])/u', $text) ?: [])));
+        // A sentence that ends with a colon introduced a list ("You can use it in three ways:"). The lists are left
+        // out here, so such a lead-in would dangle; it is split off like any sentence and then dropped.
+        $sentences = array_map(fn (string $sentence): string => self::withoutLeadIn(trim($sentence)), preg_split('/(?<=[.!?:])\s+(?=[A-Z0-9`"„(])/u', $text) ?: []);
+
+        return array_values(array_filter($sentences, fn (string $sentence): bool => $sentence !== '' && ! str_ends_with($sentence, ':')));
     }
 
     /**

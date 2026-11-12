@@ -166,8 +166,24 @@ function InlineMarkdown({ children }: { children: string }) {
  */
 function firstParagraph(markdown: string): string | null {
     const blocks = markdown.split(/\n\s*\n/).map((block) => block.trim());
+    const paragraph = blocks.find((block) => block !== '' && !/^(#|[-*+] |\d+\. |\||>|```|<)/.test(block)) ?? null;
 
-    return blocks.find((block) => block !== '' && !/^(#|[-*+] |\d+\. |\||>|```|<)/.test(block)) ?? null;
+    return paragraph ? withoutListLeadIn(paragraph) : null;
+}
+
+/**
+ * A paragraph that ends with a colon introduces a list ("…you can use it in three ways:"). The hero shows the
+ * paragraph without its list, so that last sentence is cut off; it stays, with its list, in "About the project".
+ * `null` when the whole paragraph was only the lead-in.
+ */
+function withoutListLeadIn(paragraph: string): string | null {
+    if (!paragraph.endsWith(':')) {
+        return paragraph;
+    }
+
+    const complete = paragraph.match(/^([\s\S]*[.!?])\s+[^.!?]*:$/);
+
+    return complete ? complete[1] : null;
 }
 
 /**
