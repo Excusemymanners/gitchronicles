@@ -1,0 +1,70 @@
+# Semgrep rules for JavaScript, TypeScript and React, written for GitChronicle (the project's license).
+# category: security → vulnerability; correctness → bug. severity: ERROR = high, WARNING = medium, INFO = low.
+rules:
+  - id: js-eval
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: eval() or new Function() runs the given text as code; if any part of it can come from a user, that user runs any code in the page or on the server.
+    metadata:
+      title: eval() in JavaScript
+      category: security
+      cwe: "CWE-95: Eval Injection"
+    patterns:
+      - pattern-either:
+          - pattern: eval($CODE)
+          - pattern: new Function(..., $CODE)
+      - pattern-not: eval("...")
+      - pattern-not: new Function(..., "...")
+
+  - id: js-html-injection
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: HTML built from a value that is not constant is put straight into the page; if the value comes from a user, it can inject JavaScript (XSS). Use textContent or escape the value.
+    metadata:
+      title: HTML put straight into the page
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+    patterns:
+      - pattern-either:
+          - pattern: $ELEMENT.innerHTML = $HTML
+          - pattern: $ELEMENT.outerHTML = $HTML
+          - pattern: $ELEMENT.insertAdjacentHTML($POSITION, $HTML)
+          - pattern: document.write($HTML)
+      - pattern-not: $ELEMENT.innerHTML = "..."
+      - pattern-not: $ELEMENT.outerHTML = "..."
+      - pattern-not: $ELEMENT.insertAdjacentHTML($POSITION, "...")
+      - pattern-not: document.write("...")
+
+  - id: react-dangerously-set-inner-html
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: dangerouslySetInnerHTML puts HTML into the page without escaping; if the HTML holds user data, it can inject JavaScript (XSS). Sanitize it first (with DOMPurify, for example).
+    metadata:
+      title: dangerouslySetInnerHTML in React
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+    pattern-regex: dangerouslySetInnerHTML\s*=
+
+  - id: node-shell-command-template
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: A shell command is built from a template string with variables (`${...}`); if any part comes from a user, that user can run other commands. Use execFile/spawn with separate arguments.
+    metadata:
+      title: Shell command from a template string
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    pattern-either:
+      - pattern: exec(`...${$VALUE}...`, ...)
+      - pattern: execSync(`...${$VALUE}...`, ...)
+      - pattern: $CHILD.exec(`...${$VALUE}...`, ...)
+      - pattern: $CHILD.execSync(`...${$VALUE}...`, ...)
+
+  - id: js-postmessage-any-origin
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: postMessage with the target "*" sends the message to whatever page opened the window, a foreign one included; give the exact origin.
+    metadata:
+      title: postMessage to any origin
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+    pattern: $WINDOW.postMessage($MESSAGE, "*")

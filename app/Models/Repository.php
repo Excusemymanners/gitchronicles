@@ -171,6 +171,16 @@ class Repository extends Model
     }
 
     /**
+     * The „Consultanță” reports, one per analyzed commit (only the newest few are kept).
+     *
+     * @return HasMany<ConsultingReport, $this>
+     */
+    public function consultingReports(): HasMany
+    {
+        return $this->hasMany(ConsultingReport::class);
+    }
+
+    /**
      * The video or the slides of this repository: the saved row, or a new one (not saved yet) of that kind.
      */
     public function mediaAsset(MediaKind $kind): MediaAsset

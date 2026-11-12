@@ -5,11 +5,14 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\Repository\AssistantController;
 use App\Http\Controllers\Repository\AssistantQuestionController;
+use App\Http\Controllers\Repository\ConsultingController;
 use App\Http\Controllers\Repository\DiagramsController;
 use App\Http\Controllers\Repository\DocsController;
+use App\Http\Controllers\Repository\DownloadConsultingReportController;
 use App\Http\Controllers\Repository\DownloadReadmeController;
 use App\Http\Controllers\Repository\MediaController;
 use App\Http\Controllers\Repository\MediaFileController;
+use App\Http\Controllers\Repository\RunConsultingController;
 use App\Http\Controllers\Repository\TimelineController;
 use App\Http\Controllers\RepositoryController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
@@ -53,6 +56,12 @@ Route::prefix('repositories/{repository}')->name('repositories.')->group(functio
     Route::get('media/download/{format}', [MediaFileController::class, 'download'])
         ->whereIn('format', ['mp4', 'pdf', 'pptx'])
         ->name('media.download');
+
+    // „Consultanță”: bugs, vulnerabilities and code statistics (bonus), the report as Markdown, and
+    // „Rulează analiza” for logged-in users (it starts three tools on the clone, so it has its own limit).
+    Route::get('consulting', ConsultingController::class)->name('consulting');
+    Route::get('consulting/report.md', DownloadConsultingReportController::class)->name('consulting.download');
+    Route::post('consulting', RunConsultingController::class)->middleware(['auth', 'throttle:consulting'])->name('consulting.run');
 });
 
 // „Reîncearcă” after a failed processing: it starts a new clone, so it shares the add limit.

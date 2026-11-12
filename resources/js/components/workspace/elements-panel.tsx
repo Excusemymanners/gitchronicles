@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import MermaidDiagram from '@/components/diagrams/mermaid-diagram';
+import SeverityBadge, { SEVERITIES, SEVERITY_LABELS } from '@/components/consulting/severity-badge';
 import MediaStatusBadge from '@/components/media/media-status-badge';
 import ElementCard from '@/components/workspace/element-card';
 import { countLabel, formatNumber, formatTimecode } from '@/lib/format';
@@ -15,7 +16,7 @@ type Props = {
 
 /**
  * Panoul „Elemente”, ca în NotebookLM: ce a generat GitChronicle pentru repository (diagrama de arhitectură,
- * video-ul, slide-urile, activitatea, zonele fierbinți), fiecare cu cardul lui. Un card cu date deschide
+ * video-ul, slide-urile, activitatea, zonele fierbinți, consultanța), fiecare cu cardul lui. Un card cu date deschide
  * capitolul lui; unul fără date spune doar că nu a fost generat încă.
  *
  * Previzualizarea diagramei folosește MermaidDiagram din tab-ul „Diagrame”. Activitatea și zonele fierbinți vin de la același serviciu ca tab-ul „Istoric” (HistoryStatistics),
@@ -23,7 +24,7 @@ type Props = {
  */
 export default function ElementsPanel({ elements, placement }: Props) {
     const headingId = useId();
-    const { architecture, video, slides, activity, hotspots } = elements;
+    const { architecture, video, slides, activity, hotspots, consulting } = elements;
 
     return (
         <section
@@ -132,9 +133,45 @@ export default function ElementsPanel({ elements, placement }: Props) {
                         </ol>
                     )}
                 </ElementCard>
+
+                <ElementCard
+                    title="Consultanță"
+                    description="Bug-uri, vulnerabilități și zonele de risc ale codului."
+                    href={consulting?.href ?? null}
+                    actionLabel="Vezi raportul"
+                    emptyText="Încă nu a fost generat."
+                >
+                    {consulting && <ConsultingPreview consulting={consulting} />}
+                </ElementCard>
             </ul>
         </section>
     );
+}
+
+/** Conținutul cardului „Consultanță”: problemele după gravitate când raportul e gata, altfel starea lui. */
+function ConsultingPreview({ consulting }: { consulting: NonNullable<WorkspaceElements['consulting']> }) {
+    if (consulting.counts !== null) {
+        const { counts } = consulting;
+
+        return (
+            <ul className="flex flex-wrap gap-1.5">
+                {SEVERITIES.filter((severity) => severity !== 'info').map((severity) => (
+                    <li key={severity}>
+                        <SeverityBadge severity={severity} label={`${SEVERITY_LABELS[severity]}: ${formatNumber(counts[severity])}`} />
+                    </li>
+                ))}
+                <li className="basis-full text-[0.8125rem] text-ink">
+                    {countLabel(counts.vulnerable_packages, 'pachet vulnerabil', 'pachete vulnerabile')} în dependențe.
+                </li>
+            </ul>
+        );
+    }
+
+    if (consulting.status === null || consulting.status_label === null) {
+        return <p className="text-[0.8125rem] text-ink-muted">Analiza nu a rulat încă.</p>;
+    }
+
+    return <MediaStatusBadge status={consulting.status} label={consulting.status_label} />;
 }
 
 /**

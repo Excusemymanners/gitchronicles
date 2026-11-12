@@ -1,0 +1,149 @@
+# Semgrep rules for PHP and Laravel, written for GitChronicle (the project's license).
+# category: security → vulnerability; correctness → bug. severity: ERROR = high, WARNING = medium, INFO = low.
+rules:
+  - id: php-eval
+    languages: [php]
+    severity: ERROR
+    message: eval() runs the given text as PHP code. If any part of it can come from a user, that user can run any code on the server.
+    metadata:
+      title: eval() in PHP
+      category: security
+      cwe: "CWE-95: Eval Injection"
+    pattern: eval(...)
+
+  - id: php-shell-command
+    languages: [php]
+    severity: ERROR
+    message: A shell command is built from a variable. If any part of it comes from a user, that user can run other commands; use escapeshellarg() or a Process with separate arguments.
+    metadata:
+      title: Shell command built from a variable
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    patterns:
+      - pattern-either:
+          - pattern: exec($CMD, ...)
+          - pattern: shell_exec($CMD)
+          - pattern: system($CMD, ...)
+          - pattern: passthru($CMD, ...)
+          - pattern: popen($CMD, ...)
+          - pattern: proc_open($CMD, ...)
+      - pattern-not: $FUNCTION("...", ...)
+      - pattern-not: $FUNCTION([...], ...)
+
+  - id: php-unserialize
+    languages: [php]
+    severity: WARNING
+    message: unserialize() without the allowed_classes option can create any object from the given text; on user data this leads to code execution. Use json_decode() or allowed_classes.
+    metadata:
+      title: unserialize() without allowed_classes
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+    patterns:
+      - pattern: unserialize($DATA)
+      - pattern-not: unserialize("...")
+
+  - id: php-weak-password-hash
+    languages: [php]
+    severity: WARNING
+    message: A password goes through md5() or sha1(), which are easy to crack. For passwords use password_hash() (or Hash::make() in Laravel).
+    metadata:
+      title: Password hashed with md5/sha1
+      category: security
+      cwe: "CWE-916: Use of Password Hash With Insufficient Computational Effort"
+    patterns:
+      - pattern-either:
+          - pattern: md5($PASSWORD)
+          - pattern: sha1($PASSWORD)
+          - pattern: md5($OBJECT->$PASSWORD)
+          - pattern: sha1($OBJECT->$PASSWORD)
+      - metavariable-regex:
+          metavariable: $PASSWORD
+          regex: (?i).*pass.*
+
+  - id: laravel-raw-sql-variable
+    languages: [php]
+    severity: WARNING
+    message: Hand-written SQL built from a text that is not constant. If the text holds user data, this is an SQL injection; pass the values as bindings (?) in the second argument.
+    metadata:
+      title: Raw SQL from a variable
+      category: security
+      cwe: "CWE-89: SQL Injection"
+    patterns:
+      - pattern-either:
+          - pattern: DB::raw($SQL)
+          - pattern: DB::select($SQL, ...)
+          - pattern: DB::statement($SQL, ...)
+          - pattern: DB::unprepared($SQL)
+          - pattern: $QUERY->whereRaw($SQL, ...)
+          - pattern: $QUERY->orWhereRaw($SQL, ...)
+          - pattern: $QUERY->selectRaw($SQL, ...)
+          - pattern: $QUERY->orderByRaw($SQL, ...)
+          - pattern: $QUERY->havingRaw($SQL, ...)
+      - pattern-not: $FUNCTION("...", ...)
+      - pattern-not: $QUERY->$METHOD("...", ...)
+
+  - id: laravel-unguarded-model
+    languages: [php]
+    severity: WARNING
+    message: The model accepts any column in create() and fill() (an empty $guarded or unguard()). A form can change columns it should never touch (is_admin, for example).
+    metadata:
+      title: Model without mass-assignment protection
+      category: security
+      cwe: "CWE-915: Improperly Controlled Modification of Dynamically-Determined Object Attributes"
+    pattern-either:
+      - pattern-regex: protected\s+\$guarded\s*=\s*\[\s*\]
+      - pattern: Model::unguard()
+
+  - id: php-tls-verification-disabled
+    languages: [php]
+    severity: WARNING
+    message: TLS certificate verification is turned off, so anyone between the server and the destination can read or change the data.
+    metadata:
+      title: TLS verification turned off
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+    pattern-either:
+      - pattern: Http::withoutVerifying()
+      - pattern: "['verify' => false, ...]"
+      - pattern: curl_setopt($HANDLE, CURLOPT_SSL_VERIFYPEER, false)
+
+  - id: laravel-env-outside-config
+    languages: [php]
+    severity: WARNING
+    message: env() outside the config/ folder returns null after `php artisan config:cache`, so the code behaves differently in production. Read the value in a config file and use config().
+    metadata:
+      title: env() outside config/
+      category: correctness
+    paths:
+      include:
+        - "/app/"
+        - "/routes/"
+        - "/resources/"
+        - "/database/"
+    pattern: env(...)
+
+  - id: php-debug-output
+    languages: [php]
+    severity: INFO
+    message: A debugging call (dd, dump, var_dump, print_r) was left in the code; it shows internal data and stops or breaks the response.
+    metadata:
+      title: Debugging code left in
+      category: correctness
+    pattern-either:
+      - pattern: dd(...)
+      - pattern: dump(...)
+      - pattern: var_dump(...)
+      - pattern: print_r($VALUE)
+
+  - id: blade-unescaped-output
+    languages: [generic]
+    severity: WARNING
+    message: '{!! !!} prints the value into the page without escaping. If the value comes from a user, it can inject JavaScript (XSS); use {{ }}.'
+    metadata:
+      title: Unescaped output in Blade
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+    paths:
+      include:
+        - "*.blade.php"
+    pattern-regex: '\{!!.+?!!\}'

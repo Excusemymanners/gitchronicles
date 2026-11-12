@@ -2,9 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\ConsultingStatus;
 use App\Enums\MediaKind;
 use App\Enums\MediaStatus;
+use App\Enums\RepositoryStatus;
 use App\Git\HistoryStatistics;
+use App\Models\ConsultingReport;
 use App\Models\MediaAsset;
 use App\Models\Module;
 use App\Models\ModuleDependency;
@@ -17,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * The workspace of a repository (the Workspace type in TypeScript), sent with every page of the repository:
  *
- * - "chapters": the table of contents on the left, in groups (Documentație, Arhitectură, Module, Istoric, Prezentare).
+ * - "chapters": the table of contents on the left, in groups (Documentație, Arhitectură, Module, Istoric, Prezentare, Consultanță).
  *   A chapter appears only when its data exists, and a group without chapters is left out.
  * - "elements": the cards of the „Elemente” panel on the right; each one is null until its data exists.
  * - "assistant": whether the code is indexed for questions, and up to three starter questions about real modules.
@@ -95,6 +98,7 @@ class WorkspaceResource extends JsonResource
         $activity = $statistics->activity($this->resource);
         $hotspots = $activity === null ? [] : $statistics->hotspots($this->resource, self::SHOWN_HOTSPOTS);
         $media = $this->mediaAssets()->get()->keyBy(fn (MediaAsset $asset): string => $asset->kind->value);
+        $consulting = $this->consultingReports()->latest('id')->first();
 
         $groups = [
             $this->group('docs', 'Documentație', $this->documentationChapters($documents)),
@@ -102,6 +106,7 @@ class WorkspaceResource extends JsonResource
             $this->group('modules', 'Module', count: $modules->count(), folders: $this->moduleFolders($modules, $documents)),
             $this->group('history', 'Istoric', $this->historyChapters($activity, $hotspots)),
             $this->group('media', 'Prezentare', $this->mediaChapters($media)),
+            $this->group('consulting', 'Consultanță', $this->consultingChapters($consulting)),
         ];
 
         return [
@@ -118,6 +123,7 @@ class WorkspaceResource extends JsonResource
                     'files' => $hotspots,
                     'href' => $this->pageUrl('repositories.timeline', 'hotspots'),
                 ],
+                'consulting' => $this->consultingElement($consulting),
             ],
             'assistant' => [
                 'is_indexed' => $this->isCodeIndexed(),
@@ -471,5 +477,53 @@ class WorkspaceResource extends JsonResource
     private function isTestModule(string $path): bool
     {
         return array_intersect(explode('/', strtolower($path)), ['tests', 'test', '__tests__', 'spec']) !== [];
+    }
+
+    /**
+     * The chapters of the „Consultanță” group: the page, once a report exists (whatever its state: the page
+     * shows it), and its sections once the report is ready (with the number of problems in the code and of
+     * vulnerable packages). Before the first report, the „Consultanță” card leads to the page.
+     *
+     * @return list<array{label: string, href: string, count: int|null}>
+     */
+    private function consultingChapters(?ConsultingReport $report): array
+    {
+        if ($report === null) {
+            return [];
+        }
+
+        $chapters = [$this->chapter('Raport', $this->pageUrl('repositories.consulting'))];
+
+        if ($report?->status === ConsultingStatus::Ready) {
+            $counts = $report->counts ?? [];
+
+            $chapters[] = $this->chapter('Zone de risc', $this->pageUrl('repositories.consulting', 'zone-de-risc'));
+            $chapters[] = $this->chapter('Probleme în cod', $this->pageUrl('repositories.consulting', 'probleme-in-cod'), ($counts['bugs'] ?? 0) + ($counts['code_vulnerabilities'] ?? 0));
+            $chapters[] = $this->chapter('Dependențe vulnerabile', $this->pageUrl('repositories.consulting', 'dependente-vulnerabile'), $counts['vulnerable_packages'] ?? 0);
+            $chapters[] = $this->chapter('Statistici despre cod', $this->pageUrl('repositories.consulting', 'statistici-cod'));
+        }
+
+        return $chapters;
+    }
+
+    /**
+     * The „Consultanță” card: the state of the newest report and, when it is ready, its counts by severity.
+     * Null while the repository is not ready and has no report; a ready repository without a report still
+     * gets the card, so a logged-in user can reach „Rulează analiza”.
+     *
+     * @return array{href: string, status: string|null, status_label: string|null, counts: array<string, int>|null}|null
+     */
+    private function consultingElement(?ConsultingReport $report): ?array
+    {
+        if ($report === null && $this->status !== RepositoryStatus::Ready) {
+            return null;
+        }
+
+        return [
+            'href' => $this->pageUrl('repositories.consulting'),
+            'status' => $report?->status->value,
+            'status_label' => $report?->status->label(),
+            'counts' => $report?->status === ConsultingStatus::Ready ? $report->counts : null,
+        ];
     }
 }

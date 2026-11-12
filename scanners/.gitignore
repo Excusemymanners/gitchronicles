@@ -1,0 +1,4 @@
+# Instalate de `composer consulting:install`, niciodată urcate în repository.
+/.venv/
+/bin/
+/downloads/

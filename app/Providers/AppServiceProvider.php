@@ -97,6 +97,9 @@ class AppServiceProvider extends ServiceProvider
      *
      * "webhooks": at most 60 deliveries per minute for each IP address. GitHub sends one per push,
      * so the limit only stops someone who hammers the address with unsigned requests.
+     *
+     * "consulting": at most 6 analyses per hour for each user („Rulează analiza”), because each one runs
+     * Semgrep, OSV-Scanner and scc on a clone for up to a few minutes.
      */
     private function configureRateLimiting(): void
     {
@@ -110,6 +113,10 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('webhooks', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip());
+        });
+
+        RateLimiter::for('consulting', function (Request $request) {
+            return Limit::perHour(6)->by($request->user()?->id ?: $request->ip());
         });
     }
 }

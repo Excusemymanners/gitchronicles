@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\ConsultingStatus;
 use App\Enums\RepositoryStatus;
 use App\Models\Repository;
 use App\Models\User;
@@ -19,7 +20,7 @@ class RepositoryPolicy
      *
      * @var list<string>
      */
-    private const STATE_RULES = ['retry', 'checkUpdates', 'regenerate'];
+    private const STATE_RULES = ['retry', 'checkUpdates', 'regenerate', 'runConsulting'];
 
     /**
      * An administrator (users.is_admin) may do on every repository what its owner may do, for example
@@ -80,5 +81,18 @@ class RepositoryPolicy
     public function regenerate(User $user, Repository $repository): bool
     {
         return in_array($repository->status, [RepositoryStatus::Ready, RepositoryStatus::Failed], true);
+    }
+
+    /**
+     * Determine whether the user can start the „Consultanță” analysis („Rulează analiza”, „Rulează din nou”).
+     *
+     * Any logged-in user may, like „Verifică actualizări”: the repository is public and the analysis only
+     * reads its clone. It is allowed only on a ready repository and not while an analysis of it is waiting
+     * or running, so the same clone is never scanned twice at once.
+     */
+    public function runConsulting(User $user, Repository $repository): bool
+    {
+        return $repository->status === RepositoryStatus::Ready
+            && $repository->consultingReports()->whereIn('status', [ConsultingStatus::Pending, ConsultingStatus::Running])->doesntExist();
     }
 }

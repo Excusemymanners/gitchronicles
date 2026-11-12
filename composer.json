@@ -63,6 +63,10 @@
             "renderers/tts/.venv/bin/pip install --quiet --no-cache-dir --disable-pip-version-check -r renderers/tts/requirements.txt",
             "renderers/tts/.venv/bin/python -m piper.download_voices --download-dir renderers/tts/voices ro_RO-mihai-medium"
         ],
+        "consulting:install": [
+            "Composer\\Config::disableProcessTimeout",
+            "bash scanners/install.sh"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

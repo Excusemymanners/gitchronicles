@@ -13,8 +13,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * The last step of the pipeline: every step before it succeeded, so the repository is ready
  * and the run is closed as succeeded, with its duration.
  *
- * After that it queues the presentation video and the slides (GenerateMedia) on the separate "media"
- * queue. They are not part of the pipeline: the repository is already "ready", and whatever happens
+ * After that it queues the presentation video and the slides (GenerateMedia) and the „Consultanță” report
+ * (GenerateConsultingReport) on the separate "media" queue. They are not part of the pipeline: the repository is already "ready", and whatever happens
  * to them (even a failure to queue the job) cannot change that.
  */
 class FinishProcessing implements ShouldQueue
@@ -55,6 +55,10 @@ class FinishProcessing implements ShouldQueue
 
         if (config('gitchronicle.media.auto_generate')) {
             rescue(fn () => GenerateMedia::dispatch($this->repository));
+        }
+
+        if (config('gitchronicle.consulting.auto_run')) {
+            rescue(fn () => GenerateConsultingReport::queueFor($this->repository));
         }
     }
 }

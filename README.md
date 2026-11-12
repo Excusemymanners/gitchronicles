@@ -21,7 +21,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 - **Discover / leaderboard** *(bonus)*: pagina publică „Descoperă” cu repository-uri interesante de pe GitHub, clasate după cât de repede câștigă stele (măsurat din notări zilnice), cu „repo-ul zilei” și butonul „Documentează”.
 - **Video scurt** *(bonus)* generat pentru un repository.
 - **Postări automate pe Instagram** *(bonus)*: zilnic, un Reel cu „repo-ul zilei” din leaderboard.
-- **Consultanță** *(bonus)*: raport cu bug-uri, vulnerabilități și zonele de cod schimbate cel mai des.
+- **Consultanță** *(bonus)*: raport cu bug-uri, vulnerabilități și zonele de risc (fișierele schimbate des care au și probleme), făcut cu Semgrep, OSV-Scanner și scc, descărcabil ca Markdown.
 
 ## Stare
 
@@ -30,6 +30,8 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 **Descoperă (bonus):** gata. Comanda `php artisan discover:refresh`, pornită zilnic de Laravel Scheduler, caută cu GitHub Search API repository-uri noi și populare, active sau noi pe limbaje și notează în fiecare zi stelele fiecărui repository urmărit. Pagina publică „Descoperă” (`/discover`) le clasează după stelele câștigate în 24 de ore, 7 sau 30 de zile, măsurate din două notări; până există două notări, creșterea e „necunoscut” și ordinea folosește media de stele pe zi de la creare, iar pagina spune asta. Fiecare rând are „Documentează” (îl adaugă în GitChronicle) sau „Deschide documentația”.
 
 **Istoric:** gata. După analiza codului, GitChronicle importă din clonă cele mai noi 500 de commit-uri (apoi doar pe cele noi), cu fișierele și liniile schimbate. Tab-ul „Istoric” le arată pe luni, cu rulările GitChronicle pe commit-urile procesate, căutare, „Zone fierbinți” (fișierele schimbate cel mai des) și contribuitori.
+
+**Consultanță (bonus):** gata. După ce un repository e gata, Semgrep (cu reguli scrise pentru GitChronicle), OSV-Scanner și scc citesc clona; pagina „Consultanță” arată problemele după gravitate, zonele de risc (commit-uri × gravitate), problemele pe fișiere cu legături spre rândurile de pe GitHub, dependențele vulnerabile cu versiunea care le repară și statisticile codului; raportul se descarcă în Markdown (în engleză).
 
 ## Tehnologii
 
@@ -63,7 +65,7 @@ Proiect de licență — Tehnologia Informației, 2026–2027.
 | SQLite FTS5 (bm25) | Căutarea în cod pentru asistent: fragmentele cele mai potrivite unei întrebări | 8 | ✅ |
 | pgvector + Voyage AI | Embedding-uri și căutare semantică pentru asistent (opțional, comparată cu FTS5) | 8 | ⏳ |
 | GitHub webhooks | Pornesc actualizarea incrementală la fiecare push | 9 | ✅ |
-| Semgrep, OSV-Scanner, scc | Consultanța: bug-uri, vulnerabilități, statistici despre cod | bonus | ⏳ |
+| Semgrep, OSV-Scanner, scc | Consultanța: bug-uri, vulnerabilități, statistici despre cod | bonus | ✅ |
 | Marp | Prezentarea repository-ului ca slide-uri (PDF și PPTX) | 7 | ✅ |
 | HyperFrames + FFmpeg | Video-urile scurte despre repository (HTML + GSAP → MP4) | bonus | ✅ |
 | Piper TTS | Vocea românească a video-ului, generată local, fără internet | bonus | ✅ |
@@ -110,6 +112,7 @@ php artisan migrate
 npm install
 composer analyzer:install   # analizorul de cod: analyzer/.venv + gramaticile tree-sitter
 composer media:install      # opțional, pentru video și slide-uri: renderers/node_modules + vocea Piper
+composer consulting:install # opțional, pentru consultanță: Semgrep, OSV-Scanner și scc în scanners/ (fără root)
 ```
 
 Apoi, în trei terminale:
@@ -123,6 +126,8 @@ php artisan queue:work  # workerul care rulează joburile (clonarea, analiza cod
 Sau totul într-un singur terminal: `composer run dev`. Fără worker, repository-urile adăugate rămân „În așteptare”. Pentru cele adăugate înainte de Faza 3: `php artisan repositories:process --all-pending`.
 
 Video-ul de prezentare și slide-urile (PDF, PPTX) se fac după ce repository-ul e gata, pe coada separată `media`: `composer run dev` pornește și workerul ei, iar de mână e `php artisan queue:work --queue=media`. Au nevoie de `composer media:install`, de Google Chrome și de FFmpeg (căile lor: `MEDIA_BROWSER_PATH`, `MEDIA_FFMPEG_PATH`, `MEDIA_FFPROBE_PATH` în `.env`); `MEDIA_AUTO_GENERATE=false` le oprește. De mână: `php artisan repositories:media {id}` (`--force` le reface și pentru același commit, `--now` le randează direct în terminal). Uneltele și licențele lor sunt în [renderers/README.md](renderers/README.md).
+
+Consultanța (bug-uri, vulnerabilități, zone de risc, statistici despre cod) rulează tot pe coada `media`, după fiecare procesare (`CONSULTING_AUTO_RUN=false` o oprește). De mână: `php artisan repositories:consult {id}` (`--force` o reface pentru același commit, `--now` rulează uneltele direct în terminal). Are nevoie de `composer consulting:install`; o unealtă lipsă apare pe pagină ca „Nu e instalată”. În timpul unei analize, singurul lucru care iese de pe calculator sunt numele, versiunile și ecosistemele pachetelor din fișierele lock, trimise de OSV-Scanner la `api.osv.dev`. Detaliile, versiunile și licențele: [scanners/README.md](scanners/README.md).
 
 Clasamentul „Descoperă”: `php artisan discover:refresh` adună stelele de azi (durează câteva minute, pentru că așteaptă 8 secunde între căutări ca să rămână sub limita GitHub). Zilnic îl pornește Laravel Scheduler: pe server prin cron (`* * * * * php artisan schedule:run`), local cu `php artisan schedule:work`; ora e `DISCOVER_SCHEDULE_TIME` (implicit 03:00), iar `DISCOVER_SCHEDULE_ENABLED=false` îl oprește. Merge fără cont GitHub; un `GITHUB_TOKEN` opțional (orice token personal, fără permisiuni) ridică limitele API-ului. Creșterea pe 24 de ore apare după a doua zi cu notări, cea pe 7 și 30 de zile după tot atâtea zile.
 

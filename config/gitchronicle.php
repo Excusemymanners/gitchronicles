@@ -122,6 +122,40 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | „Consultanță”: bugs, vulnerabilities and code statistics (bonus)
+    |--------------------------------------------------------------------------
+    |
+    | Made after a repository is ready (GenerateConsultingReport) by three tools installed in scanners/
+    | (composer consulting:install): Semgrep with the rules of scanners/rules, OSV-Scanner and scc.
+    |
+    | - auto_run: analyze after every processing run (tests: false, phpunit.xml);
+    | - queue: the "media" queue by default, so the scan and the video share one worker: both are slow,
+    |   optional work after "ready", and one heavy job at a time keeps a laptop responsive;
+    | - home: HOME and the cache folders of the tools, so nothing is written to the worker's home folder;
+    | - timeouts (seconds), max_output_bytes and max_findings (per tool): a hostile repository cannot keep
+    |   a worker busy forever, fill its memory or flood the database; what the cap leaves out is counted.
+    |
+    */
+
+    'consulting' => [
+        'auto_run' => (bool) env('CONSULTING_AUTO_RUN', true),
+        'queue' => env('CONSULTING_QUEUE', 'media'),
+        'semgrep_path' => env('CONSULTING_SEMGREP_PATH', base_path('scanners/.venv/bin/semgrep')),
+        'osv_scanner_path' => env('CONSULTING_OSV_SCANNER_PATH', base_path('scanners/bin/osv-scanner')),
+        'scc_path' => env('CONSULTING_SCC_PATH', base_path('scanners/bin/scc')),
+        'rules_path' => base_path('scanners/rules'),
+        'home' => env('CONSULTING_HOME', storage_path('app/scanners')),
+        'timeouts' => [
+            'semgrep' => (int) env('CONSULTING_SEMGREP_TIMEOUT', 300),
+            'osv-scanner' => 120,
+            'scc' => 60,
+        ],
+        'max_output_bytes' => 50 * 1024 * 1024,
+        'max_findings' => 500,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | „Descoperă” leaderboard (bonus)
     |--------------------------------------------------------------------------
     |

@@ -472,6 +472,28 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - **Fac:** rulez uneltele pe repo, apoi LLM-ul strânge rezultatele într-un raport cu recomandări.
 - **Gata când:** pentru un repo pot descărca un raport de consultanță.
 
+**Progres:**
+- [x] C.1 uneltele, fără root: `composer consulting:install` pune în `scanners/` Semgrep 1.182.1 (PyPI, cu amprenta SHA-256 a fiecărui pachet), OSV-Scanner 2.7.0 și scc 4.1.0 (release-urile oficiale, verificate cu SHA-256); căile în `config/gitchronicle.php`
+- [x] C.2 regulile Semgrep proprii (`scanners/rules`: PHP/Laravel, JS/TS/React, Python, secrete), cu titlu și categorie (securitate = vulnerabilitate, corectitudine = bug)
+- [x] C.3 jobul `GenerateConsultingReport` pe coada `media`, după „gata”: fiecare unealtă ca proces separat, cu mediu minim (fără secretele aplicației), timeout și limită de ieșire; comanda `php artisan repositories:consult {id} {--force} {--now}`
+- [x] C.4 tabelele `consulting_reports` și `consulting_findings`: severitate normalizată (critică … informativă) cu valoarea originală, cel mult 500 de probleme pe unealtă (cele mai grave), texte tăiate la lungimea coloanei, câte au rămas pe dinafară
+- [x] C.5 zonele de risc: fișierele dintre cele 50 schimbate cel mai des × gravitatea problemelor din ele
+- [x] C.6 pagina „Consultanță” (capitol în cuprins + card în „Elemente”), „Rulează analiza” pentru utilizatorii autentificați (6 pe oră), raportul Markdown și rezumatul AI opțional, ambele în engleză
+- [x] C.7 teste cu ieșirile reale ale uneltelor (`tests/Fixtures/consulting`), fără rețea și fără Claude
+- [x] C.8 verificat pe bune: `excusemymanners/gitchronicles` în 3 s (90 de fișiere citite de Semgrep, 285 de pachete, nicio problemă); `heygen-com/hyperframes` în 17 s (8.578 de fișiere citite de Semgrep, 1.138 de pachete, 498 de probleme)
+
+**Jurnal:**
+- 2026-11-12 — Consultanța. Decizii și motivele lor:
+  - Regulile Semgrep sunt scrise de mine, nu luate din Semgrep Registry: licența regulilor din registry („Semgrep Rules License v1.0”) le permite doar pentru uz intern și interzice oferirea lor altora ca serviciu, iar ele se descarcă de pe semgrep.dev la fiecare rulare. Regulile proprii sunt puține, dar fiecare rezultat se poate explica.
+  - Ce iese de pe calculator: Semgrep (reguli locale, `--metrics off`, fără verificarea versiunii) și scc nu trimit nimic, iar documentația Semgrep spune că nu trimite niciodată codul. OSV-Scanner trimite la osv.dev numele, versiunea și ecosistemul pachetelor din fișierele lock; le-am păstrat online, pentru că repository-urile sunt publice și baza offline ar trebui descărcată întreagă. Am oprit rezolvarea tranzitivă (deps.dev), analiza apelurilor (pentru Rust rulează scripturi de build) și pluginurile care trimit amprente de fișiere.
+  - Coada `media`, nu una nouă: scanarea și video-ul sunt muncă lentă și opțională după „gata”, iar un singur worker pentru amândouă ține laptopul utilizabil; „gata” nu așteaptă niciodată după ele.
+  - Codul repository-ului e nesigur: uneltele doar îl citesc, fiecare cu un mediu minim (toate variabilele workerului șterse, deci nici `APP_KEY`, nici cheile API), timeout și limită de 50 MB la ieșire; cel mult 500 de probleme pe unealtă, cele mai grave, iar restul doar numărate.
+  - Severitatea e pe o singură scară: Semgrep ERROR/WARNING/INFO → ridicată/medie/scăzută, OSV după scorul CVSS (9+ critică, 7+ ridicată, 4+ medie), altfel eticheta GitHub; valoarea originală rămâne lângă ea.
+  - Zonele de risc refolosesc „Zonele fierbinți” din „Istoric” (același serviciu, aceleași excluderi): scor = commit-uri × gravitate (critică 8, ridicată 4, medie 2, scăzută 1); fiecare treaptă cântărește dublu, așa că un fișier schimbat des cu o problemă gravă urcă primul.
+  - Tot ce generează aplicația e în engleză (decizia din 11 noiembrie): raportul descărcat, rezumatul AI și mesajele regulilor; în baza de date erorile se salvează ca coduri (`timed_out 300`, `not_installed`), iar pagina le formulează.
+  - Rezumatul AI e verificat de server: fiecare număr din el trebuie să apară exact în datele trimise, fără legături sau Markdown; altfel nu se arată. Textele din repository intră în prompt ca JSON cu `<` și `>` codate, ca să nu poată închide blocul de date.
+  - De știut: OSV-Scanner citește și `.gitignore`-ul folderelor de deasupra clonei (aplicația ignoră `storage/`), de aceea rulează cu `--no-ignore` — clona are oricum doar fișierele urmărite de git.
+
 ---
 
 ## Start: Faza 0

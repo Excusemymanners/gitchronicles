@@ -1,3 +1,4 @@
+import type { ConsultingCounts, ConsultingStatus } from '@/types/consulting';
 import type { Activity, Hotspot } from '@/types/history';
 import type { MediaStatus } from '@/types/media';
 
@@ -89,7 +90,7 @@ export type WorkspaceModuleFolder = {
     modules: WorkspaceModule[];
 };
 
-export type WorkspaceGroupKey = 'docs' | 'architecture' | 'modules' | 'history' | 'media';
+export type WorkspaceGroupKey = 'docs' | 'architecture' | 'modules' | 'history' | 'media' | 'consulting';
 
 /** Un grup de capitole din cuprins. Doar grupul „Module” are foldere și un număr lângă titlu. */
 export type WorkspaceGroup = {
@@ -112,6 +113,11 @@ export type WorkspaceElements = {
     activity: (Activity & { href: string }) | null;
     /** Primele 5 „Zone fierbinți”, fără fișiere lock, biblioteci și fișiere generate. */
     hotspots: { files: Hotspot[]; href: string } | null;
+    /**
+     * Consultanța: starea celui mai nou raport (`null` dacă nu a rulat încă) și, când e gata, problemele după gravitate.
+     * Tot cardul e `null` cât timp repository-ul nu e gata și nu are niciun raport.
+     */
+    consulting: { href: string; status: ConsultingStatus | null; status_label: string | null; counts: ConsultingCounts | null } | null;
 };
 
 /** Un fragment de cod pe care se bazează un răspuns, cu liniile lui exacte. */

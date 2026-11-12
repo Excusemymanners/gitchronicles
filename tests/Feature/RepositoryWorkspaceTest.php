@@ -59,6 +59,8 @@ class RepositoryWorkspaceTest extends TestCase
                     'slides' => null,
                     'activity' => null,
                     'hotspots' => null,
+                    // A ready repository always has the „Consultanță” card: it leads to „Rulează analiza”.
+                    'consulting' => ['href' => "/repositories/{$repository->id}/consulting", 'status' => null, 'status_label' => null, 'counts' => null],
                 ],
                 'assistant' => ['is_indexed' => false, 'starters' => []],
             ])

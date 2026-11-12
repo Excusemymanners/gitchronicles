@@ -1,0 +1,98 @@
+# Semgrep rules for Python, written for GitChronicle (the project's license).
+# category: security → vulnerability; correctness → bug. severity: ERROR = high, WARNING = medium, INFO = low.
+rules:
+  - id: python-eval-exec
+    languages: [python]
+    severity: ERROR
+    message: eval() or exec() runs the given text as Python code; if any part of it can come from a user, that user runs any code.
+    metadata:
+      title: eval()/exec() in Python
+      category: security
+      cwe: "CWE-95: Eval Injection"
+    patterns:
+      - pattern-either:
+          - pattern: eval($CODE, ...)
+          - pattern: exec($CODE, ...)
+      - pattern-not: eval("...", ...)
+      - pattern-not: exec("...", ...)
+
+  - id: python-shell-command
+    languages: [python]
+    severity: ERROR
+    message: A command runs through the shell (shell=True or os.system) with a text that is not constant; if any part comes from a user, that user can run other commands. Pass the arguments as a list, without a shell.
+    metadata:
+      title: Shell command built from a variable
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$FUNCTION($CMD, ..., shell=True, ...)
+          - pattern: os.system($CMD)
+          - pattern: os.popen($CMD, ...)
+      - pattern-not: subprocess.$FUNCTION("...", ...)
+      - pattern-not: os.system("...")
+      - pattern-not: os.popen("...", ...)
+
+  - id: python-pickle-load
+    languages: [python]
+    severity: WARNING
+    message: pickle can run code while it loads the data; on data from outside this leads to code execution. Use JSON for data from outside.
+    metadata:
+      title: Data loaded with pickle
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+
+  - id: python-yaml-unsafe-load
+    languages: [python]
+    severity: WARNING
+    message: yaml.load() without SafeLoader can create any Python object from the file; use yaml.safe_load().
+    metadata:
+      title: yaml.load() without SafeLoader
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+    patterns:
+      - pattern: yaml.load(...)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+      - pattern-not: yaml.load(..., Loader=SafeLoader, ...)
+      - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader, ...)
+
+  - id: python-tls-verification-disabled
+    languages: [python]
+    severity: WARNING
+    message: verify=False turns TLS certificate verification off, so anyone between the program and the server can read or change the data.
+    metadata:
+      title: TLS verification turned off
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+    pattern: requests.$FUNCTION(..., verify=False, ...)
+
+  - id: python-mutable-default-argument
+    languages: [python]
+    severity: INFO
+    message: A list or a dict as a default value is created once and shared by every call; a change made in one call shows up in the next ones. Use None and create the value inside the function.
+    metadata:
+      title: Mutable default argument
+      category: correctness
+    pattern-either:
+      - pattern: |
+          def $FUNCTION(..., $ARGUMENT=[], ...):
+              ...
+      - pattern: |
+          def $FUNCTION(..., $ARGUMENT={}, ...):
+              ...
+
+  - id: python-bare-except
+    languages: [python]
+    severity: INFO
+    message: except without an exception type catches everything, Ctrl+C (KeyboardInterrupt) and SystemExit included, and hides real errors; name the type (except ValueError, for example).
+    metadata:
+      title: Bare except
+      category: correctness
+    pattern: |
+      try:
+          ...
+      except:
+          ...
