@@ -37,10 +37,11 @@ class DiagramFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'type' => DiagramType::Flow,
             'key' => $key,
-            'mermaid' => "flowchart TD\n  A[\"Formularul\"] --> B[\"RepositoryController\"]\n",
+            'mermaid' => "flowchart TD\n  A[\"The form\"] --> B[\"RepositoryController\"]\n",
             'meta' => [
-                'title' => 'Adăugarea unui repository',
-                'explanation' => 'Utilizatorul trimite adresa, iar controllerul creează repository-ul.',
+                'title' => 'Adding a repository',
+                'explanation' => 'The user sends the address, and the controller creates the repository.',
+                'content_language' => 'en',
                 'sources' => [['path' => 'app/Http/Controllers/RepositoryController.php', 'start_line' => 10, 'end_line' => 20]],
             ],
         ]);

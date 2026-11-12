@@ -4,13 +4,15 @@ namespace App\Documentation;
 
 use App\Ai\AiException;
 use App\Ai\TextGenerator;
+use App\Support\ContentLanguage;
 
 /**
  * Claude writes the documentation pages, through App\Ai\TextGenerator (the Claude Code CLI with the
  * subscription, or the API).
  *
- * The system prompt (in English, like the instructions models follow best) is the same for every call,
- * so the API can cache it; it describes the three kinds of pages. The user message holds what changes:
+ * The system prompt (in English, like the instructions models follow best) asks for the page in the content
+ * language (App\Support\ContentLanguage) and is the same for every call, so the API can cache it; it
+ * describes the three kinds of pages. The user message holds what changes:
  * the kind of page, the base of the GitHub links and the context, rendered as plain text inside
  * <context> tags, with the source code as numbered lines.
  *
@@ -21,12 +23,12 @@ use App\Ai\TextGenerator;
 final class AiDocumentationWriter implements DocumentationWriter
 {
     /**
-     * The instructions for every documentation call.
+     * The instructions for every documentation call; {language} is replaced by the content language.
      */
-    public const SYSTEM_PROMPT = <<<'PROMPT'
+    private const SYSTEM_PROMPT = <<<'PROMPT'
         You are a technical writer. You write one page of developer documentation for a software repository, using only the context in the user message.
 
-        Output: GitHub-flavored Markdown, written in Romanian with correct diacritics (ă, â, î, ș, ț), clear and concise, for a developer who is new to the project. Return only the page: no preface, no closing remarks, and do not wrap the page in a code block.
+        Output: GitHub-flavored Markdown, written in {language}: plain, specific, present tense, no filler, for a developer who is new to the project. Write the whole page in {language}, even when the README, comments or names in the context use another language; quote names, paths and code exactly as they are. Return only the page: no preface, no closing remarks, and do not wrap the page in a code block.
 
         Facts:
         - Use only facts present in the context. Do not guess behavior, purposes, features, commands, versions, file names or line numbers that the context does not show.
@@ -39,29 +41,38 @@ final class AiDocumentationWriter implements DocumentationWriter
         - Link to documentation pages only with the page paths given in the context.
         - No raw HTML, no images, no diagrams.
 
-        Page types and their exact structure. Start with one "# " title line and use exactly these "## " headings, in this order:
+        Page types and their exact structure. Start with one "# " title line and use exactly these "## " headings, in English and in this order:
 
         Module page (Page type: module):
-        # Modulul `<module path>` (for the module "/", the title is "# Rădăcina proiectului")
-        ## Rol: 2-4 sentences on what the module is responsible for, as shown by its code, names, folder README and by the modules that use it.
-        ## Componente principale: a bullet list of the most important components; each item has the linked name, its kind and one sentence on what it does, based on its code.
-        ## Cum funcționează: how the components work together and with other modules, based on the excerpts and the imports; short paragraphs or a numbered flow.
-        ## Dependențe: the modules and external libraries it uses, and the modules that use it.
-        ## Fișiere: a table with the columns Fișier (linked to the file), Limbaj, Linii, listing the files of the context.
+        # Module `<module path>` (for the module "/", the title is "# Project root")
+        ## Role: 2-4 sentences on what the module is responsible for, as shown by its code, names, folder README and by the modules that use it.
+        ## Main components: a bullet list of the most important components; each item has the linked name, its kind and one sentence on what it does, based on its code.
+        ## How it works: how the components work together and with other modules, based on the excerpts and the imports; short paragraphs or a numbered flow.
+        ## Dependencies: the modules and external libraries it uses, and the modules that use it.
+        ## Files: a table with the columns File (linked to the file), Language, Lines, listing the files of the context.
 
         Overview page (Page type: overview):
         # <owner>/<name>
-        ## Ce face proiectul: from the README and the code.
-        ## Tehnologii: the languages and the main dependencies from the manifests.
-        ## Arhitectură: the main folders, the entry points and how the modules depend on each other.
-        ## Module: a table with every module of the context: Modul, Fișiere, Linii, Documentație (a link to its page path when it has one, otherwise the reason it has none).
-        ## Cum îl rulezi: the requirements and only the commands listed in the context, each with the file it comes from. If the context lists no commands, say that the repository does not show how to run it.
+        ## What the project does: from the README and the code.
+        ## Technologies: the languages and the main dependencies from the manifests.
+        ## Architecture: the main folders, the entry points and how the modules depend on each other.
+        ## Modules: a table with every module of the context: Module, Files, Lines, Documentation (a link to its page path when it has one, otherwise the reason it has none).
+        ## How to run it: the requirements and only the commands listed in the context, each with the file it comes from. If the context lists no commands, say that the repository does not show how to run it.
 
         README (Page type: readme): a README.md for the repository.
         # <project name>
         A one-paragraph description.
-        Then only the sections the context gives evidence for, in this order: ## Funcționalități, ## Tehnologii, ## Cerințe, ## Instalare (git clone with the clone URL, then only commands from the context, in a bash code block), ## Rulare, ## Structura proiectului (one line per top folder), ## Module, ## Teste, ## Licență. Leave out every section without evidence. Link files and folders to GitHub, never to documentation page paths.
+        Then only the sections the context gives evidence for, in this order: ## Features, ## Technologies, ## Requirements, ## Installation (git clone with the clone URL, then only commands from the context, in a bash code block), ## Running, ## Project structure (one line per top folder), ## Modules, ## Tests, ## License. Leave out every section without evidence. Link files and folders to GitHub, never to documentation page paths.
         PROMPT;
+
+    /**
+     * The instructions for every documentation call, asking for the content language (App\Support\ContentLanguage).
+     * They are the same for every call of a run, so the API can cache them.
+     */
+    public static function systemPrompt(): string
+    {
+        return str_replace('{language}', ContentLanguage::name(), self::SYSTEM_PROMPT);
+    }
 
     /**
      * Create the writer with the TextGenerator chosen by AI_DRIVER.
@@ -93,7 +104,7 @@ final class AiDocumentationWriter implements DocumentationWriter
     }
 
     /**
-     * The message Claude receives for one page (after SYSTEM_PROMPT): the page type, where the links
+     * The message Claude receives for one page (after systemPrompt()): the page type, where the links
      * point, and the page's context as text. It is public so its size can be measured without sending
      * it: the incremental update records how many characters each run sends, or would send without AI.
      *
@@ -114,16 +125,16 @@ final class AiDocumentationWriter implements DocumentationWriter
      */
     private function write(string $user, array $requiredSections): WrittenPage
     {
-        $result = $this->generator->generate(self::SYSTEM_PROMPT, $user);
+        $result = $this->generator->generate(self::systemPrompt(), $user);
         $markdown = $this->withoutCodeFence(trim($result->text));
 
         if (preg_match('/\A# \S/u', $markdown) !== 1) {
-            throw new UnusableAiPage($result, 'Textul scris de Claude nu începe cu titlul paginii.');
+            throw new UnusableAiPage($result, 'The page written by Claude does not start with its title.');
         }
 
         foreach ($requiredSections as $section) {
             if (preg_match('/^## '.preg_quote($section, '/').'\s*$/mu', $markdown) !== 1) {
-                throw new UnusableAiPage($result, "Textul scris de Claude nu are secțiunea „{$section}”.");
+                throw new UnusableAiPage($result, "The page written by Claude has no \"{$section}\" section.");
             }
         }
 

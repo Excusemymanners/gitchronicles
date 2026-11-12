@@ -34,6 +34,9 @@ use InvalidArgumentException;
  * it now (AI turned off, paused or failed), the page is not replaced by the template. Claude's text
  * stays, and the page is marked stale with the exact reason: which commit changed the code and which
  * commit the page describes. Its saved input hash stays the old one, so the next run tries again.
+ *
+ * The stale reason is stored as an English sentence (the content language), because the page shows the
+ * column as it is; rows written earlier in Romanian are shown unchanged until the page is written again.
  */
 final class DocumentationGenerator
 {
@@ -63,8 +66,8 @@ final class DocumentationGenerator
      * Write one page of the plan (or leave it as it is when its input did not change).
      *
      * @param  bool  $force  write it even when its input did not change
-     * @param  string|null  $changeDescription  what changed, as the start of a Romanian sentence
-     *                                          („Codul modulului s-a schimbat la commitul abc1234 (3 fișiere)”);
+     * @param  string|null  $changeDescription  what changed, as the start of an English sentence
+     *                                          ("The module's code changed at commit abc1234 (3 files)");
      *                                          used in the reason of a page that is kept outdated
      * @param  ProcessingRun|null  $run  the pipeline run that writes the page; the new version remembers it
      *                                   (without one, as in repositories:document, the repository's newest run)
@@ -124,7 +127,7 @@ final class DocumentationGenerator
             $page = $this->writePage($this->template, $slug, $context, $links);
         }
 
-        $contextCharacters = mb_strlen(AiDocumentationWriter::SYSTEM_PROMPT) + mb_strlen($this->prompt($aiWriter, $slug, $context, $links));
+        $contextCharacters = mb_strlen(AiDocumentationWriter::systemPrompt()) + mb_strlen($this->prompt($aiWriter, $slug, $context, $links));
 
         $this->save($repository, $module, $document, $slug, $page, $inputHash, $aiError, $contextCharacters, $run?->id ?? $repository->processingRuns()->max('id'));
 
@@ -204,13 +207,17 @@ final class DocumentationGenerator
     {
         if ($changeDescription !== null || ! $document->is_stale) {
             $repository = $document->repository;
-            $change = $changeDescription ?? 'Codul s-a schimbat la commitul '.substr((string) $repository->last_sha, 0, 7);
-            $pageCommit = $document->source_sha === null ? '' : '; pagina e de la commitul '.substr($document->source_sha, 0, 7);
+            $commit = substr((string) $repository->last_sha, 0, 7);
+            // Same commit, other input: the writer's input changed, not the code (a new content language, for example).
+            $change = $document->source_sha !== null && $document->source_sha === $repository->last_sha
+                ? "The code is still at commit {$commit}, but what this page is written from changed (for example the content language)"
+                : ($changeDescription ?? "The code changed at commit {$commit}")
+                    .($document->source_sha === null ? '' : '; this page describes commit '.substr($document->source_sha, 0, 7));
             $why = $aiError === null
-                ? 'Claude nu e disponibil acum (AI oprit), așa că rămâne textul vechi până la o procesare cu AI.'
-                : "Claude nu a putut-o rescrie: {$aiError}";
+                ? 'Claude is not available right now (AI is turned off), so the page keeps its previous text until a run with AI.'
+                : "Claude could not write it again: {$aiError}";
 
-            $document->update(['is_stale' => true, 'stale_reason' => "{$change}{$pageCommit}. {$why}"]);
+            $document->update(['is_stale' => true, 'stale_reason' => "{$change}. {$why}"]);
         }
 
         return new PageResult(
@@ -264,7 +271,7 @@ final class DocumentationGenerator
 
             $document->fill([
                 'module_id' => $module?->id,
-                'title' => $module?->path ?? ($slug === Document::README ? 'README generat' : 'Despre proiect'),
+                'title' => $module?->path ?? ($slug === Document::README ? 'Generated README' : 'Overview'),
                 'markdown' => $page->markdown,
                 'source_sha' => $repository->last_sha,
                 'input_hash' => $inputHash,
@@ -277,7 +284,7 @@ final class DocumentationGenerator
                 'cost_usd_equivalent' => $page->costUsdEquivalent,
                 'generated_at' => now(),
                 'is_stale' => $aiError !== null,
-                'stale_reason' => $aiError === null ? null : "Claude nu a putut scrie această pagină: {$aiError} Până la următoarea procesare, pagina e scrisă automat din analiza codului.",
+                'stale_reason' => $aiError === null ? null : "Claude could not write this page: {$aiError} Until the next run, the page is generated from the code analysis.",
             ])->save();
 
             if ($markdownChanged) {

@@ -13,16 +13,19 @@ use Illuminate\Support\Collection;
  * (modules, dependencies, classes) and the technologies found in its files (TechnologyDetector).
  * The same data always gives the same Mermaid code, and nothing is added that the data does not show.
  *
- * 1. „Arhitectura pe straturi”: the modules with code, grouped in layers by folder names (LayerClassifier),
+ * 1. "Layered architecture": the modules with code, grouped in layers by folder names (LayerClassifier),
  *    with the imports between them; the left-out folders are listed under the diagram.
- * 2. „Containere” (C4 level 2): the parts that run separately (the web application, the pages in the
+ * 2. "Containers" (C4 level 2): the parts that run separately (the web application, the pages in the
  *    browser, a queue worker, the database, ...) with their technology logos, inside the system boundary,
  *    and the external services the code talks to.
- * 3. „Componente” (C4 level 3): the 15 biggest modules with their main classes and the strongest
- *    25 dependencies; the other modules are counted in one „+ N alte module” box.
- * 4. „Context” (C4 level 1): who uses the system and which external systems it talks to.
+ * 3. "Components" (C4 level 3): the 15 biggest modules with their main classes and the strongest
+ *    25 dependencies; the other modules are counted in one "+ N more modules" box.
+ * 4. "Context" (C4 level 1): who uses the system and which external systems it talks to.
  *
  * A view without data is not drawn at all (a repository with only a README gets no diagrams).
+ *
+ * Every label inside the Mermaid code, and each diagram's title and caption, is in the content language
+ * (English, see App\Support\ContentLanguage).
  */
 final class ArchitectureDiagramBuilder
 {
@@ -131,9 +134,9 @@ final class ArchitectureDiagramBuilder
     }
 
     /**
-     * „Arhitectura pe straturi”: one group per layer, from the entry points down to the data, with the
+     * "Layered architecture": one group per layer, from the entry points down to the data, with the
      * biggest modules of each layer as a grid of boxes, and one arrow from a layer to another when
-     * modules of the first import code from the second (no numbers: the details are in „Componente”).
+     * modules of the first import code from the second (no numbers: the details are in "Components").
      *
      * @param  Collection<int, Module>  $modules
      * @param  list<array{from: int, to: int, weight: int}>  $dependencies
@@ -176,7 +179,7 @@ final class ArchitectureDiagramBuilder
             $hiddenCount = $inLayer->count() - count($nodeIds);
 
             if ($hiddenCount > 0) {
-                $chart->node("more_{$layer}", MermaidText::escape('+ '.$this->countLabel($hiddenCount, 'alt modul', 'alte module')), 'more');
+                $chart->node("more_{$layer}", MermaidText::escape('+ '.$this->countLabel($hiddenCount, 'more module', 'more modules')), 'more');
                 $nodeIds[] = "more_{$layer}";
             }
 
@@ -203,19 +206,19 @@ final class ArchitectureDiagramBuilder
         $chart->classDef('more', self::C4_STYLES['more']);
 
         $caption = ($shown->count() < $modules->count()
-            ? "Cele mai mari {$shown->count()} din cele {$this->countLabel($modules->count(), 'modul', 'module')} cu cod, grupate pe straturi după numele folderelor"
-            : 'Modulele cu cod ale proiectului ('.$this->countLabel($modules->count(), 'modul', 'module').'), grupate pe straturi după numele folderelor')
-            .'; o săgeată arată că modulele unui strat importă cod din celălalt strat.';
+            ? "The {$shown->count()} biggest of the {$modules->count()} modules with code, grouped into layers by folder name"
+            : 'The modules with code ('.$this->countLabel($modules->count(), 'module', 'modules').'), grouped into layers by folder name')
+            .'; an arrow means that modules of one layer import code from the other layer.';
 
         return $this->diagram(DiagramType::Layers, $chart, [
-            'title' => 'Arhitectura pe straturi',
+            'title' => 'Layered architecture',
             'caption' => $caption,
             'excluded' => $excluded,
         ]);
     }
 
     /**
-     * „Containere” (C4 level 2): what runs separately, with the technology that proves it.
+     * "Containers" (C4 level 2): what runs separately, with the technology that proves it.
      *
      * Each project (folder with a manifest) gives: its server (a web framework, or just its language),
      * its pages in the browser (React, Vue, ...) as a separate container, a queue worker when it has
@@ -251,11 +254,11 @@ final class ArchitectureDiagramBuilder
             // A server: a web framework, or code in a server language (PHP, Python, Go, ...), or a project without pages.
             if ($server !== null || $serverLanguages !== [] || $pages === null) {
                 $serverId = "{$prefix}_app";
-                $title = $this->projectTitle($repository, $project, $server === null ? null : 'Aplicația web');
+                $title = $this->projectTitle($repository, $project, $server === null ? null : 'Web application');
                 $details = $this->joinNames([$server, ...$serverLanguages]);
                 $description = match (true) {
-                    $server?->role === TechnologyRole::Fullstack => 'Serverul și paginile',
-                    $server !== null => 'Serverul web',
+                    $server?->role === TechnologyRole::Fullstack => 'Server and pages',
+                    $server !== null => 'Web server',
                     // Without a framework, the tools describe the project, unless they belong to its pages (Vite).
                     $pages === null => $this->toolsLine($project),
                     default => null,
@@ -265,12 +268,12 @@ final class ArchitectureDiagramBuilder
 
             if ($pages !== null) {
                 $pagesId = "{$prefix}_ui";
-                $title = $this->projectTitle($repository, $project, 'Interfața web', $serverId !== null ? 'interfața' : null);
+                $title = $this->projectTitle($repository, $project, 'Web interface', $serverId !== null ? 'interface' : null);
                 $details = $this->joinNames([$pages, $this->pagesLanguage($project)]);
-                $this->container($chart, $pagesId, $pages, $title, [$details, 'Paginile, în browser']);
+                $this->container($chart, $pagesId, $pages, $title, [$details, 'Pages in the browser']);
 
                 if ($serverId !== null) {
-                    $edges[] = [$pagesId, $serverId, $project->uses('inertia') ? 'Cereri Inertia · HTTP' : 'Cereri HTTP'];
+                    $edges[] = [$pagesId, $serverId, $project->uses('inertia') ? 'Inertia requests · HTTP' : 'HTTP requests'];
                 }
             }
 
@@ -278,7 +281,7 @@ final class ArchitectureDiagramBuilder
 
             if ($server !== null || $pages !== null) {
                 // Only the first arrow from the user is labeled: the others would repeat the same words.
-                $edges[] = ['user', $pagesId ?? $serverId, $hasPeople ? '' : 'Folosește · HTTPS'];
+                $edges[] = ['user', $pagesId ?? $serverId, $hasPeople ? '' : 'Uses · HTTPS'];
                 $hasPeople = true;
             }
 
@@ -286,21 +289,21 @@ final class ArchitectureDiagramBuilder
 
             if ($project->hasQueueJobs && $project->uses('laravel')) {
                 $workerId = "{$prefix}_worker";
-                $this->container($chart, $workerId, $project->first(TechnologyRole::Backend), 'Workerul de cozi', ['Laravel · queue:work', 'Rulează joburile în fundal']);
+                $this->container($chart, $workerId, $project->first(TechnologyRole::Backend), 'Queue worker', ['Laravel · queue:work', 'Runs the jobs in the background']);
             }
 
             foreach ([...$project->withRole(TechnologyRole::Database), ...$project->withRole(TechnologyRole::Cache)] as $store) {
                 $stores[$store->key] ??= $store;
-                $edges[] = [$mainId, "store_{$store->key}", $store->role === TechnologyRole::Database ? 'Citește și scrie' : $this->cacheUsage($project, $store)];
+                $edges[] = [$mainId, "store_{$store->key}", $store->role === TechnologyRole::Database ? 'Reads and writes' : $this->cacheUsage($project, $store)];
 
                 if ($workerId !== null && $this->queueStore($project) === $store->key) {
-                    $edges[] = [$workerId, "store_{$store->key}", 'Preia joburile'];
+                    $edges[] = [$workerId, "store_{$store->key}", 'Takes the jobs'];
                 }
             }
 
             foreach ($project->withRole(TechnologyRole::External) as $external) {
                 $externals[$external->key] ??= $external;
-                $edges[] = [$mainId, "ext_{$external->key}", $external->key === 'smtp' ? 'Trimite e-mail · SMTP' : 'API · HTTPS'];
+                $edges[] = [$mainId, "ext_{$external->key}", $external->key === 'smtp' ? 'Sends email · SMTP' : 'API · HTTPS'];
             }
         }
 
@@ -312,7 +315,7 @@ final class ArchitectureDiagramBuilder
         }
 
         foreach ($stores as $key => $store) {
-            $title = $store->role === TechnologyRole::Database ? 'Baza de date' : $store->name;
+            $title = $store->role === TechnologyRole::Database ? 'Database' : $store->name;
             $details = $store->role === TechnologyRole::Database ? [$store->name] : [];
             $this->container($chart, "store_{$key}", $store, $title, $details, cylinder: $store->role === TechnologyRole::Database);
         }
@@ -320,13 +323,13 @@ final class ArchitectureDiagramBuilder
         $hiddenProjects = count($report->projects) - count($projects);
 
         if ($hiddenProjects > 0) {
-            $chart->node('more', MermaidText::escape('+ '.$this->countLabel($hiddenProjects, 'alt pachet', 'alte pachete')), 'more');
+            $chart->node('more', MermaidText::escape('+ '.$this->countLabel($hiddenProjects, 'more package', 'more packages')), 'more');
         }
 
         $chart->endGroup();
 
         if ($hasPeople) {
-            $chart->node('user', MermaidText::label('Utilizator', ['Folosește aplicația']), 'person', 'person');
+            $chart->node('user', MermaidText::label('User', ['Uses the application']), 'person', 'person');
         }
 
         foreach ($externals as $key => $external) {
@@ -340,15 +343,15 @@ final class ArchitectureDiagramBuilder
         $this->defineC4Styles($chart);
 
         return $this->diagram(DiagramType::Container, $chart, [
-            'title' => 'Containere',
-            'caption' => 'Părțile care rulează separat și tehnologiile lor, găsite în '.$this->sourcesSentence($report).'; o săgeată arată cine pe cine apelează.',
+            'title' => 'Containers',
+            'caption' => 'The parts that run separately and their technologies, found in '.$this->sourcesSentence($report).'; an arrow points from the caller to what it calls.',
             'technologies' => array_map(fn (Technology $technology): array => $technology->toArray(), $report->all()),
             'hidden_projects' => $hiddenProjects,
         ]);
     }
 
     /**
-     * „Componente” (C4 level 3): the biggest modules with their main classes, inside the system boundary.
+     * "Components" (C4 level 3): the biggest modules with their main classes, inside the system boundary.
      *
      * @param  Collection<int, Module>  $modules
      * @param  list<array{from: int, to: int, weight: int}>  $dependencies
@@ -366,7 +369,7 @@ final class ArchitectureDiagramBuilder
         $omitted = $modules->count() - $shown->count();
 
         $chart = new Flowchart('TB');
-        $chart->startGroup('system', '<b>'.MermaidText::escape($repository->name).'</b> · componentele codului', 'boundary');
+        $chart->startGroup('system', '<b>'.MermaidText::escape($repository->name).'</b> · code components', 'boundary');
 
         // A component is called by its folder name; when two get the same name, by their whole path.
         $names = $shown->mapWithKeys(fn (Module $module): array => [$module->id => $this->componentName($module->path)]);
@@ -383,7 +386,7 @@ final class ArchitectureDiagramBuilder
         }
 
         if ($omitted > 0) {
-            $chart->node('more', MermaidText::escape('+ '.$this->countLabel($omitted, 'alt modul', 'alte module')), 'more');
+            $chart->node('more', MermaidText::escape('+ '.$this->countLabel($omitted, 'more module', 'more modules')), 'more');
         }
 
         $drawnEdges = $this->drawDependencies($chart, $dependencies, $ids, self::MAX_COMPONENT_EDGES);
@@ -403,23 +406,23 @@ final class ArchitectureDiagramBuilder
         $possibleEdges = count(array_filter($dependencies, fn (array $dependency): bool => isset($ids[$dependency['from']], $ids[$dependency['to']])));
 
         $caption = ($omitted > 0
-            ? "Cele mai mari {$shown->count()} din cele {$this->countLabel($modules->count(), 'modul', 'module')} cu cod, cu clasele lor principale"
-            : 'Modulele cu cod ale proiectului, cu clasele lor principale')
+            ? "The {$shown->count()} biggest of the {$modules->count()} modules with code, with their main classes"
+            : 'The modules with code, with their main classes')
             .match (true) {
-                $drawnEdges === [] => '; nu se importă între ele.',
-                count($drawnEdges) < $possibleEdges => ' și cele mai puternice '.$this->countLabel(count($drawnEdges), 'dependență', 'dependențe').'; săgeata arată cine pe cine importă.',
-                default => '; săgeata arată că un modul importă cod din altul.',
+                $drawnEdges === [] => '; they do not import each other.',
+                count($drawnEdges) < $possibleEdges => ', and the '.(count($drawnEdges) === 1 ? 'strongest dependency' : count($drawnEdges).' strongest dependencies').'; an arrow points from the importing module to the imported one.',
+                default => '; an arrow means that a module imports code from another.',
             };
 
         return $this->diagram(DiagramType::Component, $chart, [
-            'title' => 'Componente',
+            'title' => 'Components',
             'caption' => $caption,
             'omitted_modules' => $omitted,
         ]);
     }
 
     /**
-     * „Context” (C4 level 1), small: the user, the system and the external systems it calls.
+     * "Context" (C4 level 1), small: the user, the system and the external systems it calls.
      *
      * @return array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}|null
      */
@@ -439,13 +442,13 @@ final class ArchitectureDiagramBuilder
         $chart->node('system', MermaidText::label($repository->name, array_values(array_filter([$repository->description])), detailLength: 220), 'system');
 
         if ($hasPeople) {
-            $chart->node('user', MermaidText::label('Utilizator', ['Folosește aplicația']), 'person', 'person');
-            $chart->edge('user', 'system', MermaidText::escape('Folosește'));
+            $chart->node('user', MermaidText::label('User', ['Uses the application']), 'person', 'person');
+            $chart->edge('user', 'system', MermaidText::escape('Uses'));
         }
 
         foreach ($externals as $external) {
             $this->external($chart, "ext_{$external->key}", $external);
-            $chart->edge('system', "ext_{$external->key}", MermaidText::escape($external->key === 'smtp' ? 'Trimite e-mail' : 'Trimite cereri'));
+            $chart->edge('system', "ext_{$external->key}", MermaidText::escape($external->key === 'smtp' ? 'Sends email' : 'Sends requests'));
         }
 
         $this->defineC4Styles($chart);
@@ -453,8 +456,8 @@ final class ArchitectureDiagramBuilder
         return $this->diagram(DiagramType::Context, $chart, [
             'title' => 'Context',
             'caption' => $externals === []
-                ? 'Cine folosește sistemul; în fișierele proiectului nu am găsit sisteme externe apelate de cod.'
-                : 'Cine folosește sistemul și ce sisteme externe apelează codul (după bibliotecile și setările găsite).',
+                ? 'Who uses the system; the project files show no external systems called by the code.'
+                : 'Who uses the system and which external systems the code calls (from the libraries and settings found).',
         ]);
     }
 
@@ -499,7 +502,7 @@ final class ArchitectureDiagramBuilder
      */
     private function external(Flowchart $chart, string $id, Technology $technology): void
     {
-        $label = MermaidText::label($technology->name, ['Sistem extern']);
+        $label = MermaidText::label($technology->name, ['External system']);
 
         if ($technology->icon !== null) {
             $chart->iconNode($id, $technology->icon, $label, 'external');
@@ -525,7 +528,7 @@ final class ArchitectureDiagramBuilder
     }
 
     /**
-     * The title of a project's container: the generic name for the root project ("Aplicația web"),
+     * The title of a project's container: the generic name for the root project ("Web application"),
      * the folder name for a project in a subfolder ("analyzer"), the repository name otherwise.
      */
     private function projectTitle(Repository $repository, DetectedProject $project, ?string $generic, ?string $suffix = null): string
@@ -580,8 +583,8 @@ final class ArchitectureDiagramBuilder
     {
         $driverKeys = [
             'Cache' => [$project->environment['CACHE_STORE'] ?? $project->environment['CACHE_DRIVER'] ?? null],
-            'Sesiuni' => [$project->environment['SESSION_DRIVER'] ?? null],
-            'Coada de joburi' => [$project->environment['QUEUE_CONNECTION'] ?? null],
+            'Sessions' => [$project->environment['SESSION_DRIVER'] ?? null],
+            'Job queue' => [$project->environment['QUEUE_CONNECTION'] ?? null],
         ];
 
         $uses = [];
@@ -592,7 +595,7 @@ final class ArchitectureDiagramBuilder
             }
         }
 
-        return $uses === [] ? 'Folosește' : implode(' · ', $uses);
+        return $uses === [] ? 'Uses' : implode(' · ', $uses);
     }
 
     /**
@@ -623,17 +626,21 @@ final class ArchitectureDiagramBuilder
     }
 
     /**
-     * Where the technologies were found, as a Romanian list: "composer.json, package.json și .env.example".
+     * Where the technologies were found, as a list: "composer.json, package.json, and .env.example".
      */
     private function sourcesSentence(TechnologyReport $report): string
     {
         $sources = array_values(array_unique(array_map(fn (Technology $technology): string => basename($technology->source), $report->all())));
 
         if (count($sources) <= 1) {
-            return $sources[0] ?? 'fișierele proiectului';
+            return $sources[0] ?? 'the project files';
         }
 
-        return implode(', ', array_slice($sources, 0, -1)).' și '.end($sources);
+        if (count($sources) === 2) {
+            return implode(' and ', $sources);
+        }
+
+        return implode(', ', array_slice($sources, 0, -1)).', and '.end($sources);
     }
 
     /**
@@ -756,17 +763,11 @@ final class ArchitectureDiagramBuilder
     }
 
     /**
-     * A number with its noun, in Romanian: "1 modul", "16 module", "20 de module".
+     * A number with its noun: "1 module", "16 modules".
      */
     private function countLabel(int $number, string $one, string $many): string
     {
-        if ($number === 1) {
-            return "1 {$one}";
-        }
-
-        $needsDe = $number % 100 === 0 || $number % 100 >= 20;
-
-        return $number.($needsDe ? ' de ' : ' ').$many;
+        return $number === 1 ? "1 {$one}" : "{$number} {$many}";
     }
 
     /**

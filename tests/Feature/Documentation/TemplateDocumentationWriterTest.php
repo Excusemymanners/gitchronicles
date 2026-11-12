@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Documentation;
 
+use App\Documentation\ContextBuilder;
 use App\Documentation\ModuleContext;
 use App\Documentation\OverviewContext;
 use App\Documentation\SourceLinks;
@@ -22,16 +23,16 @@ class TemplateDocumentationWriterTest extends TestCase
         $this->assertSame(Document::WRITER_TEMPLATE, $page->writer);
         $this->assertSame(0, $page->inputTokens);
         $this->assertSame(
-            ['## Rol', '## Componente principale', '## Cum funcționează', '## Dependențe', '## Fișiere'],
+            ['## Role', '## Main components', '## How it works', '## Dependencies', '## Files'],
             array_values(preg_grep('/\A## /', explode("\n", $page->markdown))),
         );
-        $this->assertStringStartsWith('# Modulul `src/Models`', $page->markdown);
+        $this->assertStringStartsWith('# Module `src/Models`', $page->markdown);
         $this->assertStringContainsString(
-            '**[`Product`](https://github.com/acme/magazin/blob/abc123/src/Models/Product.php#L3-L9)** — clasă în `Product.php`, liniile 3–9. Conține: `price`.',
+            '**[`Product`](https://github.com/acme/magazin/blob/abc123/src/Models/Product.php#L3-L9)** — class in `Product.php`, lines 3–9. Members: `price`.',
             $page->markdown,
         );
         $this->assertStringContainsString('[`Plan tematic.php`](https://github.com/acme/magazin/blob/abc123/src/Models/Plan%20tematic.php)', $page->markdown);
-        $this->assertStringContainsString('- modulul `src/Http` (1 import)', $page->markdown);
+        $this->assertStringContainsString('- module `src/Http` (1 import)', $page->markdown);
     }
 
     public function test_module_page_keeps_names_with_markdown_characters_as_code(): void
@@ -50,13 +51,13 @@ class TemplateDocumentationWriterTest extends TestCase
         $page = (new TemplateDocumentationWriter)->overview($this->overviewContext(), $this->links());
 
         $this->assertSame(
-            ['## Ce face proiectul', '## Tehnologii', '## Arhitectură', '## Module', '## Cum îl rulezi'],
+            ['## What the project does', '## Technologies', '## Architecture', '## Modules', '## How to run it'],
             array_values(preg_grep('/\A## /', explode("\n", $page->markdown))),
         );
-        $this->assertStringContainsString('Repository-ul nu are un README în folderul principal', $page->markdown);
-        $this->assertStringContainsString('Fișierele proiectului nu arată cum se instalează sau se pornește', $page->markdown);
-        $this->assertStringContainsString('| [`src/Models`](/repositories/1/docs/src-models) | 2 | 14 | pagină proprie |', $page->markdown);
-        $this->assertStringContainsString('| `storage` | 1 | 1 | fără pagină: nu conține cod într-un limbaj recunoscut |', $page->markdown);
+        $this->assertStringContainsString('The repository has no README in its root folder', $page->markdown);
+        $this->assertStringContainsString('The project files do not show how to install or start it', $page->markdown);
+        $this->assertStringContainsString('| [`src/Models`](/repositories/1/docs/src-models) | 2 | 14 | own page |', $page->markdown);
+        $this->assertStringContainsString('| `storage` | 1 | 1 | no page: no code in a recognized language |', $page->markdown);
     }
 
     public function test_readme_leaves_out_every_section_without_evidence(): void
@@ -64,10 +65,10 @@ class TemplateDocumentationWriterTest extends TestCase
         $page = (new TemplateDocumentationWriter)->readme($this->overviewContext(), $this->links());
 
         $this->assertSame(
-            ['## Tehnologii', '## Structura proiectului', '## Module'],
+            ['## Technologies', '## Project structure', '## Modules'],
             array_values(preg_grep('/\A## /', explode("\n", $page->markdown))),
         );
-        $this->assertStringStartsWith("# magazin\n\nRepository-ul `acme/magazin` are 3 fișiere și 15 linii, scrise mai ales în PHP.", $page->markdown);
+        $this->assertStringStartsWith("# magazin\n\nThe repository `acme/magazin` has 3 files with 15 lines, written mostly in PHP.", $page->markdown);
         $this->assertStringNotContainsString('docs/src-models', $page->markdown);
         $this->assertStringContainsString('[`src/Models`](https://github.com/acme/magazin/tree/abc123/src/Models)', $page->markdown);
     }
@@ -76,15 +77,15 @@ class TemplateDocumentationWriterTest extends TestCase
     {
         $context = new OverviewContext(
             repository: 'octocat/hello-world', name: 'hello-world', readme: null, fileCount: 1, lineCount: 1,
-            languages: [['name' => 'Altele', 'files' => 1, 'lines' => 1]], manifests: [],
+            languages: [['name' => ContextBuilder::OTHER_LANGUAGE, 'files' => 1, 'lines' => 1]], manifests: [],
             topFolders: [['path' => '/', 'files' => 1, 'lines' => 1, 'languages' => []]],
-            modules: [['path' => '/', 'files' => 1, 'lines' => 1, 'page' => null, 'reason' => 'nu conține cod într-un limbaj recunoscut']],
+            modules: [['path' => '/', 'files' => 1, 'lines' => 1, 'page' => null, 'reason' => 'no code in a recognized language']],
             dependencies: [], dependencyCount: 0, entryPoints: [], commands: [], requirements: [], tests: null, license: null,
         );
 
         $page = (new TemplateDocumentationWriter)->readme($context, $this->links());
 
-        $this->assertSame(['## Structura proiectului', '## Module'], array_values(preg_grep('/\A## /', explode("\n", $page->markdown))));
+        $this->assertSame(['## Project structure', '## Modules'], array_values(preg_grep('/\A## /', explode("\n", $page->markdown))));
     }
 
     public function test_readme_has_install_run_test_and_license_sections_only_from_the_found_facts(): void
@@ -102,11 +103,11 @@ class TemplateDocumentationWriterTest extends TestCase
 
         $page = (new TemplateDocumentationWriter)->readme($context, $this->links());
 
-        $this->assertStringContainsString("## Instalare\n\n```bash\ngit clone https://github.com/acme/magazin.git\ncd magazin\ncomposer install\n```", $page->markdown);
-        $this->assertStringContainsString("## Rulare\n\n```bash\ncomposer run dev\n```", $page->markdown);
-        $this->assertStringContainsString("- PHPUnit (din `phpunit.xml`)\n- 4 fișiere de test\n\n```bash\ncomposer run test\n```", $page->markdown);
-        $this->assertStringContainsString("## Licență\n\nMIT (din `LICENSE`).", $page->markdown);
-        $this->assertStringContainsString('- PHP `^8.3` (din `composer.json`)', $page->markdown);
+        $this->assertStringContainsString("## Installation\n\n```bash\ngit clone https://github.com/acme/magazin.git\ncd magazin\ncomposer install\n```", $page->markdown);
+        $this->assertStringContainsString("## Running\n\n```bash\ncomposer run dev\n```", $page->markdown);
+        $this->assertStringContainsString("- PHPUnit (from `phpunit.xml`)\n- 4 test files\n\n```bash\ncomposer run test\n```", $page->markdown);
+        $this->assertStringContainsString("## License\n\nMIT (from `LICENSE`).", $page->markdown);
+        $this->assertStringContainsString('- PHP `^8.3` (from `composer.json`)', $page->markdown);
     }
 
     /**
@@ -169,12 +170,12 @@ class TemplateDocumentationWriterTest extends TestCase
             readme: null,
             fileCount: 3,
             lineCount: 15,
-            languages: [['name' => 'PHP', 'files' => 2, 'lines' => 14], ['name' => 'Altele', 'files' => 1, 'lines' => 1]],
+            languages: [['name' => 'PHP', 'files' => 2, 'lines' => 14], ['name' => ContextBuilder::OTHER_LANGUAGE, 'files' => 1, 'lines' => 1]],
             manifests: [],
             topFolders: [['path' => 'src', 'files' => 2, 'lines' => 14, 'languages' => ['PHP']], ['path' => 'storage', 'files' => 1, 'lines' => 1, 'languages' => []]],
             modules: [
                 ['path' => 'src/Models', 'files' => 2, 'lines' => 14, 'page' => '/repositories/1/docs/src-models', 'reason' => null],
-                ['path' => 'storage', 'files' => 1, 'lines' => 1, 'page' => null, 'reason' => 'nu conține cod într-un limbaj recunoscut'],
+                ['path' => 'storage', 'files' => 1, 'lines' => 1, 'page' => null, 'reason' => 'no code in a recognized language'],
             ],
             dependencies: [],
             dependencyCount: 0,

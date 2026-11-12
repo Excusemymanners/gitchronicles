@@ -2,6 +2,8 @@
 
 namespace App\Documentation;
 
+use App\Support\ContentLanguage;
+
 /**
  * Everything a writer may know about the whole project, built by ContextBuilder::overview(): the overview
  * page and the generated README are both written from it. Every fact comes from the analysis tables
@@ -13,7 +15,7 @@ final readonly class OverviewContext
      * @param  string  $repository  "owner/name"
      * @param  string  $name  the repository's name
      * @param  array{path: string, description: string|null, features: list<string>, excerpt: string, truncated: bool}|null  $readme  the README of the root folder
-     * @param  list<array{name: string, files: int, lines: int}>  $languages  most lines first; "Altele" = no recognized language
+     * @param  list<array{name: string, files: int, lines: int}>  $languages  most lines first; ContextBuilder::OTHER_LANGUAGE = no recognized language
      * @param  list<array{path: string, kind: string, summary: array<string, mixed>}>  $manifests  the package manifests of the root folder
      * @param  list<array{path: string, files: int, lines: int, languages: list<string>}>  $topFolders  "/" = the files of the root folder
      * @param  list<array{path: string, files: int, lines: int, page: string|null, reason: string|null}>  $modules  page = the path of its documentation page; reason = why it has none
@@ -54,10 +56,10 @@ final readonly class OverviewContext
     }
 
     /**
-     * The sha256 of the context (see ModuleContext::inputHash()).
+     * The sha256 of the context and of the content language (see ModuleContext::inputHash()).
      */
     public function inputHash(): string
     {
-        return hash('sha256', json_encode($this->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode([...$this->toArray(), 'content_language' => ContentLanguage::code()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR));
     }
 }

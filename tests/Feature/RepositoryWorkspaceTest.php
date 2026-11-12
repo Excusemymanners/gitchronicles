@@ -119,9 +119,9 @@ class RepositoryWorkspaceTest extends TestCase
 
         $response->assertInertia(fn (Assert $page) => $page
             ->where('workspace.assistant.starters', [
-                'Ce face modulul app/Models?',
-                'Cum folosește app/Http modulul app/Actions?',
-                'Ce conține modulul config?',
+                'What does the module app/Models do?',
+                'How does app/Http use the module app/Actions?',
+                'What is in the module config?',
             ])
         );
     }

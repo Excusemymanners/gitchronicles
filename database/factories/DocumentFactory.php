@@ -55,7 +55,7 @@ class DocumentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'slug' => Document::OVERVIEW,
-            'title' => 'Despre proiect',
+            'title' => 'Overview',
             'markdown' => "# Despre proiect\n\n## Ce face proiectul\n\nUn magazin mic.\n\n## Tehnologii\n\n- PHP\n\n## Arhitectură\n\nTrei module.",
         ]);
     }
@@ -67,7 +67,7 @@ class DocumentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'slug' => Document::README,
-            'title' => 'README generat',
+            'title' => 'Generated README',
             'markdown' => "# Magazin\n\nUn magazin mic.\n\n## Instalare\n\n```bash\ncomposer install\n```\n",
         ]);
     }

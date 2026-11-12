@@ -43,7 +43,7 @@ class DiagramsPageTest extends TestCase
             ->where('diagrams.component', null)
             ->where('diagrams.context', null)
             ->has('diagrams.flows', 1)
-            ->where('diagrams.flows.0.title', 'Adăugarea unui repository')
+            ->where('diagrams.flows.0.title', 'Adding a repository')
             ->where('diagrams.flows.0.sources.0.url', "https://github.com/excusemymanners/gitchronicles/blob/{$sha}/app/Http/Controllers/RepositoryController.php#L10-L20")
         );
     }

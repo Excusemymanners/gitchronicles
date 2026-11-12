@@ -21,6 +21,19 @@ return [
     'ai_driver' => env('AI_DRIVER', 'none'),
 
     /*
+    |--------------------------------------------------------------------------
+    | Content language
+    |--------------------------------------------------------------------------
+    |
+    | The language of everything generated for a repository (documentation, diagram labels and
+    | flows, assistant answers), independent of the interface language. Only "en" is supported
+    | for now; see App\Support\ContentLanguage for how a second language would be added.
+    |
+    */
+
+    'content_language' => env('CONTENT_LANGUAGE', 'en'),
+
+    /*
     | The Claude Code executable used by the "claude-code" driver.
     */
 

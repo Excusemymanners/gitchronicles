@@ -40,10 +40,10 @@ class ArchitectureDiagramBuilderTest extends TestCase
                 wrappingWidth: 240
             ---
             flowchart TB
-              subgraph layer_entry["Intrare"]
+              subgraph layer_entry["Entry points"]
                 m8["tools/cli"]
               end
-              subgraph layer_ui["Interfața"]
+              subgraph layer_ui["User interface"]
                 m1["frontend"]
                 m2["frontend/components"]
                 m3["frontend/lib"]
@@ -51,13 +51,13 @@ class ArchitectureDiagramBuilderTest extends TestCase
               subgraph layer_web["Web/API"]
                 m4["src/Http"]
               end
-              subgraph layer_logic["Logica aplicației"]
+              subgraph layer_logic["Application logic"]
                 m6["src/Support"]
               end
-              subgraph layer_data["Date"]
+              subgraph layer_data["Data"]
                 m5["src/Models"]
               end
-              subgraph layer_other["Altele"]
+              subgraph layer_other["Other"]
                 m7["tools"]
               end
               layer_entry ~~~ layer_ui
@@ -83,8 +83,8 @@ class ArchitectureDiagramBuilderTest extends TestCase
               class m7 layer_other
 
             MERMAID, $diagrams['layers']['mermaid']);
-        $this->assertSame([['label' => 'Fișierele din rădăcina proiectului', 'paths' => ['/']]], $diagrams['layers']['meta']['excluded']);
-        $this->assertSame('Arhitectura pe straturi', $diagrams['layers']['meta']['title']);
+        $this->assertSame([['label' => 'Files in the project root', 'paths' => ['/']]], $diagrams['layers']['meta']['excluded']);
+        $this->assertSame('Layered architecture', $diagrams['layers']['meta']['title']);
     }
 
     public function test_container_view_draws_only_the_technologies_found_in_the_manifests_with_their_logos(): void
@@ -102,16 +102,16 @@ class ArchitectureDiagramBuilderTest extends TestCase
             flowchart LR
               subgraph system["<b>magazin</b>"]
                 p1_app@{ icon: "logos:php", form: "rounded", label: "<b>magazin</b><br>PHP ^8.3", pos: "b", h: 44 }
-                p1_ui@{ icon: "logos:react", form: "rounded", label: "<b>Interfața web</b><br>React 19 · TypeScript<br>Paginile, în browser", pos: "b", h: 44 }
-                store_postgresql@{ icon: "logos:postgresql", form: "rounded", label: "<b>Baza de date</b><br>PostgreSQL", pos: "b", h: 44 }
+                p1_ui@{ icon: "logos:react", form: "rounded", label: "<b>Web interface</b><br>React 19 · TypeScript<br>Pages in the browser", pos: "b", h: 44 }
+                store_postgresql@{ icon: "logos:postgresql", form: "rounded", label: "<b>Database</b><br>PostgreSQL", pos: "b", h: 44 }
                 store_redis@{ icon: "logos:redis", form: "rounded", label: "Redis", pos: "b", h: 44 }
                 store_meilisearch@{ icon: "logos:meilisearch", form: "rounded", label: "Meilisearch", pos: "b", h: 44 }
               end
-              user@{ shape: person, label: "<b>Utilizator</b><br>Folosește aplicația" }
-              ext_stripe@{ icon: "logos:stripe", form: "rounded", label: "<b>Stripe</b><br>Sistem extern", pos: "b", h: 44 }
-              p1_ui -->|"Cereri HTTP"| p1_app
-              user -->|"Folosește · HTTPS"| p1_ui
-              p1_app -->|"Citește și scrie"| store_postgresql
+              user@{ shape: person, label: "<b>User</b><br>Uses the application" }
+              ext_stripe@{ icon: "logos:stripe", form: "rounded", label: "<b>Stripe</b><br>External system", pos: "b", h: 44 }
+              p1_ui -->|"HTTP requests"| p1_app
+              user -->|"Uses · HTTPS"| p1_ui
+              p1_app -->|"Reads and writes"| store_postgresql
               p1_app -->|"Cache"| store_redis
               p1_app -->|"API · HTTPS"| ext_stripe
               classDef person fill:#08427b,stroke:#073b6f,color:#ffffff
@@ -150,7 +150,7 @@ class ArchitectureDiagramBuilderTest extends TestCase
                 wrappingWidth: 240
             ---
             flowchart TB
-              subgraph system["<b>magazin</b> · componentele codului"]
+              subgraph system["<b>magazin</b> · code components"]
                 c1["frontend"]
                 c2["<b>components</b><br>frontend/components<br>ProductCard<br>Props"]
                 c3["frontend/lib"]
@@ -173,7 +173,7 @@ class ArchitectureDiagramBuilderTest extends TestCase
               class c1,c2,c3,c4,c5,c6,c7,c8 component
 
             MERMAID, $diagrams['component']['mermaid']);
-        $this->assertSame('Modulele cu cod ale proiectului, cu clasele lor principale; săgeata arată că un modul importă cod din altul.', $diagrams['component']['meta']['caption']);
+        $this->assertSame('The modules with code, with their main classes; an arrow means that a module imports code from another.', $diagrams['component']['meta']['caption']);
     }
 
     public function test_context_view_shows_the_user_the_system_and_the_external_systems_the_code_calls(): void
@@ -181,8 +181,8 @@ class ArchitectureDiagramBuilderTest extends TestCase
         $diagrams = $this->buildForFixture();
 
         $this->assertStringContainsString('system["<b>magazin</b><br>Un magazin mic, folosit ca exemplu în testele analizorului de cod."]', $diagrams['context']['mermaid']);
-        $this->assertStringContainsString('user -->|"Folosește"| system', $diagrams['context']['mermaid']);
-        $this->assertStringContainsString('system -->|"Trimite cereri"| ext_stripe', $diagrams['context']['mermaid']);
+        $this->assertStringContainsString('user -->|"Uses"| system', $diagrams['context']['mermaid']);
+        $this->assertStringContainsString('system -->|"Sends requests"| ext_stripe', $diagrams['context']['mermaid']);
     }
 
     public function test_escapes_folder_and_class_names_in_the_labels(): void
@@ -208,12 +208,12 @@ class ArchitectureDiagramBuilderTest extends TestCase
 
         $diagrams = $this->build($repository);
 
-        $this->assertStringContainsString('more["+ 2 alte module"]', $diagrams['component']['mermaid']);
+        $this->assertStringContainsString('more["+ 2 more modules"]', $diagrams['component']['mermaid']);
         $this->assertStringNotContainsString('app/Module01', $diagrams['component']['mermaid']);
         $this->assertStringNotContainsString('app/Module02', $diagrams['component']['mermaid']);
         $this->assertStringContainsString('<b>Module03</b>', $diagrams['component']['mermaid']);
         $this->assertSame(2, $diagrams['component']['meta']['omitted_modules']);
-        $this->assertStringStartsWith('Cele mai mari 15 din cele 17 module cu cod', $diagrams['component']['meta']['caption']);
+        $this->assertStringStartsWith('The 15 biggest of the 17 modules with code', $diagrams['component']['meta']['caption']);
     }
 
     public function test_layers_view_shows_at_most_six_modules_per_layer_and_counts_the_others(): void
@@ -226,7 +226,7 @@ class ArchitectureDiagramBuilderTest extends TestCase
 
         $diagrams = $this->build($repository);
 
-        $this->assertStringContainsString('more_logic["+ 2 alte module"]', $diagrams['layers']['mermaid']);
+        $this->assertStringContainsString('more_logic["+ 2 more modules"]', $diagrams['layers']['mermaid']);
         $this->assertStringNotContainsString('"app/Logic1"', $diagrams['layers']['mermaid']);
         $this->assertStringNotContainsString('"app/Logic2"', $diagrams['layers']['mermaid']);
         $this->assertStringContainsString('m6["app/Logic8"]', $diagrams['layers']['mermaid']);
@@ -243,9 +243,9 @@ class ArchitectureDiagramBuilderTest extends TestCase
 
         $diagrams = $this->build($repository);
 
-        $this->assertStringContainsString('p1_worker@{ icon: "logos:laravel", form: "rounded", label: "<b>Workerul de cozi</b><br>Laravel · queue:work<br>Rulează joburile în fundal", pos: "b", h: 44 }', $diagrams['container']['mermaid']);
-        $this->assertStringContainsString('p1_app -->|"Citește și scrie"| store_sqlite', $diagrams['container']['mermaid']);
-        $this->assertStringContainsString('p1_worker -->|"Preia joburile"| store_sqlite', $diagrams['container']['mermaid']);
+        $this->assertStringContainsString('p1_worker@{ icon: "logos:laravel", form: "rounded", label: "<b>Queue worker</b><br>Laravel · queue:work<br>Runs the jobs in the background", pos: "b", h: 44 }', $diagrams['container']['mermaid']);
+        $this->assertStringContainsString('p1_app -->|"Reads and writes"| store_sqlite', $diagrams['container']['mermaid']);
+        $this->assertStringContainsString('p1_worker -->|"Takes the jobs"| store_sqlite', $diagrams['container']['mermaid']);
     }
 
     public function test_a_repository_with_only_a_readme_gets_no_diagrams(): void

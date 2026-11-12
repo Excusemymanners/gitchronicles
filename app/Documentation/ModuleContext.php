@@ -2,6 +2,8 @@
 
 namespace App\Documentation;
 
+use App\Support\ContentLanguage;
+
 /**
  * Everything a writer may know about one module, built by ContextBuilder::module() from the analysis
  * tables and the clone. Both writers get exactly this, so the AI page and the template page are
@@ -62,10 +64,11 @@ final readonly class ModuleContext
 
     /**
      * The sha256 of the context: when it is the same as the one saved with the page, nothing the writer
-     * would see has changed, so the page is not written again.
+     * would see has changed, so the page is not written again. The content language is part of it:
+     * a page written in another language is written again (see App\Support\ContentLanguage).
      */
     public function inputHash(): string
     {
-        return hash('sha256', json_encode($this->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode([...$this->toArray(), 'content_language' => ContentLanguage::code()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR));
     }
 }

@@ -34,29 +34,29 @@ final class ProjectFacts
      * Files known to start a program, by their path (a convention of the framework or language).
      */
     private const CONVENTIONAL_ENTRY_POINTS = [
-        'artisan' => 'linia de comandă Laravel (Artisan)',
-        'public/index.php' => 'intrarea aplicației web (PHP)',
-        'index.php' => 'intrarea aplicației web (PHP)',
-        'routes/web.php' => 'rutele web (Laravel)',
-        'routes/api.php' => 'rutele API (Laravel)',
-        'manage.py' => 'comenzile Django',
-        'main.py' => 'programul Python',
-        'app.py' => 'aplicația Python',
-        'main.go' => 'programul Go',
-        'src/main.rs' => 'programul Rust',
-        'src/lib.rs' => 'biblioteca Rust',
-        'index.js' => 'intrarea codului JavaScript',
-        'index.ts' => 'intrarea codului TypeScript',
-        'src/index.js' => 'intrarea codului JavaScript',
-        'src/index.ts' => 'intrarea codului TypeScript',
-        'src/index.tsx' => 'intrarea interfeței (React)',
-        'src/main.js' => 'intrarea codului JavaScript',
-        'src/main.ts' => 'intrarea codului TypeScript',
-        'src/main.tsx' => 'intrarea interfeței (React)',
-        'resources/js/app.js' => 'intrarea interfeței (JavaScript)',
-        'resources/js/app.ts' => 'intrarea interfeței (TypeScript)',
-        'resources/js/app.tsx' => 'intrarea interfeței (React)',
-        'resources/js/app.jsx' => 'intrarea interfeței (React)',
+        'artisan' => 'Laravel command line (Artisan)',
+        'public/index.php' => 'web application entry point (PHP)',
+        'index.php' => 'web application entry point (PHP)',
+        'routes/web.php' => 'web routes (Laravel)',
+        'routes/api.php' => 'API routes (Laravel)',
+        'manage.py' => 'Django commands',
+        'main.py' => 'Python program',
+        'app.py' => 'Python application',
+        'main.go' => 'Go program',
+        'src/main.rs' => 'Rust program',
+        'src/lib.rs' => 'Rust library',
+        'index.js' => 'JavaScript entry point',
+        'index.ts' => 'TypeScript entry point',
+        'src/index.js' => 'JavaScript entry point',
+        'src/index.ts' => 'TypeScript entry point',
+        'src/index.tsx' => 'user interface entry point (React)',
+        'src/main.js' => 'JavaScript entry point',
+        'src/main.ts' => 'TypeScript entry point',
+        'src/main.tsx' => 'user interface entry point (React)',
+        'resources/js/app.js' => 'user interface entry point (JavaScript)',
+        'resources/js/app.ts' => 'user interface entry point (TypeScript)',
+        'resources/js/app.tsx' => 'user interface entry point (React)',
+        'resources/js/app.jsx' => 'user interface entry point (React)',
     ];
 
     /**
@@ -172,7 +172,7 @@ final class ProjectFacts
         }
 
         foreach ($this->stringList($composer['bin'] ?? []) as $bin) {
-            $this->entryPoint($bin, 'executabil declarat în composer.json');
+            $this->entryPoint($bin, 'executable declared in composer.json');
         }
 
         $this->licenseFromManifest($composer['license'] ?? null, 'composer.json');
@@ -222,13 +222,13 @@ final class ProjectFacts
         }
 
         if (($main = $this->string($package['main'] ?? null)) !== null) {
-            $this->entryPoint(ltrim($main, './'), 'intrarea pachetului (main din package.json)');
+            $this->entryPoint(ltrim($main, './'), 'package entry point (main in package.json)');
         }
 
         $bins = is_string($package['bin'] ?? null) ? [$package['bin']] : $this->stringMap($package['bin'] ?? []);
 
         foreach ($bins as $bin) {
-            $this->entryPoint(ltrim($bin, './'), 'executabil declarat în package.json');
+            $this->entryPoint(ltrim($bin, './'), 'executable declared in package.json');
         }
 
         $this->licenseFromManifest($package['license'] ?? null, 'package.json');
@@ -322,7 +322,7 @@ final class ProjectFacts
 
         if ($this->anyPath(fn (string $path): bool => str_ends_with($path, '_test.go'))) {
             $this->command('go test ./...', 'test', 'go.mod');
-            $this->testFramework('go test', 'fișierele *_test.go');
+            $this->testFramework('go test', 'the *_test.go files');
         }
     }
 
@@ -384,7 +384,7 @@ final class ProjectFacts
         }
 
         if ($this->files->exists('.env.example')) {
-            $this->requirement('fișierul .env', null, '.env.example');
+            $this->requirement('a .env file', null, '.env.example');
         }
     }
 
@@ -462,9 +462,9 @@ final class ProjectFacts
             $path = (string) $path;
 
             if (preg_match('#\Acmd/[^/]+/main\.go\z#', $path) === 1) {
-                $this->entryPoint($path, 'un program Go din cmd/');
+                $this->entryPoint($path, 'a Go program in cmd/');
             } elseif (str_ends_with($path, '__main__.py')) {
-                $this->entryPoint($path, 'un pachet Python pornit cu python -m');
+                $this->entryPoint($path, 'a Python package run with python -m');
             }
         }
 

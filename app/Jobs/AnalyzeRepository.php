@@ -6,6 +6,7 @@ use App\Analysis\RepositoryAnalyzer;
 use App\Enums\ProcessingMode;
 use App\Enums\RepositoryStatus;
 use App\Git\ChangeSet;
+use App\Incremental\FullProcessingReason;
 use App\Incremental\ImpactAnalysis;
 use App\Incremental\ModuleGraph;
 use App\Models\ProcessingRun;
@@ -126,27 +127,27 @@ class AnalyzeRepository implements ShouldQueue
     }
 
     /**
-     * Why an incremental run must process everything after all, in Romanian for the „Istoric” tab,
-     * or null when it can stay incremental (and for the runs that are not incremental anyway).
+     * Why an incremental run must process everything after all, as structured facts for the „Istoric”
+     * tab (see FullProcessingReason), or null when it can stay incremental (and for the runs that are
+     * not incremental anyway).
+     *
+     * @return array<string, int|string>|null
      */
-    private function reasonToProcessEverything(?ChangeSet $changes): ?string
+    private function reasonToProcessEverything(?ChangeSet $changes): ?array
     {
         if (! $this->run->isIncremental()) {
             return null;
         }
 
         if ($changes === null) {
-            return 'Commitul procesat ultima dată nu mai există în istoricul repository-ului, deci nu avem cu ce compara.';
+            return FullProcessingReason::missingCommit();
         }
 
         $threshold = (float) config('gitchronicle.incremental.full_threshold');
         $trackedFiles = max(1, $this->run->files_total);
 
         if ($changes->count() > $threshold * $trackedFiles) {
-            $percent = round($changes->count() / $trackedFiles * 100);
-            $limit = round($threshold * 100);
-
-            return "S-au schimbat {$changes->count()} din {$trackedFiles} fișiere ({$percent}%), peste pragul de {$limit}%.";
+            return FullProcessingReason::overThreshold($changes->count(), $trackedFiles, $threshold);
         }
 
         return null;

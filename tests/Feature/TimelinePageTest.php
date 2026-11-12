@@ -121,6 +121,27 @@ class TimelinePageTest extends TestCase
                 ->where('runs.2.reference', null));
     }
 
+    public function test_why_a_run_processed_everything_is_sent_as_facts_with_their_english_wording(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        ProcessingRun::factory()->for($repository)->create([
+            'mode' => 'full', 'status' => 'succeeded', 'from_sha' => str_repeat('a', 40), 'to_sha' => str_repeat('b', 40),
+            'change_summary' => ['full_reason' => ['code' => 'over_threshold', 'changed_files' => 300, 'tracked_files' => 600, 'threshold_percent' => 40]],
+        ]);
+        // A run saved before the facts existed keeps its Romanian sentence.
+        ProcessingRun::factory()->for($repository)->create([
+            'mode' => 'full', 'status' => 'succeeded', 'from_sha' => str_repeat('c', 40), 'to_sha' => str_repeat('d', 40),
+            'change_summary' => ['full_reason' => 'S-au schimbat 300 din 600 de fișiere (50%), peste pragul de 40%.'],
+        ]);
+
+        $this->get(route('repositories.timeline', $repository))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('runs.0.changes.full_reason', 'S-au schimbat 300 din 600 de fișiere (50%), peste pragul de 40%.')
+                ->where('runs.0.changes.full_reason_facts', null)
+                ->where('runs.1.changes.full_reason', '300 of 600 files changed (50%), above the 40% threshold.')
+                ->where('runs.1.changes.full_reason_facts', ['code' => 'over_threshold', 'changed_files' => 300, 'tracked_files' => 600, 'threshold_percent' => 40]));
+    }
+
     public function test_commits_come_newest_first_thirty_per_page(): void
     {
         $repository = Repository::factory()->ready()->create();

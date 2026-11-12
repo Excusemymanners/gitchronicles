@@ -7,6 +7,7 @@ use App\Ai\AiResult;
 use App\Ai\NullTextGenerator;
 use App\Ai\TextGenerator;
 use App\Documentation\AiDocumentationWriter;
+use App\Documentation\ContextBuilder;
 use App\Documentation\DocumentationGenerator;
 use App\Enums\ProcessingTrigger;
 use App\Jobs\GenerateDocumentation;
@@ -39,8 +40,8 @@ class GenerateDocumentationTest extends TestCase
     /**
      * An answer that has every heading of a module page and of the overview, so it is accepted for every page.
      */
-    private const AI_PAGE = "# Pagina\n\n## Rol\n\nText.\n\n## Componente principale\n\n## Cum funcționează\n\n## Dependențe\n\n## Fișiere\n\n"
-        ."## Ce face proiectul\n\n## Tehnologii\n\n## Arhitectură\n\n## Module\n\n## Cum îl rulezi\n";
+    private const AI_PAGE = "# The page\n\n## Role\n\nText.\n\n## Main components\n\n## How it works\n\n## Dependencies\n\n## Files\n\n"
+        ."## What the project does\n\n## Technologies\n\n## Architecture\n\n## Modules\n\n## How to run it\n";
 
     public function test_pipeline_documents_the_fixture_project_with_the_template_when_ai_is_off(): void
     {
@@ -102,7 +103,7 @@ class GenerateDocumentationTest extends TestCase
             ['radacina', 'src-http', 'src-models', 'overview', 'readme'],
             array_map(fn (array $request): string => $this->pageOf($request['user']), $generator->requests),
         );
-        $this->assertSame([AiDocumentationWriter::SYSTEM_PROMPT], array_values(array_unique(array_column($generator->requests, 'system'))));
+        $this->assertSame([AiDocumentationWriter::systemPrompt()], array_values(array_unique(array_column($generator->requests, 'system'))));
         $this->assertStringContainsString('File link base: https://github.com/acme/magazin/blob/'.str_repeat('a', 40).'/', $generator->requests[2]['user']);
         $this->assertStringContainsString('3| class Product', $generator->requests[2]['user']);
     }
@@ -135,7 +136,7 @@ class GenerateDocumentationTest extends TestCase
 
     public function test_a_changed_module_is_written_again_and_gets_a_new_version_when_its_text_changes(): void
     {
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator([...array_fill(0, 5, self::AI_PAGE), self::AI_PAGE."\nText nou.\n"]));
+        $this->app->instance(TextGenerator::class, new FakeTextGenerator([...array_fill(0, 5, self::AI_PAGE), self::AI_PAGE."\nNew text.\n"]));
         ['repository' => $repository] = $this->shopRepository();
         $this->runJob($repository, ProcessingRun::factory()->for($repository)->create());
         Storage::disk('local')->put("repositories/{$repository->id}/src/Models/Category.php", "<?php\n\nclass Category extends Product\n{\n}\n");
@@ -145,7 +146,7 @@ class GenerateDocumentationTest extends TestCase
 
         $this->assertDatabaseHas('processing_runs', ['id' => $secondRun->id, 'documents_regenerated' => 1]);
         $changedPage = Document::whereBelongsTo($repository)->firstWhere('slug', 'src-models');
-        $this->assertSame([self::AI_PAGE, self::AI_PAGE."\nText nou.\n"], $changedPage->versions()->pluck('markdown')->all());
+        $this->assertSame([self::AI_PAGE, self::AI_PAGE."\nNew text.\n"], $changedPage->versions()->pluck('markdown')->all());
         $this->assertSame(1, Document::whereBelongsTo($repository)->firstWhere('slug', 'src-http')->versions()->count());
     }
 
@@ -164,7 +165,7 @@ class GenerateDocumentationTest extends TestCase
 
     public function test_the_template_writes_a_page_claude_could_not_write_and_marks_it_stale(): void
     {
-        $this->app->instance(TextGenerator::class, $generator = new FakeTextGenerator(exception: new AiException('Claude a refuzat să scrie acest text.')));
+        $this->app->instance(TextGenerator::class, $generator = new FakeTextGenerator(exception: new AiException('Claude refused to write this text.')));
         ['repository' => $repository] = $this->shopRepository();
         $run = ProcessingRun::factory()->for($repository)->create();
 
@@ -173,10 +174,10 @@ class GenerateDocumentationTest extends TestCase
         $generator->assertSentCount(5);
         $this->assertSame(5, Document::whereBelongsTo($repository)->where('is_stale', true)->where('writer', 'template')->count());
         $this->assertSame(
-            'Claude nu a putut scrie această pagină: Claude a refuzat să scrie acest text. Până la următoarea procesare, pagina e scrisă automat din analiza codului.',
+            'Claude could not write this page: Claude refused to write this text. Until the next run, the page is generated from the code analysis.',
             Document::whereBelongsTo($repository)->firstWhere('slug', 'src-models')->stale_reason,
         );
-        $this->assertStringContainsString('## Componente principale', Document::whereBelongsTo($repository)->firstWhere('slug', 'src-models')->markdown);
+        $this->assertStringContainsString('## Main components', Document::whereBelongsTo($repository)->firstWhere('slug', 'src-models')->markdown);
         $this->assertDatabaseHas('processing_runs', ['id' => $run->id, 'documents_regenerated' => 5]);
     }
 
@@ -194,7 +195,7 @@ class GenerateDocumentationTest extends TestCase
 
     public function test_an_answer_that_is_not_the_requested_page_is_replaced_by_the_template_and_still_counted(): void
     {
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator(['Nu pot scrie pagina.']));
+        $this->app->instance(TextGenerator::class, new FakeTextGenerator(['I cannot write the page.']));
         ['repository' => $repository] = $this->shopRepository();
         $run = ProcessingRun::factory()->for($repository)->create();
 
@@ -202,6 +203,42 @@ class GenerateDocumentationTest extends TestCase
 
         $this->assertDatabaseHas('documents', ['slug' => 'src-models', 'writer' => 'template', 'is_stale' => true, 'input_tokens' => 0]);
         $this->assertDatabaseHas('processing_runs', ['id' => $run->id, 'input_tokens' => 500, 'output_tokens' => 250]);
+    }
+
+    public function test_the_content_language_is_part_of_the_input_hash_so_a_page_in_another_language_is_written_again(): void
+    {
+        ['repository' => $repository] = $this->shopRepository();
+        $this->runJob($repository, ProcessingRun::factory()->for($repository)->create());
+        $page = Document::whereBelongsTo($repository)->firstWhere('slug', 'src-models');
+        $context = app(ContextBuilder::class)->module($page->module);
+        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR;
+        $this->assertSame(hash('sha256', json_encode([...$context->toArray(), 'content_language' => 'en'], $flags)), $page->input_hash);
+        // A page written in Romanian before the language was part of the hash: same facts, other hash.
+        $page->update(['markdown' => "# Modulul `src/Models`\n\n## Rol\n\nText vechi.\n", 'input_hash' => hash('sha256', json_encode($context->toArray(), $flags))]);
+        $secondRun = ProcessingRun::factory()->for($repository)->create();
+
+        $this->runJob($repository, $secondRun);
+
+        $this->assertDatabaseHas('processing_runs', ['id' => $secondRun->id, 'documents_regenerated' => 1]);
+        $this->assertStringStartsWith("# Module `src/Models`\n\n## Role\n", $page->fresh()->markdown);
+        $this->assertSame($context->inputHash(), $page->fresh()->input_hash);
+    }
+
+    public function test_a_page_of_claude_in_another_language_is_kept_without_ai_and_says_its_input_changed_at_the_same_commit(): void
+    {
+        ['repository' => $repository] = $this->shopRepository();
+        $this->runJob($repository, ProcessingRun::factory()->for($repository)->create());
+        $page = Document::whereBelongsTo($repository)->firstWhere('slug', 'src-models');
+        $page->update(['writer' => Document::WRITER_AI, 'markdown' => "# Modulul `src/Models`\n", 'input_hash' => str_repeat('0', 64)]);
+
+        $this->runJob($repository, ProcessingRun::factory()->for($repository)->create());
+
+        $this->assertSame("# Modulul `src/Models`\n", $page->fresh()->markdown);
+        $this->assertSame(
+            'The code is still at commit '.substr(str_repeat('a', 40), 0, 7).', but what this page is written from changed (for example the content language). '
+            .'Claude is not available right now (AI is turned off), so the page keeps its previous text until a run with AI.',
+            $page->fresh()->stale_reason,
+        );
     }
 
     public function test_a_page_written_by_claude_is_kept_when_ai_is_turned_off(): void
@@ -241,8 +278,8 @@ class GenerateDocumentationTest extends TestCase
 
         $this->assertSame(['overview', 'readme', 'src-models'], Document::whereBelongsTo($repository)->orderBy('slug')->pluck('slug')->all());
         $overview = Document::whereBelongsTo($repository)->firstWhere('slug', Document::OVERVIEW)->markdown;
-        $this->assertStringContainsString('| `/` | 2 | 13 | fără pagină: peste limită: are pagină doar cel mai mare modul', $overview);
-        $this->assertStringContainsString('| `src/Http` | 1 | 8 | fără pagină: peste limită: are pagină doar cel mai mare modul', $overview);
+        $this->assertStringContainsString('| `/` | 2 | 13 | no page: over the limit: only the biggest module has a page', $overview);
+        $this->assertStringContainsString('| `src/Http` | 1 | 8 | no page: over the limit: only the biggest module has a page', $overview);
     }
 
     public function test_removes_the_pages_of_modules_that_no_longer_exist(): void

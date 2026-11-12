@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * change_summary (Faza 9) is what an update found between from_sha and to_sha: the number of files
  * added, modified and deleted, the affected modules, the modules that appeared or disappeared, the
- * changed files of the root folder and, for a Full run, why it was not incremental. The column is not
+ * changed files of the root folder and, for a Full run, why it was not incremental (FullProcessingReason). The column is not
  * called "changes" because Eloquent keeps its own list of changed attributes under that name.
  */
 #[DateFormat('Y-m-d H:i:s.v')]

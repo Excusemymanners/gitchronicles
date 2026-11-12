@@ -6,10 +6,13 @@ namespace App\Diagrams;
  * Puts a module (a folder, see ModuleGrouper) in an architecture layer by the names of its folders,
  * the way most projects name them (Laravel, Symfony, Django, Express, Go, ...):
  *
- *     Intrare → Interfața → Web/API → Logica aplicației → Date, and Altele for the rest.
+ *     Entry points → User interface → Web/API → Application logic → Data, and Other for the rest.
  *
  * The rules are checked in a fixed order and the first one that matches any folder of the path wins:
- * "app/Http" is Web/API (http) before it can be Logica (app); "frontend/lib" is Interfața (frontend).
+ * "app/Http" is Web/API (http) before it can be Application logic (app); "frontend/lib" is User interface (frontend).
+ *
+ * The layer titles and the exclusion labels are written inside the Mermaid code and saved with the
+ * diagram, so they are in the content language (English, see App\Support\ContentLanguage).
  *
  * Some folders are not part of the running application and are left out of the diagrams:
  * tests, configuration, documentation, translations, runtime files (storage) and the root folder.
@@ -20,12 +23,12 @@ final class LayerClassifier
      * The layers in the order they are drawn, from the top: key => title.
      */
     public const LAYERS = [
-        'entry' => 'Intrare',
-        'ui' => 'Interfața',
+        'entry' => 'Entry points',
+        'ui' => 'User interface',
         'web' => 'Web/API',
-        'logic' => 'Logica aplicației',
-        'data' => 'Date',
-        'other' => 'Altele',
+        'logic' => 'Application logic',
+        'data' => 'Data',
+        'other' => 'Other',
     ];
 
     /**
@@ -54,13 +57,13 @@ final class LayerClassifier
      * What the page says about each group of excluded folders.
      */
     public const EXCLUSION_LABELS = [
-        'root' => 'Fișierele din rădăcina proiectului',
-        'tests' => 'Teste',
-        'config' => 'Configurare',
-        'docs' => 'Documentație',
-        'lang' => 'Traduceri',
-        'storage' => 'Fișiere scrise la rulare (storage)',
-        'no_code' => 'Foldere fără cod',
+        'root' => 'Files in the project root',
+        'tests' => 'Tests',
+        'config' => 'Configuration',
+        'docs' => 'Documentation',
+        'lang' => 'Translations',
+        'storage' => 'Files written at runtime (storage)',
+        'no_code' => 'Folders without code',
     ];
 
     /**

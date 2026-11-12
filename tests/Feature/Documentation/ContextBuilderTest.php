@@ -72,7 +72,7 @@ class ContextBuilderTest extends TestCase
         $this->assertSame(60, $context->excerpts[1]['total_lines']);
         $this->assertLessThan(60, $context->excerpts[1]['end_line']);
         $this->assertLessThanOrEqual(2000, mb_strlen(implode('', array_column($context->excerpts, 'content'))));
-        $this->assertSame([['path' => 'src/Small.php', 'lines' => 1, 'reason' => 'nu a mai încăput în limita de caractere']], $context->omittedFiles);
+        $this->assertSame([['path' => 'src/Small.php', 'lines' => 1, 'reason' => 'did not fit within the character budget']], $context->omittedFiles);
         $this->assertSame(1, $context->omittedFileCount);
     }
 
@@ -86,7 +86,7 @@ class ContextBuilderTest extends TestCase
         $context = app(ContextBuilder::class)->module($module);
 
         $this->assertSame([], $context->excerpts);
-        $this->assertSame([['path' => 'src/Big.php', 'lines' => 60, 'reason' => 'nu a mai încăput în limita de caractere']], $context->omittedFiles);
+        $this->assertSame([['path' => 'src/Big.php', 'lines' => 60, 'reason' => 'did not fit within the character budget']], $context->omittedFiles);
     }
 
     public function test_never_reads_a_symbolic_link_of_the_clone(): void
@@ -100,7 +100,7 @@ class ContextBuilderTest extends TestCase
         $context = app(ContextBuilder::class)->module($module);
 
         $this->assertSame([], $context->excerpts);
-        $this->assertSame([['path' => $link->path, 'lines' => 1, 'reason' => 'nu a putut fi citit ca text']], $context->omittedFiles);
+        $this->assertSame([['path' => $link->path, 'lines' => 1, 'reason' => 'not readable as text']], $context->omittedFiles);
     }
 
     public function test_input_hash_changes_with_the_code_but_not_with_the_commit(): void
@@ -144,7 +144,7 @@ class ContextBuilderTest extends TestCase
             ['name' => 'pnpm', 'version' => null, 'source' => 'pnpm-lock.yaml'],
         ], $context->requirements);
         $this->assertSame([['name' => 'Vitest', 'source' => 'package.json']], $context->tests['frameworks']);
-        $this->assertSame([['path' => 'artisan', 'kind' => 'linia de comandă Laravel (Artisan)']], $context->entryPoints);
+        $this->assertSame([['path' => 'artisan', 'kind' => 'Laravel command line (Artisan)']], $context->entryPoints);
     }
 
     public function test_overview_context_lists_every_module_with_its_page_or_the_reason_it_has_none(): void
@@ -158,9 +158,9 @@ class ContextBuilderTest extends TestCase
 
         $this->assertSame([
             ['path' => '/', 'files' => 2, 'lines' => 13, 'page' => "/repositories/{$repository->id}/docs/radacina", 'reason' => null],
-            ['path' => 'src/Http', 'files' => 1, 'lines' => 8, 'page' => null, 'reason' => 'peste limită: au pagină doar cele mai mari 2 module'],
+            ['path' => 'src/Http', 'files' => 1, 'lines' => 8, 'page' => null, 'reason' => 'over the limit: only the 2 biggest modules have a page'],
             ['path' => 'src/Models', 'files' => 2, 'lines' => 14, 'page' => "/repositories/{$repository->id}/docs/src-models", 'reason' => null],
-            ['path' => 'storage', 'files' => 1, 'lines' => 1, 'page' => null, 'reason' => 'nu conține cod într-un limbaj recunoscut'],
+            ['path' => 'storage', 'files' => 1, 'lines' => 1, 'page' => null, 'reason' => 'no code in a recognized language'],
         ], $context->modules);
     }
 }

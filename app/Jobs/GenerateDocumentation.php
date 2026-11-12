@@ -154,8 +154,8 @@ class GenerateDocumentation implements ShouldQueue
     }
 
     /**
-     * What this run changed for a page, as the start of a Romanian sentence, for the reason shown on a
-     * page that could not be written again („Codul modulului s-a schimbat la commitul abc1234 (3 fișiere)”).
+     * What this run changed for a page, as the start of an English sentence, for the reason shown on a
+     * page that could not be written again ("The module's code changed at commit abc1234 (3 files)").
      * Null when the run brings no change for the page (the first processing, or a page checked only
      * because it was already stale).
      */
@@ -169,16 +169,16 @@ class GenerateDocumentation implements ShouldQueue
         $module = $plan->moduleFor($slug);
 
         if ($module === null) {
-            return $this->run->isIncremental() && ! $this->projectChanged() ? null : "Proiectul s-a schimbat la commitul {$commit}";
+            return $this->run->isIncremental() && ! $this->projectChanged() ? null : "The project changed at commit {$commit}";
         }
 
         $change = $this->run->affectedModules()[$module->path] ?? null;
 
         return match (true) {
             $change === null => null,
-            $change['files'] === 1 => "Codul modulului s-a schimbat la commitul {$commit} (1 fișier)",
-            $change['files'] > 1 => "Codul modulului s-a schimbat la commitul {$commit} ({$change['files']} ".($change['files'] % 100 >= 20 || $change['files'] % 100 === 0 ? 'de ' : '').'fișiere)',
-            default => "Legăturile modulului cu alte module s-au schimbat la commitul {$commit}",
+            $change['files'] === 1 => "The module's code changed at commit {$commit} (1 file)",
+            $change['files'] > 1 => "The module's code changed at commit {$commit} ({$change['files']} files)",
+            default => "The module's links to other modules changed at commit {$commit}",
         };
     }
 

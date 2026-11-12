@@ -16,7 +16,7 @@ use Tests\Support\FakeTextGenerator;
 use Tests\TestCase;
 
 /**
- * „Cum funcționează”: what Claude receives, which answers are saved, and what happens without AI.
+ * "How it works": what Claude receives, which answers are saved, and what happens without AI.
  * Claude is never called: FakeTextGenerator answers instead (or AI is off, as in every test).
  */
 class FlowDiagramWriterTest extends TestCase
@@ -38,8 +38,9 @@ class FlowDiagramWriterTest extends TestCase
         $context = $generator->requests[0]['user'];
         $this->assertStringContainsString("### routes/web.php\n1| <?php\n2| \n3| use App\\Http\\Controllers\\HomeController;", $context);
         $this->assertStringContainsString('### app/Http/Controllers/HomeController.php', $context);
-        $this->assertStringContainsString('- app/Http: 1 fișiere, 12 linii', $context);
+        $this->assertStringContainsString('- app/Http: 1 file, 12 lines', $context);
         $this->assertStringContainsString('flowchart TD', $generator->requests[0]['system']);
+        $this->assertStringContainsString('title: short, in English. explanation: 2–4 sentences in English', $generator->requests[0]['system']);
     }
 
     public function test_saves_the_valid_flows_for_the_current_commit_with_what_the_call_used(): void
@@ -52,10 +53,10 @@ class FlowDiagramWriterTest extends TestCase
         $this->assertSame(100, $result->inputTokens);
         $flow = $repository->diagrams()->sole();
         $this->assertSame('flow', $flow->type->value);
-        $this->assertSame('pagina-principala', $flow->key);
+        $this->assertSame('the-home-page', $flow->key);
         $this->assertSame($repository->last_sha, $flow->source_sha);
         $this->assertSame("flowchart TD\n  A[\"GET /\"] --> B[\"HomeController\"]\n", $flow->mermaid);
-        $this->assertSame('Pagina principală', $flow->meta['title']);
+        $this->assertSame('The home page', $flow->meta['title']);
         $this->assertSame([['path' => 'routes/web.php', 'start_line' => 5, 'end_line' => 5]], $flow->meta['sources']);
         $this->assertSame(['claude-opus-5-5', 100, 50], [$flow->meta['model'], $flow->meta['input_tokens'], $flow->meta['output_tokens']]);
     }
@@ -96,6 +97,18 @@ class FlowDiagramWriterTest extends TestCase
 
         $this->assertNull($result);
         $this->assertModelMissing($olderFlow);
+    }
+
+    public function test_without_ai_a_flow_of_the_same_commit_written_before_the_content_language_is_deleted(): void
+    {
+        $repository = $this->repositoryWithCode();
+        $romanianFlow = Diagram::factory()->flow()->for($repository)->create(['source_sha' => $repository->last_sha]);
+        $romanianFlow->update(['meta' => [...$romanianFlow->meta, 'title' => 'Adăugarea unui repository', 'content_language' => null]]);
+
+        $result = app(FlowDiagramWriter::class)->refresh($repository);
+
+        $this->assertNull($result);
+        $this->assertModelMissing($romanianFlow);
     }
 
     public function test_when_claude_fails_the_flows_of_the_same_commit_are_kept(): void
@@ -146,8 +159,8 @@ class FlowDiagramWriterTest extends TestCase
     private function answer(string $mermaid = "flowchart TD\n  A[\"GET /\"] --> B[\"HomeController\"]"): string
     {
         return json_encode(['flows' => [[
-            'title' => 'Pagina principală',
-            'explanation' => 'Ruta / trimite cererea la HomeController, care întoarce pagina home.',
+            'title' => 'The home page',
+            'explanation' => 'The / route sends the request to HomeController, which returns the home view.',
             'mermaid' => $mermaid,
             'sources' => [['path' => 'routes/web.php', 'start_line' => 5, 'end_line' => 5]],
         ]]], JSON_UNESCAPED_UNICODE);

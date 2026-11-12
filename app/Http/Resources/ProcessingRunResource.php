@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Incremental\FullProcessingReason;
 use App\Models\ProcessingRun;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -63,7 +64,11 @@ class ProcessingRunResource extends JsonResource
      * What the run found changed since the previous processed commit, or null for a run that
      * compared nothing (the first processing, or a run from before the incremental update existed).
      *
-     * @return array{added: int|null, modified: int|null, deleted: int|null, modules: list<array{path: string, files: int, via: string}>, modules_not_listed: int, modules_added: list<string>, modules_removed: list<string>, full_reason: string|null}|null
+     * full_reason is the English sentence (FullProcessingReason::sentence(), or the sentence an older run
+     * saved); full_reason_facts holds the facts it is made of (a reason code and its numbers), null for
+     * older runs, so the interface can word them in the visitor's language.
+     *
+     * @return array{added: int|null, modified: int|null, deleted: int|null, modules: list<array{path: string, files: int, via: string}>, modules_not_listed: int, modules_added: list<string>, modules_removed: list<string>, full_reason: string|null, full_reason_facts: array<string, int|string>|null}|null
      */
     private function changes(): ?array
     {
@@ -83,7 +88,8 @@ class ProcessingRunResource extends JsonResource
             'modules_not_listed' => max(0, count($modules) - self::MAX_LISTED_MODULES),
             'modules_added' => array_slice($summary['modules_added'] ?? [], 0, self::MAX_LISTED_MODULES),
             'modules_removed' => array_slice($summary['modules_removed'] ?? [], 0, self::MAX_LISTED_MODULES),
-            'full_reason' => $summary['full_reason'] ?? null,
+            'full_reason' => FullProcessingReason::sentence($summary['full_reason'] ?? null),
+            'full_reason_facts' => is_array($summary['full_reason'] ?? null) ? $summary['full_reason'] : null,
         ];
     }
 

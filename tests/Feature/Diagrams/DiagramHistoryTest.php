@@ -37,7 +37,7 @@ class DiagramHistoryTest extends TestCase
             'sha' => self::SHA_A,
             'mermaid' => 'flowchart TB; a-->b',
         ]);
-        $this->assertSame('Adăugarea unui repository', DiagramVersion::firstWhere('type', 'flow')->meta['title']);
+        $this->assertSame('Adding a repository', DiagramVersion::firstWhere('type', 'flow')->meta['title']);
     }
 
     public function test_a_version_is_added_only_when_the_code_of_the_diagram_changed(): void

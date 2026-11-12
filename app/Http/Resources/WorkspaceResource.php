@@ -409,7 +409,8 @@ class WorkspaceResource extends JsonResource
     }
 
     /**
-     * Up to three questions about real modules, for the chips above the assistant's field:
+     * Up to three questions about real modules, for the chips above the assistant's field, in the content
+     * language (English; see App\Support\ContentLanguage), like the answers they lead to:
      *
      * 1. the module the others use the most (the biggest sum of incoming import weights);
      * 2. the strongest dependency between two modules;
@@ -441,7 +442,7 @@ class WorkspaceResource extends JsonResource
             ->first();
 
         if ($mostUsedModule !== null) {
-            $questions[] = "Ce face modulul {$mostUsedModule['path']}?";
+            $questions[] = "What does the module {$mostUsedModule['path']} do?";
             $askedPaths[] = $mostUsedModule['path'];
         }
 
@@ -455,7 +456,7 @@ class WorkspaceResource extends JsonResource
             ->first();
 
         if ($strongestDependency !== null) {
-            $questions[] = "Cum folosește {$strongestDependency['from']} modulul {$strongestDependency['to']}?";
+            $questions[] = "How does {$strongestDependency['from']} use the module {$strongestDependency['to']}?";
             $askedPaths = [...$askedPaths, $strongestDependency['from'], $strongestDependency['to']];
         }
 
@@ -465,7 +466,7 @@ class WorkspaceResource extends JsonResource
             ->first();
 
         if ($biggestModule !== null) {
-            $questions[] = "Ce conține modulul {$biggestModule->path}?";
+            $questions[] = "What is in the module {$biggestModule->path}?";
         }
 
         return $questions;

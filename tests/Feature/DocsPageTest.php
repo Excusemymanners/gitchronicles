@@ -38,9 +38,9 @@ class DocsPageTest extends TestCase
             ->where('document.input_tokens', 4200)
             ->where('document.download_url', null)
             ->where('navigation', [
-                $this->chapter($repository, 'overview', 'Despre proiect', 'overview', null),
-                $this->chapter($repository, 'readme', 'README generat', 'readme', null),
-                $this->chapter($repository, 'radacina', 'Rădăcina proiectului', 'module', null),
+                $this->chapter($repository, 'overview', 'Overview', 'overview', null),
+                $this->chapter($repository, 'readme', 'Generated README', 'readme', null),
+                $this->chapter($repository, 'radacina', 'Project root', 'module', null),
                 $this->chapter($repository, 'app-http', 'app/Http', 'module', 'app'),
                 $this->chapter($repository, 'app-models', 'app/Models', 'module', 'app'),
             ])

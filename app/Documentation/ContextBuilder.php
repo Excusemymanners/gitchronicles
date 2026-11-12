@@ -67,6 +67,11 @@ final class ContextBuilder
     public const MAX_FEATURES = 15;
 
     /**
+     * The name under which the files without a recognized language are counted in the overview's languages.
+     */
+    public const OTHER_LANGUAGE = 'Other';
+
+    /**
      * Headings of a README section that lists features: "Features", "Funcționalități", "Ce face", ...
      */
     private const FEATURE_HEADINGS = '/\A(features?|key features|what it does|funcționalități|functionalitati|caracteristici|ce face)\b/iu';
@@ -175,7 +180,7 @@ final class ContextBuilder
         $facts = new ProjectFacts($clone, $files->pluck('path')->all());
 
         $languages = $files
-            ->groupBy(fn (RepositoryFile $file): string => $file->language ?? 'Altele')
+            ->groupBy(fn (RepositoryFile $file): string => $file->language ?? self::OTHER_LANGUAGE)
             ->map(fn (Collection $group, string $name): array => ['name' => $name, 'files' => $group->count(), 'lines' => (int) $group->sum('lines')])
             ->sortBy([['lines', 'desc'], ['name', 'asc']])
             ->values();
@@ -245,7 +250,7 @@ final class ContextBuilder
 
         foreach ($rankedFiles as $file) {
             if ($budgetIsFull) {
-                $omitted[] = ['path' => $file->path, 'lines' => $file->lines, 'reason' => 'nu a mai încăput în limita de caractere'];
+                $omitted[] = ['path' => $file->path, 'lines' => $file->lines, 'reason' => 'did not fit within the character budget'];
 
                 continue;
             }
@@ -253,7 +258,7 @@ final class ContextBuilder
             $text = $clone->read($file->path);
 
             if ($text === null) {
-                $omitted[] = ['path' => $file->path, 'lines' => $file->lines, 'reason' => 'nu a putut fi citit ca text'];
+                $omitted[] = ['path' => $file->path, 'lines' => $file->lines, 'reason' => 'not readable as text'];
 
                 continue;
             }
@@ -274,7 +279,7 @@ final class ContextBuilder
             if ($remaining >= self::MIN_EXCERPT_CHARACTERS && $beginning !== []) {
                 $excerpts[] = $this->excerpt($file->path, $beginning, count($numberedLines));
             } else {
-                $omitted[] = ['path' => $file->path, 'lines' => $file->lines, 'reason' => 'nu a mai încăput în limita de caractere'];
+                $omitted[] = ['path' => $file->path, 'lines' => $file->lines, 'reason' => 'did not fit within the character budget'];
             }
         }
 

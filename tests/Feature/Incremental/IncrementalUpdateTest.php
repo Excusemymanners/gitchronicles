@@ -6,6 +6,7 @@ use App\Ai\AiException;
 use App\Ai\NullTextGenerator;
 use App\Ai\TextGenerator;
 use App\Documentation\AiDocumentationWriter;
+use App\Incremental\FullProcessingReason;
 use App\Models\CodeChunk;
 use App\Models\Document;
 use App\Models\DocumentVersion;
@@ -31,8 +32,8 @@ class IncrementalUpdateTest extends TestCase
     /**
      * An answer that has every heading of a module page and of the overview, so it is accepted for every page.
      */
-    private const AI_PAGE = "# Pagina\n\n## Rol\n\nText.\n\n## Componente principale\n\n## Cum funcționează\n\n## Dependențe\n\n## Fișiere\n\n"
-        ."## Ce face proiectul\n\n## Tehnologii\n\n## Arhitectură\n\n## Module\n\n## Cum îl rulezi\n";
+    private const AI_PAGE = "# The page\n\n## Role\n\nText.\n\n## Main components\n\n## How it works\n\n## Dependencies\n\n## Files\n\n"
+        ."## What the project does\n\n## Technologies\n\n## Architecture\n\n## Modules\n\n## How to run it\n";
 
     private const MONEY_WITH_A_NEW_METHOD = "<?php\n\nnamespace Shop\\Support;\n\nfinal class Money\n{\n    public static function format(int \$cents): string\n    {\n        return number_format(\$cents / 100, 2).' lei';\n    }\n\n    public static function zero(): string\n    {\n        return self::format(0);\n    }\n}\n";
 
@@ -182,7 +183,8 @@ class IncrementalUpdateTest extends TestCase
         $run = $this->process($repository);
 
         $this->assertSame('full', $run->mode->value);
-        $this->assertSame('S-au schimbat 2 din 16 fișiere (13%), peste pragul de 10%.', $run->change_summary['full_reason']);
+        $this->assertSame(['code' => 'over_threshold', 'changed_files' => 2, 'tracked_files' => 16, 'threshold_percent' => 10], $run->change_summary['full_reason']);
+        $this->assertSame('2 of 16 files changed (13%), above the 10% threshold.', FullProcessingReason::sentence($run->change_summary['full_reason']));
         $this->assertSame(2, $run->files_changed);
         // A full run parses every file again and looks at every module.
         $this->assertSame(13, $run->files_analyzed);
@@ -218,8 +220,8 @@ class IncrementalUpdateTest extends TestCase
         $this->assertSame($firstRun->to_sha, $page->source_sha);
         $this->assertTrue($page->is_stale);
         $this->assertSame(
-            'Codul modulului s-a schimbat la commitul '.substr($newSha, 0, 7).' (1 fișier); pagina e de la commitul '.substr($firstRun->to_sha, 0, 7).'. '
-            .'Claude nu e disponibil acum (AI oprit), așa că rămâne textul vechi până la o procesare cu AI.',
+            "The module's code changed at commit ".substr($newSha, 0, 7).' (1 file); this page describes commit '.substr($firstRun->to_sha, 0, 7).'. '
+            .'Claude is not available right now (AI is turned off), so the page keeps its previous text until a run with AI.',
             $page->stale_reason,
         );
         $this->assertSame(0, $run->documents_regenerated);
@@ -241,8 +243,8 @@ class IncrementalUpdateTest extends TestCase
         $this->assertSame(self::AI_PAGE, $page->markdown);
         $this->assertSame($firstRun->to_sha, $page->source_sha);
         $this->assertSame(
-            'Codul modulului s-a schimbat la commitul '.substr($newSha, 0, 7).' (1 fișier); pagina e de la commitul '.substr($firstRun->to_sha, 0, 7).'. '
-            .'Claude nu a putut-o rescrie: '.AiException::LIMIT_MESSAGE,
+            "The module's code changed at commit ".substr($newSha, 0, 7).' (1 file); this page describes commit '.substr($firstRun->to_sha, 0, 7).'. '
+            .'Claude could not write it again: '.AiException::LIMIT_MESSAGE,
             $page->stale_reason,
         );
         $this->assertSame('succeeded', $run->status->value);
@@ -385,7 +387,7 @@ class IncrementalUpdateTest extends TestCase
 
         $this->assertSame('full', $run->mode->value);
         $this->assertSame('succeeded', $run->status->value);
-        $this->assertSame('Commitul procesat ultima dată nu mai există în istoricul repository-ului, deci nu avem cu ce compara.', $run->change_summary['full_reason']);
+        $this->assertSame(['code' => 'missing_commit'], $run->change_summary['full_reason']);
         $this->assertSame(13, $run->files_analyzed);
     }
 
@@ -476,7 +478,7 @@ class IncrementalUpdateTest extends TestCase
      */
     private function documentationRequests(FakeTextGenerator $generator): array
     {
-        return array_values(array_filter($generator->requests, fn (array $request): bool => $request['system'] === AiDocumentationWriter::SYSTEM_PROMPT));
+        return array_values(array_filter($generator->requests, fn (array $request): bool => $request['system'] === AiDocumentationWriter::systemPrompt()));
     }
 
     /**

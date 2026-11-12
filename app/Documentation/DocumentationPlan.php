@@ -72,7 +72,7 @@ final readonly class DocumentationPlan
                     'module' => $module,
                     'reason' => $codeLines->has($module->id)
                         ? self::overTheLimit($maxPages)
-                        : 'nu conține cod într-un limbaj recunoscut',
+                        : 'no code in a recognized language',
                 ];
             }
         }
@@ -113,18 +113,13 @@ final readonly class DocumentationPlan
     }
 
     /**
-     * The reason of a module left out by the page limit, in correct Romanian for any limit.
+     * The reason of a module left out by the page limit.
      */
     private static function overTheLimit(int $maxPages): string
     {
-        if ($maxPages === 1) {
-            return 'peste limită: are pagină doar cel mai mare modul';
-        }
-
-        $lastTwoDigits = $maxPages % 100;
-        $de = $lastTwoDigits === 0 || $lastTwoDigits >= 20 ? 'de ' : '';
-
-        return "peste limită: au pagină doar cele mai mari {$maxPages} {$de}module";
+        return $maxPages === 1
+            ? 'over the limit: only the biggest module has a page'
+            : "over the limit: only the {$maxPages} biggest modules have a page";
     }
 
     /**
