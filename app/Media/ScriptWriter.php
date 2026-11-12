@@ -6,6 +6,7 @@ use App\Ai\AiDisabled;
 use App\Ai\AiException;
 use App\Ai\TextGenerator;
 use App\Enums\MediaLanguage;
+use App\Support\StoredMessage;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -102,7 +103,7 @@ final class ScriptWriter
     public function write(PresentationFacts $facts, ?array $previous = null): PresentationScript
     {
         if ($facts->sources === []) {
-            return $this->templateScript($facts, 'Repository-ul nu are README sau descriere din care să scriem textele.');
+            return $this->templateScript($facts, StoredMessage::make('media.script.no_readme'));
         }
 
         $contextHash = self::contextHash($facts);
@@ -116,7 +117,7 @@ final class ScriptWriter
         try {
             $result = $this->ai->generate(self::SYSTEM_PROMPT, self::userPrompt($facts));
         } catch (AiDisabled) {
-            return $this->templateScript($facts, 'Generarea cu AI este oprită, așa că textele vin direct din descriere, din README și din cifre.');
+            return $this->templateScript($facts, StoredMessage::make('media.script.ai_off'));
         } catch (AiException $exception) {
             Log::warning('The video script could not be written by AI.', ['repository' => $facts->fullName(), 'message' => $exception->getMessage()]);
 
@@ -128,7 +129,7 @@ final class ScriptWriter
         if ($answer === null) {
             Log::warning('The video script answer is not a JSON object.', ['repository' => $facts->fullName()]);
 
-            return $this->templateScript($facts, 'Răspunsul AI nu a putut fi folosit, așa că textele vin direct din descriere, din README și din cifre.');
+            return $this->templateScript($facts, StoredMessage::make('media.script.ai_unusable'));
         }
 
         [$scenes, $rejected] = $this->scenesFromAnswer($answer, $facts);
@@ -278,9 +279,9 @@ final class ScriptWriter
         $command = is_string($item['command'] ?? null) ? trim($item['command']) : '';
 
         $reason = match (true) {
-            $english === null || $romanian === null => 'Textul lipsește într-una din limbi sau are peste '.self::LIMITS['start'].' de caractere.',
-            $command === '' || mb_strlen($command) > 60 => 'Comanda lipsește sau e prea lungă pentru ecran.',
-            ! $facts->readmeContains($command) => 'Comanda nu apare exact în README.',
+            $english === null || $romanian === null => StoredMessage::make('media.script.start_text_missing', ['limit' => self::LIMITS['start']]),
+            $command === '' || mb_strlen($command) > 60 => StoredMessage::make('media.script.command_missing'),
+            ! $facts->readmeContains($command) => StoredMessage::make('media.script.command_not_in_readme'),
             default => $this->inventedNumber([$english, $romanian], $command),
         };
 
@@ -303,7 +304,7 @@ final class ScriptWriter
     private function checkItem(mixed $item, int $limit, PresentationFacts $facts): array|string
     {
         if (! is_array($item)) {
-            return 'Scena lipsește din răspuns.';
+            return StoredMessage::make('media.script.scene_missing');
         }
 
         $texts = [];
@@ -312,7 +313,7 @@ final class ScriptWriter
             $text = $this->text($item[$language->value] ?? null, $limit);
 
             if ($text === null) {
-                return "Textul în {$language->label()} lipsește sau are peste {$limit} de caractere.";
+                return StoredMessage::make('media.script.language_text_missing', ['language' => $language->label(), 'limit' => $limit]);
             }
 
             $texts[$language->value] = $text;
@@ -321,7 +322,7 @@ final class ScriptWriter
         $source = is_string($item['quote'] ?? null) ? $facts->findSource($item['quote']) : null;
 
         if ($source === null) {
-            return 'Citatul-sursă nu apare în textele trimise.';
+            return StoredMessage::make('media.script.quote_missing');
         }
 
         $invented = $this->inventedNumber($texts, $source['quote']);
@@ -353,7 +354,7 @@ final class ScriptWriter
 
             foreach ($said[0] as $number) {
                 if (! in_array($number, $allowed[0], true)) {
-                    return "Textul spune cifra {$number}, care nu apare în citatul-sursă.";
+                    return StoredMessage::make('media.script.invented_number', ['number' => $number]);
                 }
             }
         }

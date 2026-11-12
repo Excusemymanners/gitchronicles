@@ -6,6 +6,7 @@ use App\Enums\MediaKind;
 use App\Enums\MediaLanguage;
 use App\Models\MediaAsset;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -48,9 +49,9 @@ class PresentationMediaResource extends JsonResource
                 'captions' => $this->fileUrl($video, 'vtt', 'repositories.media.captions'),
                 'download' => $this->downloadUrl($video, 'mp4'),
                 'writer' => $video->meta['writer'] ?? null,
-                'note' => $video->meta['note'] ?? null,
+                'note' => StoredMessage::render($video->meta['note'] ?? null),
                 'voice' => $video->meta['voice'] ?? null,
-                'capture_note' => $video->meta['capture']['reason'] ?? null,
+                'capture_note' => StoredMessage::render($video->meta['capture']['reason'] ?? null),
                 'scenes' => array_map($this->scene(...), $video->meta['scenes'] ?? []),
             ])->all(),
             'default_language' => $videos->first()?->language->value ?? MediaLanguage::default()->value,
@@ -79,7 +80,7 @@ class PresentationMediaResource extends JsonResource
         return [
             'status' => $asset->status->value,
             'status_label' => $asset->status->label(),
-            'error' => $asset->error,
+            'error' => StoredMessage::render($asset->error),
             'generated_at' => $asset->generated_at?->toIso8601String(),
             'size_bytes' => $asset->size_bytes,
             'is_stale' => $asset->source_sha !== $this->last_sha,

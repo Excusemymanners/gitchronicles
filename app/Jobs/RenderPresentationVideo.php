@@ -11,6 +11,7 @@ use App\Media\PresentationScript;
 use App\Media\VideoRenderer;
 use App\Models\MediaAsset;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -33,7 +34,7 @@ class RenderPresentationVideo implements ShouldQueue
     /**
      * The message for the page when the render fails.
      */
-    public const FAILED_MESSAGE = 'Randarea video-ului a eșuat. Detaliile sunt în jurnalul aplicației.';
+    public const FAILED_KEY = 'media.errors.video_failed';
 
     /**
      * One attempt: the render does not use the network, so an error would happen again.
@@ -86,7 +87,7 @@ class RenderPresentationVideo implements ShouldQueue
             $result = $renderer->render($this->repository, PresentationScript::flatten($this->script['scenes'], $language), $language, $capture);
         } catch (Throwable $exception) {
             report($exception);
-            $asset->markFailed(self::FAILED_MESSAGE);
+            $asset->markFailed(StoredMessage::make(self::FAILED_KEY));
 
             return;
         }
@@ -132,6 +133,6 @@ class RenderPresentationVideo implements ShouldQueue
             ->where('kind', MediaKind::Video)
             ->where('language', $this->language)
             ->get()
-            ->each(fn (MediaAsset $asset) => $asset->markFailed(self::FAILED_MESSAGE));
+            ->each(fn (MediaAsset $asset) => $asset->markFailed(StoredMessage::make(self::FAILED_KEY)));
     }
 }

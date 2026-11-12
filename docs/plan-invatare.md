@@ -580,6 +580,14 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Nimic nu iese din slide: HTML-ul prezentării e măsurat în Chrome (`fit.mjs`), iar slide-ul în care ceva iese din zona lui pierde ultimul element și se măsoară din nou (până la cinci ori). PPTX-ul e numărat și trebuie să aibă tot atâtea slide-uri cât prezentarea.
   - Cuvintele fixe sunt în `lang/en/slides.php` și `lang/ro/slides.php`; prezentarea e scrisă în limba conținutului (engleză azi).
 
+- 2026-11-12 — Ziua de finisare a produsului. Ce am schimbat și de ce:
+  - Limba: interfața și tot conținutul generat sunt în engleză implicit, cu comutator pentru română, ca o persoană din afara țării să poată folosi aplicația; mesajele salvate în baza de date (erori, note ale video-ului) se păstrează ca chei de traducere și se arată în limba vizitatorului, nu în cea în care au fost scrise.
+  - Aspect: o identitate nouă (cerneală, hârtie, ultramarin), un repository care se deschide pe o vitrină cu secțiuni ca file sus, paletă de comenzi (Ctrl+K) și asistent într-un panou lateral (Ctrl+I), ca utilizatorul să ajungă la orice dintr-un pas.
+  - Citire: documentația are cuprins al paginii, ancore și cod de copiat; diagramele au zoom, ecran complet, export și noduri care duc la documentație; răspunsurile asistentului arată fragmentul de cod citat, ca să poată fi verificate.
+  - Video și slide-uri: video-ul era neclar pentru că pagina era randată mică și apoi mărită, deci acum e randată la mărimea finală; vocea e una de om. Slide-urile folosesc documentația repository-ului și identitatea lui (avatar, logo, culoare), nu pe a GitChronicle.
+  - Intrarea: în adresa unui repository se schimbă `github.com` cu domeniul nostru și se ajunge direct la repository.
+  - De instalat: vocile video-ului vin din `composer media:install`.
+
 ### Postări automate pe Instagram
 - **Învăț:** Instagram Graph API (container media → publicare), aplicații Meta.
 - **Fac:** zilnic aleg „repo-ul zilei” din leaderboard, generez video-ul și îl postez ca Reel.

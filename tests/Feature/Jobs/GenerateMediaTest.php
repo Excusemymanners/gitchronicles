@@ -11,6 +11,7 @@ use App\Jobs\RenderPresentationVideo;
 use App\Models\MediaAsset;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -121,7 +122,7 @@ class GenerateMediaTest extends TestCase
 
         GenerateMedia::dispatch($repository);
 
-        Queue::assertPushed(RenderPresentationVideo::class, fn (RenderPresentationVideo $job): bool => $job->captureReason === 'GitHub nu a putut fi contactat când s-a generat video-ul.');
+        Queue::assertPushed(RenderPresentationVideo::class, fn (RenderPresentationVideo $job): bool => $job->captureReason === StoredMessage::make('media.capture.unreachable'));
     }
 
     public function test_nothing_is_made_again_for_the_same_commit_unless_forced(): void
@@ -198,7 +199,7 @@ class GenerateMediaTest extends TestCase
         $ai->assertSentCount(0);
         Http::assertNothingSent();
         Queue::assertNothingPushed();
-        $this->assertSame(3, MediaAsset::where('status', 'failed')->where('error', GenerateMedia::NOT_INSTALLED_MESSAGE)->count());
+        $this->assertSame(3, MediaAsset::where('status', 'failed')->where('error', StoredMessage::make(GenerateMedia::NOT_INSTALLED_KEY))->count());
     }
 
     public function test_rendering_now_makes_the_videos_and_the_slides_without_a_worker(): void
@@ -234,7 +235,7 @@ class GenerateMediaTest extends TestCase
         (new GenerateMedia($repository))->failed(null);
 
         $this->assertSame(['slides' => 'ready', 'video' => 'failed'], MediaAsset::orderBy('kind')->pluck('status', 'kind')->map->value->all());
-        $this->assertSame(MediaAsset::GENERIC_ERROR, MediaAsset::firstWhere('kind', 'video')->error);
+        $this->assertSame(StoredMessage::make(MediaAsset::GENERIC_ERROR_KEY), MediaAsset::firstWhere('kind', 'video')->error);
     }
 
     public function test_deleting_the_repository_deletes_its_media(): void

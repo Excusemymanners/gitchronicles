@@ -5,6 +5,7 @@ namespace Tests\Feature\Jobs;
 use App\Jobs\RenderPresentationSlides;
 use App\Models\MediaAsset;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\FakesMediaTools;
@@ -87,7 +88,7 @@ class RenderPresentationSlidesTest extends TestCase
             'repository_id' => $repository->id,
             'kind' => 'slides',
             'status' => 'failed',
-            'error' => RenderPresentationSlides::FAILED_MESSAGE,
+            'error' => StoredMessage::make(RenderPresentationSlides::FAILED_KEY),
         ]);
         Storage::disk('local')->assertMissing("media/{$repository->id}/work-slides");
     }

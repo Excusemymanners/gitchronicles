@@ -40,7 +40,7 @@ download() {
 
     if ! echo "${sha}  voices/${file}.part" | sha256sum --check --status; then
         rm -f "voices/${file}.part"
-        echo "Fișierul ${file} descărcat nu are suma SHA-256 așteptată." >&2
+        echo "The downloaded file ${file} does not have the expected SHA-256 checksum." >&2
         exit 1
     fi
 
@@ -50,4 +50,4 @@ download() {
 download kokoro-v1.0.onnx 7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5
 download voices-v1.0.bin bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d
 
-echo "Vocile sunt instalate în $(pwd)/voices."
+echo "The voices are installed in $(pwd)/voices."

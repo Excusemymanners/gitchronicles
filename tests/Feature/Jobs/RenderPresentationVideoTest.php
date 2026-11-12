@@ -7,6 +7,7 @@ use App\Media\AudioMixer;
 use App\Media\GitHubCapture;
 use App\Models\MediaAsset;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\FakesMediaTools;
@@ -115,14 +116,14 @@ class RenderPresentationVideoTest extends TestCase
         $this->fakeMediaTools(withVoice: false);
         $repository = Repository::factory()->ready()->create();
 
-        RenderPresentationVideo::dispatch($repository, $this->script(), 'en', 'abc123', null, 'GitHub nu a putut fi contactat când s-a generat video-ul.');
+        RenderPresentationVideo::dispatch($repository, $this->script(), 'en', 'abc123', null, StoredMessage::make('media.capture.unreachable'));
 
         $asset = MediaAsset::sole();
         $data = json_decode($this->toolInputs['data'], true);
         $this->assertSame('ready', $asset->status->value);
         $this->assertNull($data['capture']);
         $this->assertSame([], $data['scenes'][0]['shots']);
-        $this->assertSame('GitHub nu a putut fi contactat când s-a generat video-ul.', $asset->meta['capture']['reason']);
+        $this->assertSame(StoredMessage::make('media.capture.unreachable'), $asset->meta['capture']['reason']);
         // Without Piper: no voice, but the captions still follow the reading time.
         $this->assertNull($asset->meta['voice']);
         $this->assertSame([], $this->commandsOf('piper'));
@@ -138,7 +139,7 @@ class RenderPresentationVideoTest extends TestCase
         RenderPresentationVideo::dispatch($repository, $this->script(), 'en', 'abc123');
 
         $this->assertSame(['en' => 'failed', 'ro' => 'ready'], MediaAsset::orderBy('language')->pluck('status', 'language')->map->value->all());
-        $this->assertSame(RenderPresentationVideo::FAILED_MESSAGE, MediaAsset::firstWhere('language', 'en')->error);
+        $this->assertSame(StoredMessage::make(RenderPresentationVideo::FAILED_KEY), MediaAsset::firstWhere('language', 'en')->error);
         Storage::disk('local')->assertMissing("media/{$repository->id}/work-video-en");
     }
 

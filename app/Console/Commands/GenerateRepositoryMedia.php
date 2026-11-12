@@ -6,6 +6,7 @@ use App\Enums\RepositoryStatus;
 use App\Jobs\GenerateMedia;
 use App\Models\MediaAsset;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -71,7 +72,7 @@ class GenerateRepositoryMedia extends Command
             $line = "{$asset->kind->value} ({$asset->language->value}): {$asset->status->label()}".($asset->path === null ? '' : " — storage/app/private/{$asset->path}");
 
             if ($asset->error !== null) {
-                $this->error("{$line} ({$asset->error})");
+                $this->error("{$line} (".StoredMessage::render($asset->error).')');
                 $failed = true;
             } else {
                 $this->info($line);

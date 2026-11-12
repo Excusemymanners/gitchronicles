@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\SetLocale;
 use App\Jobs\GenerateMedia;
 use App\Models\MediaAsset;
 use App\Models\Repository;
 use App\Models\User;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -110,6 +112,27 @@ class MediaPageTest extends TestCase
             ->where('media.is_working', false)
             ->where('media.videos.0.error', 'Randarea video-ului a eșuat.')
             ->where('media.slides.downloads', ['pdf' => null, 'pptx' => null])
+        );
+    }
+
+    public function test_a_failed_video_shows_its_error_in_the_language_of_the_visitor(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        MediaAsset::factory()->for($repository)->readyVideo()->create([
+            'language' => 'en',
+            'status' => 'failed',
+            'error' => StoredMessage::make('media.errors.video_failed'),
+            'meta' => ['capture' => ['reason' => StoredMessage::make('media.capture.timeout')]],
+        ]);
+
+        $this->withUnencryptedCookie(SetLocale::COOKIE, 'en')->get("/repositories/{$repository->id}/media")->assertInertia(fn (Assert $page) => $page
+            ->where('media.videos.0.error', 'The video could not be rendered. The details are in the application log.')
+            ->where('media.videos.0.capture_note', 'The GitHub page loaded too slowly when the video was made.')
+        );
+
+        $this->withUnencryptedCookie(SetLocale::COOKIE, 'ro')->get("/repositories/{$repository->id}/media")->assertInertia(fn (Assert $page) => $page
+            ->where('media.videos.0.error', 'Randarea video-ului a eșuat. Detaliile sunt în jurnalul aplicației.')
+            ->where('media.videos.0.capture_note', 'Pagina de GitHub s-a încărcat prea încet când s-a generat video-ul.')
         );
     }
 

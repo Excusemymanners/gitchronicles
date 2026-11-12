@@ -8,6 +8,7 @@ use App\Enums\MediaStatus;
 use App\Media\SlideRenderer;
 use App\Models\MediaAsset;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -26,7 +27,7 @@ class RenderPresentationSlides implements ShouldQueue
     /**
      * The message for the page when the render fails.
      */
-    public const FAILED_MESSAGE = 'Generarea slide-urilor a eșuat. Detaliile sunt în jurnalul aplicației.';
+    public const FAILED_KEY = 'media.errors.slides_failed';
 
     /**
      * One attempt: the render does not use the network, so an error would happen again.
@@ -71,7 +72,7 @@ class RenderPresentationSlides implements ShouldQueue
             $result = $renderer->render($this->repository, $this->facts, $this->scenes);
         } catch (Throwable $exception) {
             report($exception);
-            $asset->markFailed(self::FAILED_MESSAGE);
+            $asset->markFailed(StoredMessage::make(self::FAILED_KEY));
 
             return;
         }
@@ -99,6 +100,6 @@ class RenderPresentationSlides implements ShouldQueue
         $this->repository->mediaAssets()
             ->where('kind', MediaKind::Slides)
             ->get()
-            ->each(fn (MediaAsset $asset) => $asset->markFailed(self::FAILED_MESSAGE));
+            ->each(fn (MediaAsset $asset) => $asset->markFailed(StoredMessage::make(self::FAILED_KEY)));
     }
 }

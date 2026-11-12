@@ -27,7 +27,7 @@ final readonly class PageCapture
     /**
      * @param  string|null  $directory  the absolute folder of the tiles and images, or null when there is no capture
      * @param  array<string, mixed>  $data  the decoded landmarks.json
-     * @param  string|null  $reason  why there is no capture, in Romanian, for the page
+     * @param  string|null  $reason  why there is no capture, as a StoredMessage, for the page
      */
     private function __construct(
         public ?string $directory,

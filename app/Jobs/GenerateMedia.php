@@ -12,6 +12,7 @@ use App\Media\ScriptWriter;
 use App\Media\ToolEnvironment;
 use App\Models\MediaAsset;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -46,7 +47,7 @@ class GenerateMedia implements ShouldBeUnique, ShouldQueue
     /**
      * The message for the page when the Node tools are missing.
      */
-    public const NOT_INSTALLED_MESSAGE = 'Uneltele pentru video și slide-uri nu sunt instalate pe server (composer media:install).';
+    public const NOT_INSTALLED_KEY = 'media.errors.not_installed';
 
     /**
      * Changing how the video looks or is told (the composition, the scenes) makes the old videos
@@ -121,14 +122,14 @@ class GenerateMedia implements ShouldBeUnique, ShouldQueue
 
         if (! ToolEnvironment::isInstalled()) {
             foreach ([...($needsVideos ? $videos : []), ...($needsSlides ? [$slides] : [])] as $asset) {
-                $asset->fill(['status' => MediaStatus::Failed, 'source_sha' => $sha, 'error' => self::NOT_INSTALLED_MESSAGE])->save();
+                $asset->fill(['status' => MediaStatus::Failed, 'source_sha' => $sha, 'error' => StoredMessage::make(self::NOT_INSTALLED_KEY)])->save();
             }
 
             return;
         }
 
         $facts = $collector->collect($repository);
-        $capture = $needsVideos ? $capturer->capture($repository, fresh: $this->force) : PageCapture::missing(GitHubCapture::FAILED_REASON);
+        $capture = $needsVideos ? $capturer->capture($repository, fresh: $this->force) : PageCapture::missing(StoredMessage::make(GitHubCapture::FAILED_KEY));
         $inputHash = self::inputHash($facts, $capture, $languages);
 
         if ($needsVideos && ! $this->force && $this->wereMadeFrom($videos, $inputHash)) {
@@ -175,7 +176,7 @@ class GenerateMedia implements ShouldBeUnique, ShouldQueue
         $this->repository->mediaAssets()
             ->where('status', MediaStatus::Pending)
             ->get()
-            ->each(fn (MediaAsset $asset) => $asset->markFailed(MediaAsset::GENERIC_ERROR));
+            ->each(fn (MediaAsset $asset) => $asset->markFailed(StoredMessage::make(MediaAsset::GENERIC_ERROR_KEY)));
     }
 
     /**

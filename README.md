@@ -13,13 +13,13 @@ The thesis plan and the journal under `docs/` are written in Romanian; everythin
 
 ## What it does
 
-- **A workspace for each repository**, NotebookLM-style: the table of contents on the left (like Wikipedia), the open chapter in the middle, the generated artifacts (diagrams, video, slides, activity, hotspots) on the right, and the assistant bar always at the bottom, where you can ask anything about the code.
-- **Documentation** DeepWiki-style: a page for each module, with navigation and search.
-- **C4 architecture diagrams** (Context, Container, Component), generated from the project’s code.
-- **Code assistant**: answers questions about the repository and cites the exact file and lines.
+- **A workspace for each repository**: it opens on a showcase (what the project does, its numbers, the video and the first pages), with the sections as tabs at the top. Paste a `github.com` link with our domain instead and you land on the repository. `Ctrl+K` opens a command palette (sections, documentation pages, modules) and `Ctrl+I` opens the assistant in a side panel from any page. The interface is in English, with a switch for Romanian.
+- **Documentation** DeepWiki-style: a page for each module, written to be read: an “On this page” outline, links to every heading, code blocks you can copy and a one-line time-travel bar.
+- **C4 architecture diagrams** (Context, Container, Component), generated from the project’s code, with zoom, full screen, export (Mermaid, SVG, PNG) and nodes that open the module’s documentation page.
+- **Code assistant**: answers questions about the repository and cites the exact file and lines; hovering a citation shows the code, and the starter questions and shared `?ask=` links can be sent in one click.
 - **Incremental update**: on every push only the affected pages are regenerated.
 - **Time travel**: a slider through the commit history shows what the documentation and the architecture looked like at any moment.
-- **Presentation**: slides about the repository (PDF/PPTX).
+- **Presentation**: slides about the repository (PDF/PPTX) with its own identity (avatar, logo and colour from the project, not ours), built from the generated documentation and diagrams, with speaker notes.
 - **Discover / leaderboard** *(bonus)*: the public “Discover” page with interesting GitHub repositories, ranked by how fast they gain stars (measured from daily snapshots), with the “repository of the day” and a “Document” button.
 - **Short video** *(bonus)* for each repository, in English and in Romanian: it scrolls through its real GitHub page and frames what the voice says — what the project does, what problem it solves, how it is built, its numbers and how to get started.
 - **Automatic Instagram posts** *(bonus)*: every day, a Reel with the leaderboard’s “repository of the day”.
@@ -32,9 +32,11 @@ The thesis plan and the journal under `docs/` are written in Romanian; everythin
 **Discover (bonus):** done. The `php artisan discover:refresh` command, started daily by the Laravel Scheduler, uses the GitHub Search API to look for new and popular repositories, active ones or new ones per language, and records every day the stars of each tracked repository. The public “Discover” page (`/discover`) ranks them by the stars gained in 24 hours, 7 or 30 days, measured from two snapshots; until two snapshots exist, the growth is “unknown” and the order uses the average stars per day since creation, and the page says so. Each row has “Document” (adds it to GitChronicle) or “Open documentation”.
 
 **History:** done. After the code analysis, GitChronicle imports the newest 500 commits from the clone (then only the new ones), with the files and lines changed. The “History” tab shows them by month, with the GitChronicle runs on the processed commits, search, “Hotspots” (the most frequently changed files) and contributors.
-**Video (bonus):** rebuilt. A repository’s video scrolls through its real GitHub page (captured at generation time) and tells the story from start to finish, in English and in Romanian, with captions that highlight the spoken word. Every scene has an anchor verified in the README; when GitHub cannot be captured, the video uses typographic scenes and says why. Logged-in users can generate or redo it from the “Video and slides” page.
+**Video (bonus):** rebuilt. A repository’s video scrolls through its real GitHub page (captured at generation time) and tells the story from start to finish, in English and in Romanian, with captions that highlight the spoken word and a sharp, 1:1 picture of the page and a natural-sounding voice. Every scene has an anchor verified in the README; when GitHub cannot be captured, the video uses typographic scenes and says why. Logged-in users can generate or redo it from the “Video and slides” page.
 
 **Consulting (bonus):** done. Once a repository is ready, Semgrep (with rules written for GitChronicle), OSV-Scanner and scc read the clone; the “Consulting” page shows the problems by severity, the risk zones (commits × severity), the problems per file with links to the lines on GitHub, the vulnerable dependencies with the version that fixes them and the code statistics; the report is downloaded as Markdown (in English).
+
+**Day of 2026-11-12:** the interface and the generated content are in English by default (the whole interface has a Romanian switch; messages stored in the database, such as errors and video notes, are kept as translation keys and shown in the visitor’s language). New brand identity (ink, paper and ultramarine), a repository showcase with section tabs, a command palette and an assistant side panel; readable documentation pages; interactive diagrams; verifiable assistant answers; slides with the repository’s own identity; a sharper video with a human-sounding narrator. To get the voice engines for the video, run `composer media:install` once (it also installs the renderers’ Node packages).
 
 ## Technologies
 

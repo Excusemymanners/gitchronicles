@@ -3,6 +3,7 @@
 namespace App\Media;
 
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
@@ -18,27 +19,27 @@ use Throwable;
  * - The script gets ToolEnvironment::isolated(): the worker's own variables (keys, passwords) are removed,
  *   and the script hands Chrome an even smaller environment. It contacts only GitHub and has its own time
  *   limit; a second limit here stops it if it hangs.
- * - Any failure gives PageCapture::missing() with the reason in Romanian: the video is then made from
+ * - Any failure gives PageCapture::missing() with the reason as a StoredMessage: the video is then made from
  *   typographic scenes and says why. A photo is never invented and never borrowed from another commit.
  */
 final class GitHubCapture
 {
     /**
-     * What the page says when the capture failed, by the script's error code.
+     * The translation key of what the page says when the capture failed, by the script's error code.
      *
      * @var array<string, string>
      */
     private const REASONS = [
-        'unreachable' => 'GitHub nu a putut fi contactat când s-a generat video-ul.',
-        'timeout' => 'Pagina de GitHub s-a încărcat prea încet când s-a generat video-ul.',
-        'http_status' => 'GitHub nu a afișat pagina repository-ului (poate nu mai este public).',
-        'unexpected_page' => 'Pagina de GitHub nu arăta ca pagina unui repository, așa că nu a fost folosită.',
-        'browser_failed' => 'Chrome nu a pornit pe server, deci pagina de GitHub nu a putut fi fotografiată.',
+        'unreachable' => 'media.capture.unreachable',
+        'timeout' => 'media.capture.timeout',
+        'http_status' => 'media.capture.http_status',
+        'unexpected_page' => 'media.capture.unexpected_page',
+        'browser_failed' => 'media.capture.browser_failed',
     ];
 
-    public const DISABLED_REASON = 'Fotografierea paginii de GitHub este oprită pe acest server.';
+    public const DISABLED_KEY = 'media.capture.disabled';
 
-    public const FAILED_REASON = 'Pagina de GitHub nu a putut fi fotografiată.';
+    public const FAILED_KEY = 'media.capture.failed';
 
     /**
      * The version of the photo the composition expects (renderers/capture/github.mjs writes it). Version 2 is
@@ -52,7 +53,7 @@ final class GitHubCapture
     public function capture(Repository $repository, bool $fresh = false): PageCapture
     {
         if (! config('gitchronicle.media.capture.enabled')) {
-            return PageCapture::missing(self::DISABLED_REASON);
+            return PageCapture::missing(StoredMessage::make(self::DISABLED_KEY));
         }
 
         if (! $fresh) {
@@ -92,7 +93,7 @@ final class GitHubCapture
             $error = json_decode(trim($result->output()), true)['error'] ?? null;
             Log::info('The GitHub page could not be captured.', ['repository_id' => $repository->id, 'error' => $error, 'output' => mb_substr($result->errorOutput(), -500)]);
 
-            return PageCapture::missing(self::REASONS[$error] ?? self::FAILED_REASON);
+            return PageCapture::missing(StoredMessage::make(self::REASONS[$error] ?? self::FAILED_KEY));
         }
 
         // Only the new photo stays: the ones of older commits (and an older one of this commit) go.
@@ -117,7 +118,7 @@ final class GitHubCapture
         $directory = Storage::disk('local')->path($this->folder($repository));
         $data = $this->read($directory);
 
-        return $data === null ? PageCapture::missing(self::FAILED_REASON) : PageCapture::from($directory, $data);
+        return $data === null ? PageCapture::missing(StoredMessage::make(self::FAILED_KEY)) : PageCapture::from($directory, $data);
     }
 
     /**

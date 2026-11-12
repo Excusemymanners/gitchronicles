@@ -32,7 +32,7 @@ class MediaAsset extends Model
     /**
      * The message for the page when a job fails without a better explanation (the details go to the log).
      */
-    public const GENERIC_ERROR = 'Nu am putut genera fișierul. Încearcă din nou mai târziu.';
+    public const GENERIC_ERROR_KEY = 'media.errors.generic';
 
     /**
      * Get the attributes that should be cast.

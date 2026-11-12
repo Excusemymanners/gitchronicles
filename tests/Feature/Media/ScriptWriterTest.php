@@ -8,6 +8,7 @@ use App\Ai\TextGenerator;
 use App\Enums\MediaLanguage;
 use App\Media\PresentationFacts;
 use App\Media\ScriptWriter;
+use App\Support\StoredMessage;
 use Tests\Support\FakeTextGenerator;
 use Tests\TestCase;
 
@@ -65,7 +66,7 @@ class ScriptWriterTest extends TestCase
 
         $this->assertSame(['hook', 'feature', 'built', 'proof', 'start', 'cta'], array_column($script->scenes, 'key'));
         $this->assertSame(['problem', 'feature 1', 'feature 2', 'start'], array_column($script->rejected, 'scene'));
-        $this->assertStringContainsString('cifra 5', $script->rejected[2]['reason']);
+        $this->assertSame(StoredMessage::make('media.script.invented_number', ['number' => '5']), $script->rejected[2]['reason']);
         // The number 3 is in the quote, so the scene that says it stays; the README's own command replaces the invented one.
         $english = $script->scenesFor(MediaLanguage::En);
         $this->assertSame(['It remembers 3 products.', 1, 1], [$english[1]['narration'], $english[1]['index'], $english[1]['count']]);
@@ -79,7 +80,7 @@ class ScriptWriterTest extends TestCase
         $script = app(ScriptWriter::class)->write($this->facts());
 
         $this->assertSame('template', $script->writer);
-        $this->assertStringContainsString('Generarea cu AI este oprită', (string) $script->note);
+        $this->assertSame(StoredMessage::make('media.script.ai_off'), $script->note);
         $this->assertSame(['hook', 'feature', 'built', 'proof', 'start', 'cta'], array_column($script->scenes, 'key'));
 
         $english = $script->scenesFor(MediaLanguage::En);

@@ -9,6 +9,7 @@ use App\Media\PageCapture;
 use App\Media\PresentationFacts;
 use App\Media\SceneDirector;
 use App\Models\Repository;
+use App\Support\StoredMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\FakesMediaTools;
@@ -79,13 +80,13 @@ class PageCaptureTest extends TestCase
         $capture = app(GitHubCapture::class)->capture($repository);
 
         $this->assertFalse($capture->isAvailable());
-        $this->assertSame('GitHub nu a putut fi contactat când s-a generat video-ul.', $capture->reason);
+        $this->assertSame(StoredMessage::make('media.capture.unreachable'), $capture->reason);
         $this->assertSame('none', $capture->fingerprint());
         $this->assertNull($capture->forComposition('capture'));
         $this->assertSame([], Storage::disk('local')->directories("media/{$repository->id}/capture"));
 
         config(['gitchronicle.media.capture.enabled' => false]);
-        $this->assertSame(GitHubCapture::DISABLED_REASON, app(GitHubCapture::class)->capture($repository)->reason);
+        $this->assertSame(StoredMessage::make(GitHubCapture::DISABLED_KEY), app(GitHubCapture::class)->capture($repository)->reason);
         $this->assertCount(1, $this->commandsOf('capture'));
     }
 
