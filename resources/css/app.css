@@ -58,7 +58,8 @@
     --animate-draw: draw var(--motion-draw) var(--ease-in-out) both;
     --animate-grow-x: grow-x var(--motion-slow) var(--ease-in-out) both;
     --animate-grow-y: grow-y var(--motion-slow) var(--ease-in-out) both;
-    --animate-halo: halo 1.8s var(--ease-out) infinite;
+    --animate-trace: grow-y var(--motion-beat) var(--ease-in-out) both;
+    --animate-halo: halo 2s var(--ease-out) infinite;
 
     /* Apare pe loc. */
     @keyframes fade-in {
@@ -83,13 +84,15 @@
         }
     }
 
-    /* O linie SVG care se desenează: elementul are pathLength="1". */
+    /* O linie SVG care se desenează: elementul are pathLength="1", deci o liniuță de lungime 1 e toată linia. */
     @keyframes draw {
         from {
+            stroke-dasharray: 1;
             stroke-dashoffset: 1;
         }
 
         to {
+            stroke-dasharray: 1;
             stroke-dashoffset: 0;
         }
     }
@@ -110,13 +113,13 @@
     /* Haloul inelului la care se lucrează acum: un cerc care se lărgește și se stinge. */
     @keyframes halo {
         from {
-            opacity: 0.55;
+            opacity: 0.5;
             scale: 1;
         }
 
         to {
             opacity: 0;
-            scale: 2.6;
+            scale: 2.4;
         }
     }
 }
@@ -124,8 +127,11 @@
 /*
  * Culorile interfeței, numite după rol (fundal, suprafață, text, accent, stare), nu după nuanță:
  * o componentă scrie bg-surface sau text-ink-muted și arată bine în ambele teme.
- * Valorile de aici sunt tema luminoasă: hârtie rece și cerneală bleumarin, din aceeași familie cu tema
- * întunecată (nu griurile și indigoul implicite din Tailwind); clasa .dark le înlocuiește mai jos.
+ * Paleta are trei culori, luate din ideea de cronică: cerneala (bleumarinul din logo), hârtia (un alb cald)
+ * și ultramarinul, pigmentul albastru al manuscriselor. Cerneala și hârtia poartă butonul principal, exact ca
+ * în logo (pană albă pe bleumarin): buton de hârtie în tema întunecată, buton de cerneală în cea luminoasă.
+ * Ultramarinul marchează legăturile, focusul, elementul ales și linia cu inele.
+ * Valorile de aici sunt tema luminoasă (cerneală pe hârtie); clasa .dark le înlocuiește mai jos.
  * Sunt în hex, ca diagramele Mermaid să le poată citi din JavaScript și folosi direct.
  * „static” păstrează toate variabilele în CSS, chiar și pe cele pe care nicio clasă nu le folosește încă.
  */
@@ -134,48 +140,53 @@
      * Fundaluri: pagina, cardurile, elementele mici de pe carduri (cod, bare, hover) și ce plutește
      * deasupra paginii (mesajul flash, bara fixă de jos). În tema întunecată „mai sus” înseamnă „mai deschis”.
      */
-    --color-canvas: #f5f6fa;
-    --color-surface: #ffffff;
-    --color-surface-2: #eceef5;
-    --color-surface-raised: #ffffff;
+    --color-canvas: #f6f3ec;
+    --color-surface: #fffdf9;
+    --color-surface-2: #efebe1;
+    --color-surface-raised: #fffdf9;
 
-    /* Linii: între rândurile unei liste, chenarul cardurilor, chenarul câmpurilor de formular. */
-    --color-line-subtle: #eceef5;
-    --color-line: #dfe2ec;
-    --color-line-strong: #c5cad9;
+    /*
+     * Linii: între rândurile unei liste, chenarul cardurilor, chenarul controalelor.
+     * line-subtle și line doar despart (decor); line-strong e conturul unui control (câmp, buton secundar,
+     * inelul unui pas neatins) și are 3:1 față de pagină: cerneala diluată pe jumătate în hârtie.
+     */
+    --color-line-subtle: #efebe1;
+    --color-line: #e3ded2;
+    --color-line-strong: #878994;
 
     /* Text: principal, secundar (descrieri, etichete), discret (date, indicii, placeholder). */
-    --color-ink: #0f1730;
-    --color-ink-muted: #434b66;
-    --color-ink-subtle: #636b85;
+    --color-ink: #0f1630;
+    --color-ink-muted: #454a5f;
+    --color-ink-subtle: #65697c;
 
-    /* Accentul: legături, tab-ul deschis, conturul de focus; butonul principal; fundalul unui element ales. */
-    --color-accent: #3b4fd3;
-    --color-accent-hover: #2c3db3;
-    --color-accent-soft: #eaedfc;
-    --color-accent-strong: #3b4fd3;
-    --color-accent-strong-hover: #2f41bd;
-    --color-on-accent: #ffffff;
-    --color-selection: rgb(59 79 211 / 0.18);
+    /* Ultramarinul (accent): legături, tab-ul deschis, conturul de focus, fundalul unui element ales. Cerneala (accent-strong): butonul principal, cu text de hârtie (on-accent). */
+    --color-accent: #2b46d9;
+    --color-accent-hover: #1d33a8;
+    --color-accent-soft: #e7eafb;
+    --color-accent-strong: #0f1630;
+    --color-accent-strong-hover: #272f52;
+    --color-on-accent: #fffdf9;
+    --color-selection: rgb(43 70 217 / 0.18);
 
     /*
      * Stările, fiecare cu patru nuanțe: culoarea plină (punct, text de eroare), fundalul pal,
      * chenarul și textul de pe fundalul pal.
      * info = în lucru (albastru), warning = în așteptare (chihlimbar), success = gata (verde), danger = eșuat (roșu).
+     * Culoarea plină e un semn (punct, bară): are cel puțin 3:1 pe hârtie și pe fundalul pal al tonului ei.
      */
-    --color-info: #0ea5e9;
+    --color-info: #0284c7;
     --color-info-soft: #f0f9ff;
     --color-info-line: rgb(2 132 199 / 0.2);
     --color-info-ink: #075985;
-    --color-warning: #f59e0b;
+    --color-warning: #c2690a;
     --color-warning-soft: #fffbeb;
     --color-warning-line: rgb(217 119 6 / 0.2);
     --color-warning-ink: #92400e;
-    --color-success: #22c55e;
+    --color-success: #178a3e;
     --color-success-soft: #f0fdf4;
     --color-success-line: rgb(22 163 74 / 0.2);
     --color-success-ink: #166534;
-    --color-danger: #d12323;
+    --color-danger: #c81e1e;
     --color-danger-soft: #fef2f2;
     --color-danger-line: rgb(220 38 38 / 0.2);
     --color-danger-ink: #991b1b;
@@ -202,12 +213,18 @@
      * fast = răspunsul la hover, apăsare și focus; base = ce apare sau dispare pe loc (mesaj, etichetă);
      * slow = panouri, sertare, dezvăluirea unei diagrame; page = trecerea dintre pagini;
      * draw = linia care se desenează o dată, la încărcare; stagger = decalajul dintre elementele unei serii.
+     * press = cât durează apăsarea (eliberarea durează fast: apăsarea e promptă, revenirea mai lină);
+     * exit = cât se stinge pagina veche înainte să apară cea nouă; beat = un pas al liniei care se scrie
+     * (de la un inel la următorul; șase pași fac exact draw).
      */
+    --motion-press: 70ms;
     --motion-fast: 120ms;
     --motion-base: 200ms;
     --motion-slow: 320ms;
+    --motion-exit: 90ms;
     --motion-page: 220ms;
     --motion-draw: 900ms;
+    --motion-beat: 150ms;
     --motion-stagger: 60ms;
 }
 
@@ -217,32 +234,33 @@
     }
 
     /*
-     * Tema întunecată, din culorile logo-ului: fundal bleumarin, text alb-argintiu, accent albastru-indigo.
-     * Contrastul fiecărei perechi text/fundal e notat în DARK_THEME.md (WCAG AA: minimum 4,5:1).
+     * Tema întunecată: pagina e cerneala (un bleumarin plin, nu un negru cu tentă), textul e hârtia,
+     * iar butonul principal e tot hârtie, cu text de cerneală. Contrastul fiecărei perechi text/fundal
+     * e măsurat (WCAG AA: minimum 4,5:1) și notat în DESIGN-SPEC.md.
      */
     .dark {
         color-scheme: dark;
 
-        --color-canvas: #0a0e1a;
-        --color-surface: #111727;
-        --color-surface-2: #172036;
-        --color-surface-raised: #1a2440;
+        --color-canvas: #0b1023;
+        --color-surface: #11172f;
+        --color-surface-2: #18203d;
+        --color-surface-raised: #1c2545;
 
-        --color-line-subtle: #1c2539;
-        --color-line: #253049;
-        --color-line-strong: #4a5675;
+        --color-line-subtle: #1c243f;
+        --color-line: #283152;
+        --color-line-strong: #5a6694;
 
-        --color-ink: #e8ebf4;
-        --color-ink-muted: #a3acc2;
-        --color-ink-subtle: #838ca4;
+        --color-ink: #f3f0e8;
+        --color-ink-muted: #b6bcd2;
+        --color-ink-subtle: #9399b4;
 
-        --color-accent: #7c8cff;
-        --color-accent-hover: #a3aeff;
-        --color-accent-soft: rgb(124 140 255 / 0.14);
-        --color-accent-strong: #4c5bd4;
-        --color-accent-strong-hover: #5b67e0;
-        --color-on-accent: #ffffff;
-        --color-selection: rgb(124 140 255 / 0.35);
+        --color-accent: #94a9ff;
+        --color-accent-hover: #bdcaff;
+        --color-accent-soft: rgb(148 169 255 / 0.14);
+        --color-accent-strong: #f3f0e8;
+        --color-accent-strong-hover: #dcd8cc;
+        --color-on-accent: #0b1023;
+        --color-selection: rgb(148 169 255 / 0.35);
 
         --color-info: #38bdf8;
         --color-info-soft: rgb(56 189 248 / 0.12);
@@ -303,17 +321,23 @@
         transition-timing-function: var(--ease-out);
     }
 
-    /* Conturul de focus de la tastatură, pentru orice element care nu și-l definește singur. */
+    /*
+     * Conturul de focus de la tastatură, pentru orice element care nu și-l definește singur.
+     * Apare pe loc, dar se strânge pe element din 5 px, în 120 ms: ochiul vede unde a sărit focusul.
+     * (outline-offset nu mută nimic din pagină, doar desenul conturului.)
+     */
     :focus-visible {
         outline: 2px solid var(--color-accent);
         outline-offset: 2px;
+        animation: focus-ring var(--motion-fast) var(--ease-out);
     }
 
     /*
      * Trecerea dintre pagini (View Transitions API, pornită o singură dată în app.tsx).
      * Browserul fotografiază pagina veche și pe cea nouă și le topește una în alta; ce nu s-a schimbat rămâne pe loc.
      * Zonele cu nume propriu (view-transition-name) se animă separat:
-     *  - page: conținutul care se schimbă; cel vechi se stinge repede, cel nou apare urcând 8 px;
+     *  - page: conținutul care se schimbă; cel vechi se stinge în 90 ms, iar cel nou apare abia după aceea,
+     *    urcând 6 px (fade-through): cele două texte nu se văd niciodată unul peste altul;
      *  - site-header, toast, brand-mark: rama care rămâne; logo-ul alunecă la noul lui loc.
      */
     ::view-transition-group(*) {
@@ -327,11 +351,11 @@
     }
 
     ::view-transition-old(page) {
-        animation: vt-page-out 100ms var(--ease-in) both;
+        animation: vt-page-out var(--motion-exit) var(--ease-in) both;
     }
 
     ::view-transition-new(page) {
-        animation: vt-page-in var(--motion-page) var(--ease-out) both;
+        animation: vt-page-in var(--motion-page) var(--ease-out) calc(var(--motion-exit) * 0.7) both;
     }
 
     /*
@@ -340,11 +364,14 @@
      */
     @media (prefers-reduced-motion: reduce) {
         :root {
+            --motion-press: 0.01ms;
             --motion-fast: 0.01ms;
             --motion-base: 0.01ms;
             --motion-slow: 0.01ms;
+            --motion-exit: 0.01ms;
             --motion-page: 0.01ms;
             --motion-draw: 0.01ms;
+            --motion-beat: 0ms;
             --motion-stagger: 0ms;
         }
 
@@ -375,7 +402,14 @@
 @keyframes vt-page-in {
     from {
         opacity: 0;
-        translate: 0 8px;
+        translate: 0 6px;
+    }
+}
+
+@keyframes focus-ring {
+    from {
+        outline-color: transparent;
+        outline-offset: 5px;
     }
 }
 
@@ -390,7 +424,8 @@
 }
 
 /*
- * pressable: butonul se strânge puțin cât e apăsat, ca apăsarea să se simtă.
+ * pressable: butonul se strânge puțin cât e apăsat, ca apăsarea să se simtă: coboară prompt (press, 70 ms)
+ * și revine mai lin (fast, 120 ms).
  * Pentru butoane și etichete pe care se dă click; rândurile și cardurile doar își schimbă fundalul.
  */
 @utility pressable {
@@ -400,6 +435,7 @@
 
     &:active:not(:disabled) {
         scale: 0.97;
+        transition-duration: var(--motion-press);
     }
 }
 
@@ -409,6 +445,15 @@
  */
 @utility stagger {
     animation-delay: calc(min(var(--i, 0), 8) * var(--motion-stagger));
+}
+
+/*
+ * beat: pasul unui element pe linia care se scrie (PipelineRail). Fiecare își spune pasul cu
+ * style={{ '--beat': index }}: segmentul de linie dintre inelul 2 și 3 pornește la pasul 2 și ajunge la
+ * inelul 3 exact când acesta se așază. Spre deosebire de stagger, nu are plafon: linia are doar câțiva pași.
+ */
+@utility beat {
+    animation-delay: calc(var(--beat, 0) * var(--motion-beat));
 }
 
 /*

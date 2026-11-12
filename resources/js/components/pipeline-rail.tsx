@@ -16,7 +16,10 @@ type Props = {
     status?: RepositoryStatus;
     /** Cu descrierea fiecărui pas (explicație) sau doar inelele, pe un rând (progres compact). */
     variant?: 'detailed' | 'compact';
-    /** Linia „se scrie” o dată, la încărcarea paginii: inelele se așază pe rând, de sus în jos. */
+    /**
+     * Linia „se scrie” o dată, la încărcarea paginii, ca de o peniță: pornește de la primul inel, se oprește la
+     * fiecare inel (care se așază când linia ajunge la el), iar la capăt cadranul se desenează în jurul ultimului.
+     */
     animated?: boolean;
     className?: string;
 };
@@ -28,9 +31,9 @@ const ringClasses: Record<StageState, string> = {
     todo: 'border-line-strong bg-canvas',
 };
 
-/** Locul în serie al unui element, pentru clasa „stagger” (vezi app.css). */
-function seriesIndex(index: number): CSSProperties {
-    return { '--i': index } as CSSProperties;
+/** Pasul unui element pe linia care se scrie, pentru clasa „beat” (vezi app.css). */
+function beatOf(index: number): CSSProperties {
+    return { '--beat': index } as CSSProperties;
 }
 
 export default function PipelineRail({ status, variant = 'detailed', animated = false, className = '' }: Props) {
@@ -55,25 +58,25 @@ export default function PipelineRail({ status, variant = 'detailed', animated = 
                         {!isLast && (
                             <span
                                 aria-hidden="true"
-                                style={seriesIndex(index * 2 + 1)}
+                                style={beatOf(index)}
                                 className={`absolute top-5 bottom-0 left-[0.5625rem] w-0.5 origin-top rounded-full ${
                                     states[index + 1] === 'todo' ? 'bg-line-strong' : 'bg-accent/60'
-                                } ${animated ? 'animate-grow-y stagger' : ''}`}
+                                } ${animated ? 'animate-trace beat' : ''}`}
                             />
                         )}
 
                         <span
                             aria-hidden="true"
-                            style={seriesIndex(index * 2)}
-                            className={`relative mt-0.5 flex size-5 shrink-0 items-center justify-center ${animated ? 'animate-pop stagger' : ''}`}
+                            style={beatOf(index)}
+                            className={`relative mt-0.5 flex size-5 shrink-0 items-center justify-center ${animated && !isLast ? 'animate-pop beat' : ''}`}
                         >
                             {state === 'active' && <span className="absolute size-3.5 rounded-full bg-accent animate-halo" />}
-                            {isLast ? <DialRing state={state} /> : <span className={`relative size-3.5 rounded-full border-2 ${ringClasses[state]}`} />}
+                            {isLast ? <DialRing state={state} beat={animated ? index : undefined} /> : <span className={`relative size-3.5 rounded-full border-2 ${ringClasses[state]}`} />}
                         </span>
 
                         <div
-                            style={seriesIndex(index * 2)}
-                            className={`min-w-0 ${animated ? 'animate-fade-in stagger' : ''}`}
+                            style={beatOf(index)}
+                            className={`min-w-0 ${animated ? 'animate-fade-in beat' : ''}`}
                             // Cititoarele de ecran află și starea pasului, nu doar culoarea inelului.
                             aria-current={state === 'active' ? 'step' : undefined}
                         >
@@ -95,15 +98,37 @@ export default function PipelineRail({ status, variant = 'detailed', animated = 
  * Ultimul pas, „Gata”, e desenat ca în logo: inelul stă într-un cadran de ceas, deschis spre dreapta, cu trei
  * gradații. De aici documentația merge mai departe în timp, commit cu commit. Desenul e mai mare decât locul
  * inelului (28 px într-un loc de 20 px), așa că e centrat peste el.
+ * Cu `beat` (linia se scrie), inelul se așază la pasul lui, apoi cadranul se desenează în jurul lui, pornind
+ * de sus, de unde vine linia, iar gradațiile apar la urmă.
  */
-function DialRing({ state }: { state: StageState }) {
+function DialRing({ state, beat }: { state: StageState; beat?: number }) {
     const stroke = state === 'todo' ? 'stroke-line-strong' : 'stroke-accent';
+    const animated = beat !== undefined;
+    const timing = animated ? beatOf(beat) : undefined;
 
     return (
         <svg viewBox="0 0 28 28" fill="none" strokeLinecap="round" className={`absolute size-7 max-w-none ${stroke}`}>
-            <circle cx="14" cy="14" r="6" strokeWidth={2} className={state === 'active' ? 'fill-accent' : 'fill-canvas'} />
-            <path d="M18.4 2.9A12 12 0 1 0 18.4 25.1" strokeWidth={1.5} className="opacity-60" />
-            <path d="M22.4 6.6l1.2-1.1M24.6 14h1.7M22.4 21.4l1.2 1.1" strokeWidth={1.5} className="opacity-60" />
+            <circle
+                cx="14"
+                cy="14"
+                r="6"
+                strokeWidth={2}
+                style={timing}
+                className={`origin-center [transform-box:fill-box] ${state === 'active' ? 'fill-accent' : 'fill-canvas'} ${animated ? 'animate-pop beat' : ''}`}
+            />
+            <path
+                d="M18.4 2.9A12 12 0 1 0 18.4 25.1"
+                pathLength={1}
+                strokeWidth={1.5}
+                style={animated ? { ...timing, animationDuration: 'calc(var(--motion-beat) * 4)' } : undefined}
+                className={`opacity-60 ${animated ? 'animate-draw beat' : ''}`}
+            />
+            <path
+                d="M22.4 6.6l1.2-1.1M24.6 14h1.7M22.4 21.4l1.2 1.1"
+                strokeWidth={1.5}
+                style={animated ? { '--beat': beat + 4 } as CSSProperties : undefined}
+                className={`opacity-60 ${animated ? 'animate-fade-in beat' : ''}`}
+            />
         </svg>
     );
 }

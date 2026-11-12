@@ -25,9 +25,13 @@ export function withViewTransition(update: () => void): void {
     document.startViewTransition(update);
 }
 
-/** Încetinește spre capăt: numărul urcă repede la început și se așază lin pe valoarea finală. */
+/**
+ * Încetinește spre capăt: numărul urcă repede la început și se așază lin pe valoarea finală.
+ * E aceeași curbă ca --ease-out din app.css (cubic-bezier(0.16, 1, 0.3, 1), practic o exponențială),
+ * ca un număr care urcă să se miște la fel ca elementele care apar lângă el.
+ */
 function easeOut(progress: number): number {
-    return 1 - Math.pow(1 - progress, 3);
+    return progress >= 1 ? 1 : 1 - Math.pow(2, -10 * progress);
 }
 
 /**

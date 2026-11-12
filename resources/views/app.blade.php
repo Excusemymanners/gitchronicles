@@ -19,8 +19,11 @@
         })();
     </script>
     <title inertia>{{ config('app.name') }}</title>
-    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/brand/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/brand/favicon-16.png" type="image/png" sizes="16x16">
+    <link rel="icon" href="/brand/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="/brand/gitchronicle-mark.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
     @fonts
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
