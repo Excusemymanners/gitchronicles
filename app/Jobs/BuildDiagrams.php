@@ -2,21 +2,21 @@
 
 namespace App\Jobs;
 
-use App\Diagrams\ArchitectureDiagramBuilder;
+use App\Ai\AiResult;
+use App\Diagrams\ArchitectureRefresher;
 use App\Diagrams\DiagramHistory;
 use App\Diagrams\FlowDiagramWriter;
-use App\Enums\DiagramType;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\DB;
 
 /**
  * The diagrams step of the pipeline (Faza 7), after the documentation:
  *
  * 1. the architecture diagrams (layers, C4 containers, components, context) are drawn from the
- *    code analysis and the clone's manifests and replace the previous ones, in one transaction;
+ *    code analysis and the clone's manifests, with their findings, evidence and interpretation
+ *    (ArchitectureRefresher), and replace the previous ones, in one transaction;
  * 2. Claude writes the „Cum funcționează” flows, best effort: without AI, or when Claude fails,
  *    the step still succeeds and the page shows no flows. Its tokens and their cost are added to the run;
  * 3. what changed in the diagrams is saved as new versions (DiagramHistory), for the time travel.
@@ -60,44 +60,28 @@ class BuildDiagrams implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(ArchitectureDiagramBuilder $builder, FlowDiagramWriter $flowWriter, DiagramHistory $history): void
+    public function handle(ArchitectureRefresher $refresher, FlowDiagramWriter $flowWriter, DiagramHistory $history): void
     {
-        $this->saveArchitectureDiagrams($builder->build($this->repository));
-
-        $aiResult = $flowWriter->refresh($this->repository);
-
-        if ($aiResult !== null) {
-            $this->run->incrementEach(['input_tokens' => $aiResult->inputTokens, 'output_tokens' => $aiResult->outputTokens]);
-
-            // The cost goes with the tokens, so the run's cost and its tokens describe the same calls.
-            if ($aiResult->costUsdEquivalent !== null) {
-                $this->run->update(['cost_usd_equivalent' => (float) $this->run->cost_usd_equivalent + $aiResult->costUsdEquivalent]);
-            }
-        }
+        $this->addUsage($refresher->refresh($this->repository)['result']);
+        $this->addUsage($flowWriter->refresh($this->repository));
 
         $history->record($this->repository, $this->run);
     }
 
     /**
-     * Replace the architecture diagrams with the new ones; a view that has no data any more is deleted.
-     * The flows are not touched here: FlowDiagramWriter owns them.
-     *
-     * @param  list<array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}>  $diagrams
+     * Add the tokens (and their cost) of one Claude call to the run, if there was a call.
      */
-    private function saveArchitectureDiagrams(array $diagrams): void
+    private function addUsage(?AiResult $aiResult): void
     {
-        DB::transaction(function () use ($diagrams): void {
-            $this->repository->diagrams()
-                ->where('type', '!=', DiagramType::Flow)
-                ->whereNotIn('type', array_map(fn (array $diagram): string => $diagram['type']->value, $diagrams))
-                ->delete();
+        if ($aiResult === null) {
+            return;
+        }
 
-            foreach ($diagrams as $diagram) {
-                $this->repository->diagrams()->updateOrCreate(
-                    ['type' => $diagram['type'], 'key' => $diagram['key']],
-                    ['mermaid' => $diagram['mermaid'], 'meta' => $diagram['meta'], 'source_sha' => $this->repository->last_sha],
-                );
-            }
-        });
+        $this->run->incrementEach(['input_tokens' => $aiResult->inputTokens, 'output_tokens' => $aiResult->outputTokens]);
+
+        // The cost goes with the tokens, so the run's cost and its tokens describe the same calls.
+        if ($aiResult->costUsdEquivalent !== null) {
+            $this->run->update(['cost_usd_equivalent' => (float) $this->run->cost_usd_equivalent + $aiResult->costUsdEquivalent]);
+        }
     }
 }

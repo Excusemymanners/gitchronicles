@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import DiagramLegend from '@/components/diagrams/diagram-legend';
+import DiagramMeaning from '@/components/diagrams/diagram-meaning';
 import MermaidDiagram from '@/components/diagrams/mermaid-diagram';
 import TechnologyList from '@/components/diagrams/technology-list';
 import type { Diagram, DiagramSet, DiagramSource } from '@/components/diagrams/types';
@@ -187,8 +188,7 @@ export default function DiagramsContent({ diagrams, repositoryId }: Props) {
 
             {layers && (
                 <DiagramSection id="straturi" title={t('diagrams.content.layersTitle')} description={layers.caption}>
-                    <MermaidDiagram code={layers.mermaid} title={t('diagrams.content.layersTitle')} modules={layers.modules} docsBase={docsBase} />
-                    <DiagramLegend items={legendFor(layers, LEGENDS.layers)} />
+                    <ArchitectureView diagram={layers} title={t('diagrams.content.layersTitle')} docsBase={docsBase} legend={legendFor(layers, LEGENDS.layers)} />
                     {layers.excluded.length > 0 && (
                         <div className="text-sm text-ink-muted">
                             <p className="font-medium text-ink">{t('diagrams.content.excluded')}</p>
@@ -214,8 +214,7 @@ export default function DiagramsContent({ diagrams, repositoryId }: Props) {
                     level={t('diagrams.content.levels.container')}
                     description={container.caption}
                 >
-                    <MermaidDiagram code={container.mermaid} title={t('diagrams.content.titles.container')} />
-                    <DiagramLegend items={legendFor(container, LEGENDS.container)} />
+                    <ArchitectureView diagram={container} title={t('diagrams.content.titles.container')} docsBase={docsBase} legend={legendFor(container, LEGENDS.container)} />
                     {container.technologies.length > 0 && (
                         <div className="flex flex-col gap-2">
                             <p className="text-sm font-medium text-ink">{t('diagrams.content.technologies')}</p>
@@ -232,8 +231,7 @@ export default function DiagramsContent({ diagrams, repositoryId }: Props) {
                     level={t('diagrams.content.levels.component')}
                     description={component.caption}
                 >
-                    <MermaidDiagram code={component.mermaid} title={t('diagrams.content.titles.component')} modules={component.modules} docsBase={docsBase} />
-                    <DiagramLegend items={legendFor(component, LEGENDS.component)} />
+                    <ArchitectureView diagram={component} title={t('diagrams.content.titles.component')} docsBase={docsBase} legend={legendFor(component, LEGENDS.component)} />
                 </DiagramSection>
             )}
 
@@ -244,11 +242,33 @@ export default function DiagramsContent({ diagrams, repositoryId }: Props) {
                     level={t('diagrams.content.levels.context')}
                     description={context.caption}
                 >
-                    <MermaidDiagram code={context.mermaid} title={t('diagrams.content.titles.context')} />
-                    <DiagramLegend items={legendFor(context, LEGENDS.context)} />
+                    <ArchitectureView diagram={context} title={t('diagrams.content.titles.context')} docsBase={docsBase} legend={legendFor(context, LEGENDS.context)} />
                 </DiagramSection>
             )}
         </div>
+    );
+}
+
+type ViewProps = {
+    diagram: Diagram;
+    title: string;
+    docsBase: string;
+    legend: { label: string; swatch: string }[];
+};
+
+/**
+ * An architecture diagram with its legend and, under it, what it tells you and the evidence for its arrows.
+ * The box the pointer or focus is on is remembered here, so the evidence rows of its arrows light up.
+ */
+function ArchitectureView({ diagram, title, docsBase, legend }: ViewProps) {
+    const [activeNode, setActiveNode] = useState<string | null>(null);
+
+    return (
+        <>
+            <MermaidDiagram code={diagram.mermaid} title={title} modules={diagram.modules} docsBase={docsBase} onNodeActive={setActiveNode} />
+            <DiagramLegend items={legend} />
+            <DiagramMeaning diagram={diagram} docsBase={docsBase} activeNode={activeNode} />
+        </>
     );
 }
 

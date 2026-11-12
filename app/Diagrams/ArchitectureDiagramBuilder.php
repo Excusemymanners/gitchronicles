@@ -112,6 +112,7 @@ final class ArchitectureDiagramBuilder
     public function __construct(
         private TechnologyDetector $detector,
         private CodeOverview $overview,
+        private ArchitectureFacts $facts,
     ) {}
 
     /**
@@ -126,7 +127,7 @@ final class ArchitectureDiagramBuilder
         $report = $this->detector->detect($repository);
 
         return array_values(array_filter([
-            $this->layersView($modules, $dependencies, $excluded),
+            $this->layersView($repository, $modules, $dependencies, $excluded),
             $this->containerView($repository, $report),
             $this->componentView($repository, $modules, $dependencies),
             $this->contextView($repository, $report),
@@ -143,7 +144,7 @@ final class ArchitectureDiagramBuilder
      * @param  list<array{label: string, paths: list<string>}>  $excluded
      * @return array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}|null
      */
-    private function layersView(Collection $modules, array $dependencies, array $excluded): ?array
+    private function layersView(Repository $repository, Collection $modules, array $dependencies, array $excluded): ?array
     {
         if ($modules->isEmpty()) {
             return null;
@@ -195,7 +196,9 @@ final class ArchitectureDiagramBuilder
             $chart->invisibleLink("layer_{$drawnLayers[$index]}", "layer_{$layer}");
         }
 
-        foreach ($this->layerDependencies($dependencies, $layerOf->all()) as [$fromLayer, $toLayer]) {
+        $layerArrows = $this->layerDependencies($dependencies, $layerOf->all());
+
+        foreach ($layerArrows as [$fromLayer, $toLayer]) {
             $chart->edge("layer_{$fromLayer}", "layer_{$toLayer}");
         }
 
@@ -204,6 +207,12 @@ final class ArchitectureDiagramBuilder
         }
 
         $chart->classDef('more', self::C4_STYLES['more']);
+
+        // An arrow between layers stands for all the imports between their modules; imports inside a layer are not drawn.
+        $drawnImports = array_sum(array_map(
+            fn (array $dependency): int => $layerOf[$dependency['from']] === $layerOf[$dependency['to']] ? 0 : $dependency['weight'],
+            $dependencies,
+        ));
 
         $caption = ($shown->count() < $modules->count()
             ? "The {$shown->count()} biggest of the {$modules->count()} modules with code, grouped into layers by folder name"
@@ -215,6 +224,8 @@ final class ArchitectureDiagramBuilder
             'caption' => $caption,
             'excluded' => $excluded,
             'nodes' => $this->nodePaths($shown, $ids),
+            'findings' => $this->facts->findings($repository, $modules, $shown, $dependencies, $drawnImports, $layerOf->all()),
+            'evidence' => $this->facts->layerEvidence($repository, $dependencies, $layerArrows, $layerOf->all(), $ids),
         ]);
     }
 
@@ -404,6 +415,15 @@ final class ArchitectureDiagramBuilder
         $chart->endGroup();
         $this->defineC4Styles($chart);
 
+        $nodeToModule = array_flip($ids);
+        $drawnModules = array_map(fn (array $edge): array => [$nodeToModule[$edge[0]], $nodeToModule[$edge[1]]], $drawnEdges);
+        $moduleWeights = [];
+
+        foreach ($dependencies as $dependency) {
+            $moduleWeights[$dependency['from'].':'.$dependency['to']] = $dependency['weight'];
+        }
+
+        $drawnImports = array_sum(array_map(fn (array $edge): int => $moduleWeights[$edge[0].':'.$edge[1]], $drawnModules));
         $possibleEdges = count(array_filter($dependencies, fn (array $dependency): bool => isset($ids[$dependency['from']], $ids[$dependency['to']])));
 
         $caption = ($omitted > 0
@@ -420,6 +440,9 @@ final class ArchitectureDiagramBuilder
             'caption' => $caption,
             'omitted_modules' => $omitted,
             'nodes' => $this->nodePaths($shown, $ids),
+            'classes' => $this->classesByNode($classNames, $ids),
+            'findings' => $this->facts->findings($repository, $modules, $shown, $dependencies, $drawnImports, null),
+            'evidence' => $this->facts->edgeEvidence($repository, $modules, $dependencies, $drawnModules, $ids),
         ]);
     }
 
@@ -457,6 +480,8 @@ final class ArchitectureDiagramBuilder
 
         return $this->diagram(DiagramType::Context, $chart, [
             'title' => 'Context',
+            // The external systems drawn, so the reading of the diagram may name them (the page does not list them).
+            'externals' => array_map(fn (Technology $technology): array => $technology->toArray(), $externals),
             'caption' => $externals === []
                 ? 'Who uses the system; the project files show no external systems called by the code.'
                 : 'Who uses the system and which external systems the code calls (from the libraries and settings found).',
@@ -736,6 +761,26 @@ final class ArchitectureDiagramBuilder
     private function nodePaths(Collection $modules, array $ids): array
     {
         return $modules->mapWithKeys(fn (Module $module): array => [$ids[$module->id] => $module->path])->all();
+    }
+
+    /**
+     * The class names each node shows (node id => names), so the reading of the diagram may name them.
+     *
+     * @param  array<int, list<string>>  $classNames  module id => class names
+     * @param  array<int, string>  $ids  module id => node id
+     * @return array<string, list<string>>
+     */
+    private function classesByNode(array $classNames, array $ids): array
+    {
+        $byNode = [];
+
+        foreach ($ids as $moduleId => $nodeId) {
+            if (($classNames[$moduleId] ?? []) !== []) {
+                $byNode[$nodeId] = $classNames[$moduleId];
+            }
+        }
+
+        return $byNode;
     }
 
     /**

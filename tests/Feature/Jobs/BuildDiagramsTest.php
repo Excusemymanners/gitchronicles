@@ -3,7 +3,7 @@
 namespace Tests\Feature\Jobs;
 
 use App\Ai\TextGenerator;
-use App\Diagrams\ArchitectureDiagramBuilder;
+use App\Diagrams\ArchitectureRefresher;
 use App\Diagrams\DiagramHistory;
 use App\Diagrams\FlowDiagramWriter;
 use App\Enums\ProcessingTrigger;
@@ -71,11 +71,11 @@ class BuildDiagramsTest extends TestCase
         $this->assertModelExists($flow);
     }
 
-    public function test_adds_the_tokens_of_the_flows_to_the_processing_run(): void
+    public function test_adds_the_tokens_of_the_reading_and_of_the_flows_to_the_processing_run(): void
     {
         $repository = $this->analyzedRepository(['routes']);
         $run = ProcessingRun::factory()->for($repository)->create(['input_tokens' => 1000, 'output_tokens' => 200]);
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator([json_encode(['flows' => [[
+        $this->app->instance(TextGenerator::class, new FakeTextGenerator(['{"diagrams":{}}', json_encode(['flows' => [[
             'title' => 'Rutele',
             'explanation' => 'Fișierul de rute descrie paginile aplicației.',
             'mermaid' => "flowchart TD\n  A[\"routes/File.php\"]",
@@ -84,7 +84,7 @@ class BuildDiagramsTest extends TestCase
 
         $this->handle(new BuildDiagrams($repository, $run));
 
-        $this->assertSame(['input_tokens' => 1100, 'output_tokens' => 250], $run->fresh()->only(['input_tokens', 'output_tokens']));
+        $this->assertSame(['input_tokens' => 1200, 'output_tokens' => 300], $run->fresh()->only(['input_tokens', 'output_tokens']));
         $this->assertDatabaseHas('diagrams', ['repository_id' => $repository->id, 'type' => 'flow', 'key' => 'rutele']);
     }
 
@@ -93,7 +93,7 @@ class BuildDiagramsTest extends TestCase
      */
     private function handle(BuildDiagrams $job): void
     {
-        $job->handle(app(ArchitectureDiagramBuilder::class), app(FlowDiagramWriter::class), app(DiagramHistory::class));
+        $job->handle(app(ArchitectureRefresher::class), app(FlowDiagramWriter::class), app(DiagramHistory::class));
     }
 
     /**

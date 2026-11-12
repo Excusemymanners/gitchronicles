@@ -26,6 +26,52 @@ export type ExcludedGroup = {
 /** Nodurile unei diagrame care duc la documentația unui modul: id-ul nodului -> modulul și slug-ul paginii lui. */
 export type DiagramModules = Record<string, { path: string; slug: string }>;
 
+/** A module in the findings: how many modules and imports stand behind it. */
+export type FindingModule = { module: string; modules: number; imports: number };
+
+/** What was computed from the real imports of the modules a diagram shows (ArchitectureFacts); absent facts are missing. */
+export type DiagramFindings = {
+    core?: FindingModule[];
+    coordinators?: FindingModule[];
+    /** A loop is written in the direction of the imports; size is the number of modules in the whole group. */
+    cycles?: { modules: string[]; size: number }[];
+    upward?: { count: number; imports: number; pairs: { from: string; to: string; imports: number }[] };
+    isolated?: string[];
+    coverage: {
+        shown_modules: number;
+        total_modules: number;
+        shown_lines: number;
+        total_lines: number;
+        total_imports: number;
+        undrawn_imports: number;
+    };
+    busiest?: { module: string; commits: number }[];
+};
+
+/** One example behind an arrow: the importing file, the file it imports, and their links on GitHub. */
+export type EvidenceExample = { from: string; to: string; url: string | null; target_url: string | null };
+
+/** One arrow of the diagram with the imports that stand behind it. */
+export type DiagramEvidence = {
+    from: string;
+    to: string;
+    from_label: string;
+    to_label: string;
+    imports: number;
+    examples: EvidenceExample[];
+    /** The drawn boxes that take part in the arrow: it is highlighted when one of them is focused. */
+    nodes: string[];
+};
+
+/** The reading of an architecture diagram: written by Claude, or composed by the page from the findings (no text). */
+export type DiagramInterpretation = {
+    source: 'ai' | 'composed';
+    reading?: string;
+    worth?: string;
+    model?: string;
+    reason?: string;
+};
+
 /** O diagramă, așa cum o trimite DiagramResource. */
 export type Diagram = {
     type: DiagramType;
@@ -44,6 +90,10 @@ export type Diagram = {
     source_sha: string | null;
     /** Nodurile care deschid pagina unui modul (doar straturile și componentele). */
     modules: DiagramModules;
+    /** Null for a diagram drawn before the findings existed: the page then shows nothing extra. */
+    findings: DiagramFindings | null;
+    evidence: DiagramEvidence[];
+    interpretation: DiagramInterpretation | null;
 };
 
 /** Toate diagramele unui repository, grupate pentru pagină; null = vederea nu are date. */

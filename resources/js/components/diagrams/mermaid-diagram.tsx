@@ -15,6 +15,8 @@ type Props = {
     modules?: DiagramModules;
     /** Începutul adreselor paginilor de module, de exemplu „/repositories/1/docs”. */
     docsBase?: string | null;
+    /** Told which box the pointer or the focus is on (node id), or null. */
+    onNodeActive?: (nodeId: string | null) => void;
 };
 
 type RenderState = { status: 'loading' } | { status: 'ready'; svg: string } | { status: 'error' };
@@ -26,7 +28,7 @@ const NO_MODULES: DiagramModules = {};
  * DiagramViewer (zoom, deplasare, ecran complet, export). Dacă desenul nu reușește, spune asta pe scurt
  * și arată codul. Varianta „compact” e doar o previzualizare micșorată, fără unelte.
  */
-export default function MermaidDiagram({ code, title, compact = false, modules = NO_MODULES, docsBase = null }: Props) {
+export default function MermaidDiagram({ code, title, compact = false, modules = NO_MODULES, docsBase = null, onNodeActive }: Props) {
     const { t } = useI18n();
     const theme = useDiagramTheme();
     const [state, setState] = useState<RenderState>({ status: 'loading' });
@@ -104,7 +106,7 @@ export default function MermaidDiagram({ code, title, compact = false, modules =
 
     return (
         <>
-            <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onFullScreen={() => setIsFullScreen(true)} />
+            <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onFullScreen={() => setIsFullScreen(true)} onNodeActive={onNodeActive} />
 
             {isFullScreen && (
                 <dialog
@@ -113,7 +115,7 @@ export default function MermaidDiagram({ code, title, compact = false, modules =
                     onClose={() => setIsFullScreen(false)}
                     className="m-auto h-[calc(100dvh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none overflow-hidden rounded-lg border border-line bg-surface-raised p-0 text-ink shadow-float backdrop:bg-canvas/80 backdrop:backdrop-blur-sm"
                 >
-                    <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onClose={() => dialogRef.current?.close()} />
+                    <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onClose={() => dialogRef.current?.close()} onNodeActive={onNodeActive} />
                 </dialog>
             )}
         </>

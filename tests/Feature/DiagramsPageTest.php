@@ -68,6 +68,38 @@ class DiagramsPageTest extends TestCase
         );
     }
 
+    public function test_the_findings_the_evidence_with_github_links_and_the_interpretation_reach_the_page(): void
+    {
+        $repository = Repository::factory()->ready()->create(['owner' => 'acme', 'name' => 'shop']);
+        $sha = $repository->last_sha;
+        Diagram::factory()->for($repository)->create(['source_sha' => $sha, 'meta' => [
+            'title' => 'Layers',
+            'findings' => ['core' => [['module' => 'app/Models', 'modules' => 2, 'imports' => 4]]],
+            'evidence' => [['from' => 'm1', 'to' => 'm2', 'from_label' => 'app/Http', 'to_label' => 'app/Models', 'imports' => 3, 'nodes' => ['m1', 'm2'], 'examples' => [['from' => 'app/Http/A b.php', 'to' => 'app/Models/M.php']]]],
+            'interpretation' => ['source' => 'ai', 'reading' => 'It reads.', 'worth' => 'Worth it.', 'model' => 'claude-opus-5-5', 'input_hash' => 'secret'],
+        ]]);
+
+        $this->get("/repositories/{$repository->id}/diagrams")->assertInertia(fn (Assert $page) => $page
+            ->where('diagrams.layers.findings.core.0.module', 'app/Models')
+            ->where('diagrams.layers.evidence.0.imports', 3)
+            ->where('diagrams.layers.evidence.0.examples.0.url', "https://github.com/acme/shop/blob/{$sha}/app/Http/A%20b.php")
+            ->where('diagrams.layers.evidence.0.examples.0.target_url', "https://github.com/acme/shop/blob/{$sha}/app/Models/M.php")
+            ->where('diagrams.layers.interpretation', ['source' => 'ai', 'reading' => 'It reads.', 'worth' => 'Worth it.', 'model' => 'claude-opus-5-5'])
+        );
+    }
+
+    public function test_a_diagram_built_before_the_findings_existed_has_none(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        Diagram::factory()->for($repository)->create(['meta' => ['title' => 'Layers']]);
+
+        $this->get("/repositories/{$repository->id}/diagrams")->assertInertia(fn (Assert $page) => $page
+            ->where('diagrams.layers.findings', null)
+            ->where('diagrams.layers.evidence', [])
+            ->where('diagrams.layers.interpretation', null)
+        );
+    }
+
     public function test_a_repository_without_diagrams_gets_an_empty_set(): void
     {
         $repository = Repository::factory()->ready()->create();

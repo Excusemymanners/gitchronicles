@@ -22,6 +22,8 @@ type Props = {
     /** Set in the page; the full-screen dialog passes `onClose` instead. */
     onFullScreen?: () => void;
     onClose?: () => void;
+    /** Told which box (by node id) the pointer or the keyboard focus is on, or null when none; changes no click. */
+    onNodeActive?: (nodeId: string | null) => void;
 };
 
 type Tooltip = { path: string; left: number; top: number };
@@ -38,7 +40,7 @@ function nodeIdOf(element: Element): string | null {
  * One diagram as a small tool: a toolbar (zoom, fit, full screen, copy code, download) over a canvas that
  * can be panned and zoomed. Boxes that stand for a module with a documentation page are links.
  */
-export default function DiagramViewer({ svg, code, title, modules, docsBase, onFullScreen, onClose }: Props) {
+export default function DiagramViewer({ svg, code, title, modules, docsBase, onFullScreen, onClose, onNodeActive }: Props) {
     const { t } = useI18n();
     const canvasRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -103,6 +105,12 @@ export default function DiagramViewer({ svg, code, title, modules, docsBase, onF
             left: Math.min(Math.max(nodeBox.left - canvasBox.left + nodeBox.width / 2, 120), canvasBox.width - 120),
             top: Math.max(nodeBox.top - canvasBox.top - 8, 56),
         });
+    }
+
+    function reportNode(target: EventTarget | null) {
+        const node = (target as Element | null)?.closest?.('g.node');
+
+        onNodeActive?.(node ? nodeIdOf(node) : null);
     }
 
     function open(target: EventTarget | null) {
@@ -212,10 +220,22 @@ export default function DiagramViewer({ svg, code, title, modules, docsBase, onF
                 {...pan.handlers}
                 onKeyDown={onKeyDown}
                 onClick={onClick}
-                onPointerOver={(event) => showTooltip(event.target)}
-                onPointerOut={() => setTooltip(null)}
-                onFocus={(event) => showTooltip(event.target)}
-                onBlur={() => setTooltip(null)}
+                onPointerOver={(event) => {
+                    showTooltip(event.target);
+                    reportNode(event.target);
+                }}
+                onPointerOut={() => {
+                    setTooltip(null);
+                    onNodeActive?.(null);
+                }}
+                onFocus={(event) => {
+                    showTooltip(event.target);
+                    reportNode(event.target);
+                }}
+                onBlur={() => {
+                    setTooltip(null);
+                    onNodeActive?.(null);
+                }}
                 className={`relative overflow-hidden bg-canvas select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
                     isFullScreen ? 'min-h-0 flex-1' : 'h-[min(78dvh,44rem)]'
                 } ${pan.isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-pan-y`}
