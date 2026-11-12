@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@/components/docs/docs-icons';
 import { useI18n } from '@/hooks/use-i18n';
 import type { DocumentLink } from '@/types/docs';
 
@@ -12,9 +13,9 @@ type Props = {
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 /**
- * „Pagina anterioară” și „Pagina următoare” la finalul unei pagini, ca pe un site de documentație:
- * se poate citi toată documentația pe rând, fără să cauți următorul capitol în cuprins.
- * Prima pagină nu are „anterioară”, ultima nu are „următoare”.
+ * "Previous chapter" and "Next chapter" at the end of a page, as on a documentation site: the whole documentation
+ * can be read in order without going back to the table of contents. It is a segment of the rail, not two boxes.
+ * The first page has no previous chapter, the last one no next.
  */
 export default function DocsPager({ items, currentSlug }: Props) {
     const { t } = useI18n();
@@ -28,8 +29,8 @@ export default function DocsPager({ items, currentSlug }: Props) {
     const next = items[index + 1] ?? null;
 
     return (
-        <nav aria-label={t('docs.pagesNav')} className="mt-12 grid gap-3 border-t border-line pt-6 sm:grid-cols-2">
-            {previous ? <PagerLink item={previous} direction="previous" /> : <span aria-hidden="true" className="max-sm:hidden" />}
+        <nav aria-label={t('docs.pagesNav')} className="mt-16 grid grid-cols-2 gap-4 border-t border-line pt-6">
+            {previous ? <PagerLink item={previous} direction="previous" /> : <span aria-hidden="true" />}
             {next && <PagerLink item={next} direction="next" />}
         </nav>
     );
@@ -38,13 +39,19 @@ export default function DocsPager({ items, currentSlug }: Props) {
 function PagerLink({ item, direction }: { item: DocumentLink; direction: 'previous' | 'next' }) {
     const { t } = useI18n();
     const isNext = direction === 'next';
+    const Chevron = isNext ? ChevronRightIcon : ChevronLeftIcon;
 
     return (
         <Link
             href={item.href}
-            className={`group flex flex-col gap-1 rounded-xl border border-line px-4 py-3 hover:border-line-strong hover:bg-surface ${isNext ? 'sm:items-end sm:text-right' : ''} ${focusRing}`}
+            prefetch
+            className={`group flex min-w-0 flex-col gap-1 rounded-sm ${isNext ? 'col-start-2 items-end text-right' : ''} ${focusRing}`}
         >
-            <span className="text-xs text-ink-subtle">{isNext ? t('docs.nextPage') : t('docs.previousPage')}</span>
+            <span className="flex items-center gap-1 text-[0.8125rem] text-ink-subtle">
+                {!isNext && <Chevron />}
+                {isNext ? t('docs.nextPage') : t('docs.previousPage')}
+                {isNext && <Chevron />}
+            </span>
             <span className="max-w-full truncate font-medium text-ink group-hover:text-accent">{item.title}</span>
         </Link>
     );

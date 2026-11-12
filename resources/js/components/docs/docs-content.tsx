@@ -1,118 +1,207 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { ClockIcon } from '@/components/docs/docs-icons';
 import Markdown from '@/components/docs/markdown';
+import OnThisPage, { useActiveHeading, usePageHeadings } from '@/components/docs/on-this-page';
+import { ExternalLinkIcon } from '@/components/icons';
 import { useI18n } from '@/hooks/use-i18n';
-import { formatDate, shortSha } from '@/lib/format';
-import { translate } from '@/lib/i18n';
+import { shortSha } from '@/lib/format';
+import { formatDay, formatUsd } from '@/lib/history-format';
 import type { DocumentPage } from '@/types/docs';
 
 type Props = {
     document: DocumentPage;
-    /** „owner/name”, pentru legătura spre commitul din care e scrisă pagina. */
+    /** "owner/name", for the links to the commit the page was written from. */
     repositoryFullName: string;
 };
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
-const secondaryButtonClasses = `inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-ink shadow-xs ring-1 ring-line-strong ring-inset hover:bg-surface-2 ${focusRing}`;
+const secondaryButtonClasses = `pressable inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2 ${focusRing}`;
 
-/** Cine a scris pagina, pe scurt: Claude (cu modelul și calea, abonament sau API) sau analiza codului. */
-function authorLabel(document: DocumentPage): string {
-    if (document.writer === 'template') {
-        return translate('docs.author.template');
-    }
+/**
+ * Splits the leading "# Title" line off the Markdown. The page shows the title first, then the "who wrote it"
+ * line, then the rest; a page without a leading title just starts with the line.
+ */
+function splitTitle(markdown: string): { title: string | null; body: string } {
+    const match = /^\s*#\s+(.+?)\s*#*\s*(?:\r?\n|$)/.exec(markdown);
 
-    const model = document.model ? ` (${document.model})` : '';
+    return match ? { title: match[1], body: markdown.slice(match[0].length) } : { title: null, body: markdown };
+}
 
-    if (document.ai_driver === 'claude-code') {
-        return translate('docs.author.claudeSubscription', { model });
-    }
-
-    if (document.ai_driver === 'claude') {
-        return translate('docs.author.claudeApi', { model });
-    }
-
-    return translate('docs.author.claude', { model });
+/** A title may hold `code` between backticks (a module path); show it as code instead of showing the backticks. */
+function inlineCode(text: string): ReactNode[] {
+    return text.split('`').map((part, index) =>
+        index % 2 === 1 ? (
+            <code key={index} className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-[0.75em]">
+                {part}
+            </code>
+        ) : (
+            part
+        ),
+    );
 }
 
 /**
- * O pagină de documentație: avertismentul când e depășită sau scrisă automat în locul variantei cu AI, cine a scris-o
- * (și câți tokeni a folosit), butoanele README-ului („Copiază”, „Descarcă README.md”) și textul Markdown.
- * Componenta e de sine stătătoare, ca s-o poată folosi și alte ecrane (de exemplu spațiul de lucru al repository-ului).
+ * One documentation page: the title, one quiet line saying who wrote it and from which commit, the stale banner
+ * when the code moved on, the README buttons and the Markdown text. "On this page" lists the sections.
+ * The component stands alone so other screens (the repository workspace) can use it too.
  */
 export default function DocsContent({ document, repositoryFullName }: Props) {
-    const { t, plural, rich } = useI18n();
+    const { t } = useI18n();
+    const [article, setArticle] = useState<HTMLElement | null>(null);
+    const { title, body } = splitTitle(document.markdown);
+    const headings = usePageHeadings(article, body);
+    const activeId = useActiveHeading(headings, article);
 
     return (
-        <article className="min-w-0">
-            {/* Două feluri de avertisment: textul lui Claude a rămas în urma codului, sau pagina e scrisă de șablon în locul lui Claude. */}
-            {document.is_stale && (
-                <div role="status" className="mb-6 rounded-lg border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning-ink">
-                    <p className="font-semibold">
-                        {document.writer === 'ai' ? t('docs.stale.ai') : t('docs.stale.template')}
-                    </p>
-                    {document.stale_reason && <p className="mt-1">{document.stale_reason}</p>}
+        <article ref={setArticle} className="min-w-0">
+            <OnThisPage headings={headings} activeId={activeId} />
+
+            {title && <h1 className="font-display text-title break-words text-ink">{inlineCode(title)}</h1>}
+
+            <Byline document={document} repositoryFullName={repositoryFullName} hasTitle={title !== null} />
+            <GenerationDetails document={document} />
+
+            {document.is_stale && <StaleBanner document={document} repositoryFullName={repositoryFullName} />}
+
+            {document.kind === 'readme' && document.download_url && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                    <CopyButton text={document.markdown} />
+                    <a href={document.download_url} download="README.md" className={secondaryButtonClasses}>
+                        {t('docs.downloadReadme')}
+                    </a>
                 </div>
             )}
 
-            <div className="mb-6 flex flex-col gap-3 border-b border-line pb-4">
-                <p className="text-sm text-ink-subtle">
-                    {authorLabel(document)}
-                    {document.writer === 'ai' && (
-                        <>
-                            {' · '}
-                            {t('docs.tokens', {
-                                input: plural('tokens', document.input_tokens),
-                                output: plural('tokens', document.output_tokens),
-                            })}
-                        </>
-                    )}
-                    {document.source_sha && (
-                        <>
-                            {' · '}
-                            {rich('docs.sourceCommit', {
-                                sha: (
-                                    <a
-                                        href={`https://github.com/${repositoryFullName}/commit/${document.source_sha}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        title={document.source_sha}
-                                        className={`rounded-sm font-mono text-accent hover:text-accent-hover hover:underline ${focusRing}`}
-                                    >
-                                        {shortSha(document.source_sha)}
-                                        <span className="sr-only"> {t('docs.commitLink')}</span>
-                                    </a>
-                                ),
-                            })}
-                        </>
-                    )}
-                    {document.generated_at && (
-                        <>
-                            {' · '}
-                            <time dateTime={document.generated_at}>{formatDate(document.generated_at)}</time>
-                        </>
-                    )}
-                </p>
+            <div className="mt-8">
+                <Markdown>{body}</Markdown>
+            </div>
+        </article>
+    );
+}
 
-                {document.kind === 'readme' && document.download_url && (
-                    <div className="flex flex-wrap gap-2">
-                        <CopyButton text={document.markdown} />
-                        <a href={document.download_url} download="README.md" className={secondaryButtonClasses}>
-                            {t('docs.downloadReadme')}
+/** "Written by Claude from commit 3ac73c4, on Nov 10, 2026." The SHA links to the commit on GitHub. */
+function Byline({ document, repositoryFullName, hasTitle }: { document: DocumentPage; repositoryFullName: string; hasTitle: boolean }) {
+    const { t, rich } = useI18n();
+
+    return (
+        <p className={`${hasTitle ? 'mt-3' : ''} text-[0.8125rem] text-ink-subtle`}>
+            {document.writer === 'template' ? t('docs.byline.template') : t('docs.byline.ai')}
+            {document.source_sha &&
+                rich('docs.byline.fromCommit', {
+                    sha: (
+                        <a
+                            href={`https://github.com/${repositoryFullName}/commit/${document.source_sha}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={document.source_sha}
+                            className={`rounded-sm font-mono text-accent hover:text-accent-hover hover:underline ${focusRing}`}
+                        >
+                            {shortSha(document.source_sha)}
+                            <span className="sr-only"> {t('docs.commitLink')}</span>
                         </a>
+                    ),
+                })}
+            {document.generated_at &&
+                rich('docs.byline.onDate', { date: <time dateTime={document.generated_at}>{formatDay(document.generated_at)}</time> })}
+            .
+        </p>
+    );
+}
+
+/** Model, tokens and cost behind a click. Only the values we really have are listed; a page with none shows nothing. */
+function GenerationDetails({ document }: { document: DocumentPage }) {
+    const { t, plural } = useI18n();
+
+    if (document.writer !== 'ai') {
+        return null;
+    }
+
+    const rows: { label: string; value: string }[] = [];
+
+    if (document.ai_driver === 'claude-code' || document.ai_driver === 'claude') {
+        rows.push({ label: t('docs.details.via'), value: document.ai_driver === 'claude' ? t('docs.details.viaApi') : t('docs.details.viaSubscription') });
+    }
+
+    if (document.model) {
+        rows.push({ label: t('docs.details.model'), value: document.model });
+    }
+
+    if (document.input_tokens > 0 || document.output_tokens > 0) {
+        rows.push({
+            label: t('docs.details.tokens'),
+            value: t('docs.details.tokensValue', { input: plural('tokens', document.input_tokens), output: plural('tokens', document.output_tokens) }),
+        });
+    }
+
+    if (document.cost_usd_equivalent !== null) {
+        rows.push({ label: t('docs.details.cost'), value: formatUsd(document.cost_usd_equivalent) });
+    }
+
+    if (rows.length === 0) {
+        return null;
+    }
+
+    return (
+        <details className="mt-2 text-[0.8125rem] text-ink-subtle">
+            <summary className={`w-fit cursor-pointer rounded-sm hover:text-ink ${focusRing}`}>{t('docs.details.title')}</summary>
+            <dl className="mt-2 grid max-w-md grid-cols-[auto_1fr] gap-x-6 gap-y-1">
+                {rows.map((row) => (
+                    <div key={row.label} className="col-span-2 grid grid-cols-subgrid">
+                        <dt>{row.label}</dt>
+                        <dd className="text-ink-muted">{row.value}</dd>
                     </div>
+                ))}
+            </dl>
+        </details>
+    );
+}
+
+/** The warning above the text: Claude's page fell behind the code, or a template wrote it instead of Claude. */
+function StaleBanner({ document, repositoryFullName }: { document: DocumentPage; repositoryFullName: string }) {
+    const { t, rich } = useI18n();
+    const sha = document.source_sha;
+    const message =
+        document.writer !== 'ai'
+            ? t('docs.stale.template')
+            : sha
+              ? rich(document.kind === 'module' ? 'docs.stale.module' : 'docs.stale.project', {
+                    sha: <code className="font-mono">{shortSha(sha)}</code>,
+                })
+              : t('docs.stale.ai');
+
+    return (
+        <div
+            role="status"
+            className="mt-6 flex animate-fade-in gap-3 rounded-lg border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning-ink"
+        >
+            <ClockIcon className="mt-0.5 size-4" />
+            <div className="min-w-0">
+                <p className="font-medium">{message}</p>
+                {document.stale_reason && <p className="mt-1">{document.stale_reason}</p>}
+                {sha && document.writer === 'ai' && (
+                    <a
+                        href={`https://github.com/${repositoryFullName}/compare/${sha}...HEAD`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`mt-2 inline-flex items-center gap-1 rounded-sm font-medium underline underline-offset-[3px] hover:no-underline ${focusRing}`}
+                    >
+                        {t('docs.stale.seeChanges')}
+                        <ExternalLinkIcon className="size-3.5" />
+                        <span className="sr-only"> {t('common.opensInNewTab')}</span>
+                    </a>
                 )}
             </div>
-
-            <Markdown>{document.markdown}</Markdown>
-        </article>
+        </div>
     );
 }
 
 type CopyState = 'idle' | 'copied' | 'failed';
 
 /**
- * „Copiază”: pune textul în clipboard și spune 2 secunde dacă a mers. Mesajul e într-o zonă aria-live,
- * ca să-l audă și cititoarele de ecran.
+ * "Copy": puts the text on the clipboard and says for 2 seconds whether it worked. The message sits in an
+ * aria-live region so screen readers announce it.
  */
 function CopyButton({ text }: { text: string }) {
     const { t } = useI18n();

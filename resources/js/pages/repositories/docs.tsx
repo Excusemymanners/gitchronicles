@@ -7,7 +7,8 @@ import ChapterEmptyState from '@/components/repository/chapter-empty-state';
 import TimeTravelBar from '@/components/time-travel/time-travel-bar';
 import { useI18n } from '@/hooks/use-i18n';
 import RepositoryLayout from '@/layouts/repository-layout';
-import { formatDate, shortSha } from '@/lib/format';
+import { shortSha } from '@/lib/format';
+import { formatDay } from '@/lib/history-format';
 import type { Completeness, RepositoryItem, RepositoryPageProps } from '@/types';
 import type { DocumentLink, DocumentPage } from '@/types/docs';
 import type { DocumentTimeTravel } from '@/types/history';
@@ -95,7 +96,7 @@ function OldVersion({ document, timeTravel }: { document: DocumentPage; timeTrav
 
     return (
         <article className="min-w-0">
-            <p className="mb-6 border-b border-line pb-4 text-sm text-ink-subtle">
+            <p className="mb-8 border-b border-line pb-4 text-[0.8125rem] text-ink-subtle">
                 {version.sha
                     ? rich('docs.version.writtenAtCommit', {
                           sha: <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ink">{shortSha(version.sha)}</code>,
@@ -104,7 +105,7 @@ function OldVersion({ document, timeTravel }: { document: DocumentPage; timeTrav
                 {version.written_at && (
                     <>
                         {' · '}
-                        <time dateTime={version.written_at}>{formatDate(version.written_at)}</time>
+                        <time dateTime={version.written_at}>{formatDay(version.written_at)}</time>
                     </>
                 )}
                 {version.same_as_current && ` · ${t('docs.version.unchanged')}`}

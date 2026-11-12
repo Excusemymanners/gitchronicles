@@ -260,6 +260,13 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - „Lipsesc istoricul, documentația…” nu mai vine gata scris de la server: lista lipsurilor se formează în browser cu `Intl.ListFormat`, deci „a, b și c” în română și „a, b and c” în engleză.
   - Formatările istoricului (luni, zile, durate, sume) urmează limba aleasă, nu mai sunt scrise pentru „ro-RO”.
   - Rămân deliberat în română, pentru că sunt salvate în baza de date sau scrise de comenzi: erorile etapelor procesării și mesajele `AiException`, textele comenzilor Artisan și ancorele din adrese („cum-functioneaza”). Un script (`audit/out/i18n/scan-ro.cjs`) caută litere cu diacritice și cuvinte românești în textele fișierelor convertite și raportează zero.
+- 2026-11-12 — Citirea documentației: pagina de capitol ca text de citit. Decizii și motivele lor:
+  - Titlurile `h2` și `h3` primesc `id` dintr-un plugin mic pe arborele HTML al react-markdown (slug fără diacritice, cu `-2`, `-3` la titluri repetate): se rulează o dată pe document, deci ancorele sunt aceleași la fiecare randare și se pot trimite cuiva.
+  - Lista „Pe această pagină” citește titlurile din pagina deja randată, nu din textul Markdown, ca lista să nu poată fi niciodată în dezacord cu ancorele. Secțiunea curentă o găsește un singur `IntersectionObserver`, cu rădăcina în zona care derulează.
+  - Lista stă într-un `<details>` sub xl și, când spațiul de lucru are coloana din dreapta, într-un slot gol pus de layout în vârful ei (`createPortal`): singura modificare în afara fișierelor documentației.
+  - Blocurile de cod au buton de copiere, dar nu și colorare sintactică: ar fi cerut o dependență nouă, iar un singur tuș de cerneală e mai calm.
+  - Titlul paginii se desparte de restul textului, iar sub el vine o singură linie „cine a scris”; modelul, tokenii și costul stau într-un `<details>` și apar doar când există (date reale, nimic inventat).
+  - Bara „Călătorie în timp” e o șină cu un inel pe commit (până la 24, peste rămâne cursorul) și e pliată implicit pe o linie; se deschide singură când e afișată o versiune veche.
 
 ## Faza 7 — Diagrame C4 + prezentare
 - **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.

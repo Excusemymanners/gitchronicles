@@ -131,6 +131,8 @@ export default function WorkspaceLayout({ children }: Props) {
 
                     {hasElementsColumn && (
                         <div className="relative w-82 shrink-0 overflow-y-auto overscroll-contain border-l border-line bg-surface">
+                            {/* Empty slot: a page can put its own content (the docs "On this page" list) above the panel. */}
+                            <div id="workspace-aside-top" className="sticky top-0 z-10" />
                             <ElementsPanel elements={workspace.elements} placement="column" />
                         </div>
                     )}
