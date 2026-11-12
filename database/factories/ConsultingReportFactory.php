@@ -53,6 +53,30 @@ class ConsultingReportFactory extends Factory
     }
 
     /**
+     * Indicate that the report also holds the version check (the "runtime" tool): one end-of-life PHP and one current Node.js.
+     */
+    public function withRuntimeVersions(): static
+    {
+        return $this->state(function (array $attributes): array {
+            $row = ['kind' => 'runtime', 'is_range' => false, 'reason' => null, 'url' => 'https://endoflife.date/php', 'missing_security_releases' => null];
+            $tools = $attributes['tools'] ?? [];
+            $tools['runtime'] = [
+                'name' => 'Runtime versions', 'status' => ScanToolStatus::Ran->value, 'version' => null, 'duration_ms' => 800, 'finding_count' => 1, 'omitted_count' => 0, 'error' => null, 'error_value' => null,
+                'details' => [
+                    'fetched_at' => '2026-11-12T10:00:00+00:00',
+                    'sources' => ['endoflife.date', 'nodejs.org', 'php.net'],
+                    'versions' => [
+                        [...$row, 'product' => 'php', 'label' => 'PHP', 'declared' => '^7.4', 'version' => '7.4', 'is_range' => true, 'path' => 'composer.json', 'line' => 9, 'status' => 'end_of_life', 'release_line' => '7.4', 'supported_until' => '2022-11-28', 'newest' => '7.4.33', 'target' => '8.5', 'target_newest' => '8.5.12'],
+                        [...$row, 'product' => 'nodejs', 'label' => 'Node.js', 'declared' => '26', 'version' => '26', 'path' => '.nvmrc', 'line' => 1, 'status' => 'current', 'release_line' => '26', 'supported_until' => '2029-04-30', 'newest' => '26.13.1'],
+                    ],
+                ],
+            ];
+
+            return ['tools' => $tools];
+        });
+    }
+
+    /**
      * Indicate that the analysis stopped with an error.
      */
     public function failed(): static

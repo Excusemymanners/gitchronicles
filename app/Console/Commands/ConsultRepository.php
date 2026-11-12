@@ -18,11 +18,17 @@ use Illuminate\Console\Command;
  *     php artisan repositories:consult 1            (queued on "media"; a worker runs it)
  *     php artisan repositories:consult 1 --force    (again, even when the current commit has a report)
  *     php artisan repositories:consult 1 --now      (right here in the terminal, without a worker)
+ *     php artisan repositories:consult --stale      (every ready repository whose report is older than 7 days)
+ *     php artisan repositories:consult --stale=3    (… older than 3 days; the scheduler runs it daily)
+ *
+ * A report made again reuses the stored clone at the processed commit (no clone, no download of the repository)
+ * and asks AI for a new summary only when the facts of the report changed (ConsultingScanner, SummaryWriter).
  *
  * The worker of the "media" queue: php artisan queue:work --queue=media
  */
 #[Signature('repositories:consult
-    {repository : The id of the repository}
+    {repository? : The id of the repository (not needed with --stale)}
+    {--stale=7 : Make the report again for every ready repository whose report is older than this many days}
     {--force : Analyze again, even when the current commit already has a report}
     {--now : Run the tools here in the terminal instead of putting the job in the queue}')]
 #[Description('Make the consulting report (bugs, vulnerabilities, code statistics) of a ready repository')]
@@ -33,6 +39,16 @@ class ConsultRepository extends Command
      */
     public function handle(): int
     {
+        if ($this->input->hasParameterOption('--stale')) {
+            return $this->handleStale();
+        }
+
+        if ($this->argument('repository') === null) {
+            $this->error('Give the id of a repository, or use --stale.');
+
+            return self::FAILURE;
+        }
+
         $repository = Repository::find($this->argument('repository'));
 
         if ($repository === null) {
@@ -75,6 +91,50 @@ class ConsultRepository extends Command
         }
 
         $this->info(sprintf('Done in %s s: %s.', number_format($report->started_at->diffInSeconds($report->finished_at), 1), $this->findings($report->finding_count)));
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * `--stale[=days]`: queue (or, with --now, run) the report again for every ready repository whose newest finished report
+     * is older than the given number of days, 7 by default. A report that is waiting or running, and a repository
+     * that never had a report, are left alone.
+     */
+    private function handleStale(): int
+    {
+        $days = $this->option('stale') === null ? (int) config('gitchronicle.consulting.stale_after_days') : (int) $this->option('stale');
+
+        if ($days < 1) {
+            $this->error('--stale needs a number of days, 1 or more.');
+
+            return self::FAILURE;
+        }
+
+        $cutoff = now()->subDays($days);
+        $repositories = Repository::query()
+            ->where('status', RepositoryStatus::Ready)
+            ->whereHas('consultingReports')
+            ->with(['consultingReports' => fn ($query) => $query->latest('id')->limit(1)])
+            ->get()
+            ->filter(function (Repository $repository) use ($cutoff): bool {
+                $report = $repository->consultingReports->first();
+
+                return ! $report->status->isWorking() && ($report->finished_at ?? $report->updated_at)->lt($cutoff);
+            });
+
+        foreach ($repositories as $repository) {
+            $name = "#{$repository->id} {$repository->owner}/{$repository->name}";
+
+            if ($this->option('now')) {
+                GenerateConsultingReport::dispatchSync($repository, force: true);
+                $this->info("{$name}: report made again.");
+            } else {
+                GenerateConsultingReport::queueFor($repository, force: true);
+                $this->info("{$name}: queued.");
+            }
+        }
+
+        $this->line(sprintf('%d %s older than %d %s.', $repositories->count(), $repositories->count() === 1 ? 'report' : 'reports', $days, $days === 1 ? 'day' : 'days'));
 
         return self::SUCCESS;
     }

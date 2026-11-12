@@ -1,0 +1,122 @@
+[
+ {
+  "version": "v22.23.5",
+  "date": "2026-11-11",
+  "lts": "Jod",
+  "security": true
+ },
+ {
+  "version": "v22.23.4",
+  "date": "2026-10-20",
+  "lts": "Jod",
+  "security": true
+ },
+ {
+  "version": "v22.23.3",
+  "date": "2026-09-23",
+  "lts": "Jod",
+  "security": false
+ },
+ {
+  "version": "v22.23.2",
+  "date": "2026-07-28",
+  "lts": "Jod",
+  "security": true
+ },
+ {
+  "version": "v22.23.1",
+  "date": "2026-06-22",
+  "lts": "Jod",
+  "security": false
+ },
+ {
+  "version": "v22.23.0",
+  "date": "2026-06-17",
+  "lts": "Jod",
+  "security": true
+ },
+ {
+  "version": "v22.22.3",
+  "date": "2026-05-13",
+  "lts": "Jod",
+  "security": false
+ },
+ {
+  "version": "v22.22.2",
+  "date": "2026-03-24",
+  "lts": "Jod",
+  "security": true
+ },
+ {
+  "version": "v22.22.1",
+  "date": "2026-03-04",
+  "lts": "Jod",
+  "security": false
+ },
+ {
+  "version": "v22.22.0",
+  "date": "2026-01-12",
+  "lts": "Jod",
+  "security": true
+ },
+ {
+  "version": "v20.20.2",
+  "date": "2026-03-24",
+  "lts": "Iron",
+  "security": true
+ },
+ {
+  "version": "v20.20.1",
+  "date": "2026-03-04",
+  "lts": "Iron",
+  "security": false
+ },
+ {
+  "version": "v20.20.0",
+  "date": "2026-01-12",
+  "lts": "Iron",
+  "security": true
+ },
+ {
+  "version": "v20.19.6",
+  "date": "2025-11-25",
+  "lts": "Iron",
+  "security": false
+ },
+ {
+  "version": "v20.19.5",
+  "date": "2025-09-03",
+  "lts": "Iron",
+  "security": false
+ },
+ {
+  "version": "v20.19.4",
+  "date": "2025-07-15",
+  "lts": "Iron",
+  "security": true
+ },
+ {
+  "version": "v20.19.3",
+  "date": "2025-06-23",
+  "lts": "Iron",
+  "security": false
+ },
+ {
+  "version": "v20.19.2",
+  "date": "2025-05-14",
+  "lts": "Iron",
+  "security": true
+ },
+ {
+  "version": "v20.19.1",
+  "date": "2025-04-22",
+  "lts": "Iron",
+  "security": false
+ },
+ {
+  "version": "v20.19.0",
+  "date": "2025-03-13",
+  "lts": "Iron",
+  "security": false
+ }
+]

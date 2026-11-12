@@ -2,3 +2,7 @@
 /.venv/
 /bin/
 /downloads/
+/rules/upstream/
+/rules-previous/
+/rules-staging/
+/rules-version.json

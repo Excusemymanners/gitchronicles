@@ -11,6 +11,7 @@ use App\Consulting\ToolRun;
 use App\Enums\FindingKind;
 use App\Enums\FindingSeverity;
 use App\Enums\ScanToolStatus;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\FakesConsultingTools;
@@ -44,7 +45,7 @@ class ScanToolsTest extends TestCase
         $this->assertSame(ScanToolStatus::Ran, $run->status);
         $this->assertSame('1.182.1', $run->version);
         $this->assertCount(17, $run->findings);
-        $this->assertSame(['files_scanned' => 10, 'errors' => 0], $run->details);
+        $this->assertSame(['files_scanned' => 10, 'errors' => 0, 'rules' => null], $run->details);
 
         $shell = $this->findingOf($run, 'php-shell-command');
         $this->assertSame(FindingKind::Vulnerability, $shell->kind);
@@ -86,13 +87,14 @@ class ScanToolsTest extends TestCase
     public function test_osv_scanner_findings_have_the_package_versions_and_advisory(): void
     {
         $this->fakeConsultingTools();
+        Carbon::setTestNow('2026-11-12 12:00:00');
 
         $run = app(OsvScanner::class)->run($this->clonePath);
 
         $this->assertSame(ScanToolStatus::Ran, $run->status);
         $this->assertSame('2.7.0', $run->version);
         $this->assertCount(12, $run->findings);
-        $this->assertSame(['packages_scanned' => 4, 'lockfiles' => ['composer.lock', 'package-lock.json', 'requirements.txt']], $run->details);
+        $this->assertSame(['packages_scanned' => 4, 'lockfiles' => ['composer.lock', 'package-lock.json', 'requirements.txt'], 'queried_at' => '2026-11-12T12:00:00+00:00'], $run->details);
 
         $prototypePollution = $this->findingOf($run, 'GHSA-p6mc-m468-83gw');
         $this->assertSame(FindingKind::Vulnerability, $prototypePollution->kind);

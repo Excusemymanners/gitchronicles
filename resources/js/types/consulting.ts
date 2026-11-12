@@ -8,11 +8,11 @@ export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export type ConsultingError = 'clone_missing' | 'not_installed' | 'no_tool_ran' | 'unexpected';
 
 /** De ce a eșuat o unealtă, cu numărul care îl însoțește (secunde, MB sau codul de ieșire). */
-export type ToolError = 'timed_out' | 'output_too_large' | 'unreadable_output' | 'exit_code';
+export type ToolError = 'timed_out' | 'output_too_large' | 'unreadable_output' | 'exit_code' | 'source_unavailable';
 
 /** Ce a făcut o unealtă (Semgrep, OSV-Scanner, scc) în această analiză. */
 export type ConsultingTool = {
-    key: 'semgrep' | 'osv-scanner' | 'scc';
+    key: 'semgrep' | 'osv-scanner' | 'scc' | 'runtime';
     name: string;
     status: 'ran' | 'not_installed' | 'failed' | 'timed_out';
     status_label: string;
@@ -24,7 +24,37 @@ export type ConsultingTool = {
     error: ToolError | null;
     error_value: number | null;
     /** Semgrep: files_scanned, errors; OSV-Scanner: packages_scanned, lockfiles; scc: languages, totals. */
-    details: { files_scanned?: number; errors?: number; packages_scanned?: number; lockfiles?: string[] };
+    details: { files_scanned?: number; errors?: number; packages_scanned?: number; lockfiles?: string[]; versions_declared?: number };
+};
+
+/** Starea unei versiuni declarate față de datele publice de suport (RuntimeVersionCheck în Laravel). */
+export type RuntimeStatus = 'end_of_life' | 'behind' | 'security_only' | 'current' | 'unknown' | 'unchecked';
+
+/** Un rând din tabelul „Versiuni de runtime și framework”. Datele sunt zile (`2026-11-12`), așa cum le dau sursele. */
+export type RuntimeRow = {
+    product: string;
+    label: string;
+    kind: 'runtime' | 'framework';
+    /** Textul din fișier („^8.2”, „node:20-alpine”). */
+    declared: string;
+    /** Versiunea judecată: cea fixată sau cea mai mică pe care o permite intervalul. */
+    version: string;
+    is_range: boolean;
+    path: string;
+    line: number | null;
+    status: RuntimeStatus;
+    /** Linia de versiuni căreia îi aparține („8.3”). */
+    release_line: string | null;
+    supported_until: string | null;
+    /** Cea mai nouă versiune din linie. */
+    newest: string | null;
+    /** Linia la care se trece (starea „fără suport” sau „doar securitate”). */
+    target: string | null;
+    target_newest: string | null;
+    missing_security_releases: number | null;
+    /** De ce n-a putut fi verificată (starea „neverificată”). */
+    reason: 'unreachable' | 'http_error' | 'unreadable' | null;
+    url: string | null;
 };
 
 /** Problemele după gravitate și după fel (ConsultingScanner::counts în Laravel). */
@@ -32,6 +62,7 @@ export type ConsultingCounts = Record<Severity, number> & {
     bugs: number;
     code_vulnerabilities: number;
     dependency_advisories: number;
+    runtime_issues?: number;
     vulnerable_packages: number;
 };
 
@@ -108,6 +139,8 @@ export type ConsultingResult = {
     counts: ConsultingCounts;
     finding_count: number;
     omitted_count: number;
+    /** Versiunile declarate și starea lor; `null` când verificarea nu face parte din raport (rapoarte mai vechi). */
+    runtime: { rows: RuntimeRow[]; error: ToolError | null; error_value: number | null; fetched_at: string | null } | null;
     risk: {
         /** Cât cântărește fiecare gravitate în scor. */
         weights: Record<Severity, number>;
@@ -134,6 +167,19 @@ export type ConsultingReport = {
     is_stale: boolean;
     started_at: string | null;
     finished_at: string | null;
+    /** Zilele întregi de la terminarea raportului; `null` până e gata. */
+    age_days: number | null;
+    /** De la câte zile un raport e socotit vechi (7). */
+    stale_after_days: number;
+    /** De când sunt datele fiecărei surse (regulile Semgrep, interogarea OSV, datele de suport). */
+    freshness: {
+        has_rules: boolean;
+        rules: { updated_at: string; revision: string; sources: number } | null;
+        has_osv: boolean;
+        osv_queried_at: string | null;
+        has_runtime: boolean;
+        runtime_fetched_at: string | null;
+    };
     tools: ConsultingTool[];
     /** Rezultatele; `null` până când raportul e gata. */
     result: ConsultingResult | null;

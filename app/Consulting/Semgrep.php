@@ -8,8 +8,10 @@ use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Support\Str;
 
 /**
- * Semgrep: bugs and security problems in the code, found with the rules of scanners/rules (written for
- * GitChronicle; scanners/README.md explains why the rules of the Semgrep Registry are not used).
+ * Semgrep: bugs and security problems in the code, found with the rules of scanners/rules: our own (written
+ * for GitChronicle) and the MIT-licensed community rules that scanners/update-rules.sh refreshes weekly into
+ * rules/upstream (scanners/README.md explains why the rules of the Semgrep Registry are not used). The date
+ * and revisions of the last refresh (RulesVersion) are stored with the tool's details.
  *
  * The command runs in the clone on ".", so every path in the answer is relative to it. Nothing leaves the
  * computer: the rules are local files, metrics and the version check are off. Folders of libraries and
@@ -83,6 +85,7 @@ final class Semgrep extends ScanTool
         return new ToolOutput($findings, [
             'files_scanned' => count($answer['paths']['scanned'] ?? []),
             'errors' => count($answer['errors'] ?? []),
+            'rules' => RulesVersion::current(),
         ]);
     }
 

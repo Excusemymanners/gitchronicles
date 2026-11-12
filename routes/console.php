@@ -25,3 +25,18 @@ Schedule::command('discover:refresh')
     ->dailyAt(config('gitchronicle.discover.schedule_time'))
     ->when(fn (): bool => (bool) config('gitchronicle.discover.schedule_enabled'))
     ->withoutOverlapping();
+
+// Fresh data for the „Consultanță” reports (config gitchronicle.consulting):
+// - weekly, on Monday night, the community Semgrep rules are refreshed (scanners/update-rules.sh keeps the
+//   previous copy until the new one validates and writes the date and revisions the page shows);
+// - every day the reports older than stale_after_days (7) are made again, so a report is never much older
+//   than a week: new vulnerabilities are published every day. It runs after the rules refresh.
+Schedule::exec('bash scanners/update-rules.sh')
+    ->weeklyOn(1, '03:30')
+    ->when(fn (): bool => (bool) config('gitchronicle.consulting.rules_update_schedule'))
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('repositories:consult --stale')
+    ->dailyAt(config('gitchronicle.consulting.stale_schedule_time'))
+    ->withoutOverlapping();

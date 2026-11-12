@@ -1,0 +1,70 @@
+{
+ "result": {
+  "name": "php",
+  "label": "PHP",
+  "links": {
+   "icon": "https://cdn.jsdelivr.net/npm/simple-icons/icons/php.svg",
+   "html": "https://endoflife.date/php",
+   "releasePolicy": "https://www.php.net/supported-versions.php"
+  },
+  "releases": [
+   {
+    "name": "8.5",
+    "codename": null,
+    "label": "8.5",
+    "releaseDate": "2025-11-20",
+    "isLts": false,
+    "ltsFrom": null,
+    "isEoas": false,
+    "eoasFrom": "2027-12-31",
+    "isEol": false,
+    "eolFrom": "2029-12-31",
+    "isMaintained": true,
+    "latest": {
+     "name": "8.5.12",
+     "date": "2026-10-21",
+     "link": "https://www.php.net/ChangeLog-8.php#8.5.12"
+    },
+    "custom": null
+   },
+   {
+    "name": "8.3",
+    "codename": null,
+    "label": "8.3",
+    "releaseDate": "2023-11-23",
+    "isLts": false,
+    "ltsFrom": null,
+    "isEoas": true,
+    "eoasFrom": "2025-12-31",
+    "isEol": false,
+    "eolFrom": "2027-12-31",
+    "isMaintained": true,
+    "latest": {
+     "name": "8.3.36",
+     "date": "2026-10-21",
+     "link": "https://www.php.net/ChangeLog-8.php#8.3.36"
+    },
+    "custom": null
+   },
+   {
+    "name": "7.4",
+    "codename": null,
+    "label": "7.4",
+    "releaseDate": "2019-11-28",
+    "isLts": false,
+    "ltsFrom": null,
+    "isEoas": true,
+    "eoasFrom": "2021-11-28",
+    "isEol": true,
+    "eolFrom": "2022-11-28",
+    "isMaintained": false,
+    "latest": {
+     "name": "7.4.33",
+     "date": "2022-11-03",
+     "link": "https://www.php.net/ChangeLog-7.php#7.4.33"
+    },
+    "custom": null
+   }
+  ]
+ }
+}

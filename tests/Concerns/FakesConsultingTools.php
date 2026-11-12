@@ -59,7 +59,10 @@ trait FakesConsultingTools
             config(["gitchronicle.consulting.{$setting}" => $path]);
         }
 
-        config(['gitchronicle.consulting.home' => $disk->path('scanners-home')]);
+        config([
+            'gitchronicle.consulting.home' => $disk->path('scanners-home'),
+            'gitchronicle.consulting.rules_version_file' => $disk->path('scanners-home/rules-version.json'),
+        ]);
 
         Process::fake(function (PendingProcess $process) use ($answers) {
             $command = array_values((array) $process->command);

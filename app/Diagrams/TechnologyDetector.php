@@ -441,7 +441,7 @@ final class TechnologyDetector
     /**
      * Whether a file is in a folder whose manifests are not projects (tests, examples, docs).
      */
-    private function isSkipped(string $path): bool
+    public function isSkipped(string $path): bool
     {
         $folders = array_map(mb_strtolower(...), explode('/', $this->folderOf($path)));
 

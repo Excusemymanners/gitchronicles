@@ -61,7 +61,7 @@ final class RiskRanking
         }
 
         return $report->findings()
-            ->whereNull('package')
+            ->where('tool', 'semgrep')
             ->whereIn('path', $hotspots->keys())
             ->get(['path', 'severity'])
             ->groupBy('path')

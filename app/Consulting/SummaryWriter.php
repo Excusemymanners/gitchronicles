@@ -59,11 +59,21 @@ final class SummaryWriter
     /**
      * The summary of a ready report and what the call used, or null when there is none.
      *
-     * @return array{text: string, meta: array{model: string, driver: string, input_tokens: int, output_tokens: int, cost_usd_equivalent: float|null}}|null
+     * The hash of the facts sent to AI is stored in the meta. When a report is made again (the daily refresh
+     * of old reports) and its facts are exactly the same as the ones the earlier summary was written from
+     * ($earlier), that summary is kept and AI is not asked again.
+     *
+     * @param  array{text: string|null, meta: array<string, mixed>|null}|null  $earlier
+     * @return array{text: string, meta: array<string, mixed>}|null
      */
-    public function write(ConsultingReport $report): ?array
+    public function write(ConsultingReport $report, ?array $earlier = null): ?array
     {
         $context = $this->context($report);
+        $hash = hash('sha256', $context);
+
+        if (is_string($earlier['text'] ?? null) && ($earlier['meta']['context_hash'] ?? null) === $hash) {
+            return ['text' => $earlier['text'], 'meta' => $earlier['meta']];
+        }
 
         try {
             $result = $this->generator->generate(self::SYSTEM_PROMPT, "<data>\n{$context}\n</data>");
@@ -87,6 +97,7 @@ final class SummaryWriter
         return [
             'text' => $text,
             'meta' => [
+                'context_hash' => $hash,
                 'model' => $result->model,
                 'driver' => $result->driver,
                 'input_tokens' => $result->inputTokens,
@@ -104,7 +115,7 @@ final class SummaryWriter
     public function context(ConsultingReport $report): string
     {
         $counts = $report->counts ?? [];
-        $findings = $report->findings()->get(['rule_id', 'title', 'severity', 'package', 'ecosystem', 'installed_version', 'fixed_version']);
+        $findings = $report->findings()->get(['tool', 'rule_id', 'title', 'severity', 'package', 'ecosystem', 'installed_version', 'fixed_version']);
 
         $facts = [
             'repository' => $report->repository->owner.'/'.$report->repository->name,
@@ -121,7 +132,8 @@ final class SummaryWriter
             'vulnerabilities_in_code' => $counts['code_vulnerabilities'] ?? 0,
             'dependency_advisories' => $counts['dependency_advisories'] ?? 0,
             'vulnerable_packages' => $counts['vulnerable_packages'] ?? 0,
-            'most_frequent_rules_in_code' => $findings->whereNull('package')
+            'runtime_or_framework_version_issues' => $counts['runtime_issues'] ?? 0,
+            'most_frequent_rules_in_code' => $findings->where('tool', 'semgrep')
                 ->groupBy('rule_id')
                 ->map(fn ($ruleFindings): array => [
                     'rule' => self::short($ruleFindings->first()->title),
@@ -129,7 +141,7 @@ final class SummaryWriter
                     'findings' => $ruleFindings->count(),
                 ])
                 ->sortByDesc('findings')->take(5)->values()->all(),
-            'main_vulnerable_packages' => $findings->whereNotNull('package')
+            'main_vulnerable_packages' => $findings->where('tool', 'osv-scanner')
                 ->groupBy(fn (ConsultingFinding $finding): string => "{$finding->ecosystem}|{$finding->package}|{$finding->installed_version}")
                 ->map(fn ($packageFindings): array => [
                     'package' => self::short($packageFindings->first()->package),

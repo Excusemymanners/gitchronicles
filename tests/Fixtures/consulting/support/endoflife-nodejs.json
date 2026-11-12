@@ -1,0 +1,97 @@
+{
+ "result": {
+  "name": "nodejs",
+  "label": "Node.js",
+  "links": {
+   "icon": "https://cdn.jsdelivr.net/npm/simple-icons/icons/nodedotjs.svg",
+   "html": "https://endoflife.date/nodejs",
+   "releasePolicy": "https://nodejs.org/en/about/previous-releases"
+  },
+  "releases": [
+   {
+    "name": "26",
+    "codename": null,
+    "label": "26 (LTS)",
+    "releaseDate": "2026-05-05",
+    "isLts": true,
+    "ltsFrom": "2026-10-28",
+    "isEoas": false,
+    "eoasFrom": "2027-10-27",
+    "isEol": false,
+    "eolFrom": "2029-04-30",
+    "isEoes": null,
+    "eoesFrom": null,
+    "isMaintained": true,
+    "latest": {
+     "name": "26.13.1",
+     "date": "2026-11-11",
+     "link": "https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V26.md#26.13.1"
+    },
+    "custom": null
+   },
+   {
+    "name": "22",
+    "codename": null,
+    "label": "22 (LTS)",
+    "releaseDate": "2024-04-24",
+    "isLts": true,
+    "ltsFrom": "2024-10-29",
+    "isEoas": true,
+    "eoasFrom": "2025-10-21",
+    "isEol": false,
+    "eolFrom": "2027-04-30",
+    "isEoes": false,
+    "eoesFrom": null,
+    "isMaintained": true,
+    "latest": {
+     "name": "22.23.5",
+     "date": "2026-11-11",
+     "link": "https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V22.md#22.23.5"
+    },
+    "custom": null
+   },
+   {
+    "name": "20",
+    "codename": null,
+    "label": "20 (LTS)",
+    "releaseDate": "2023-04-18",
+    "isLts": true,
+    "ltsFrom": "2023-10-24",
+    "isEoas": true,
+    "eoasFrom": "2024-10-22",
+    "isEol": true,
+    "eolFrom": "2026-04-30",
+    "isEoes": false,
+    "eoesFrom": null,
+    "isMaintained": true,
+    "latest": {
+     "name": "20.20.2",
+     "date": "2026-03-24",
+     "link": "https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V20.md#20.20.2"
+    },
+    "custom": null
+   },
+   {
+    "name": "18",
+    "codename": null,
+    "label": "18 (LTS)",
+    "releaseDate": "2022-04-19",
+    "isLts": true,
+    "ltsFrom": "2022-10-25",
+    "isEoas": true,
+    "eoasFrom": "2023-10-18",
+    "isEol": true,
+    "eolFrom": "2025-04-30",
+    "isEoes": false,
+    "eoesFrom": null,
+    "isMaintained": true,
+    "latest": {
+     "name": "18.20.8",
+     "date": "2025-03-27",
+     "link": "https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V18.md#18.20.8"
+    },
+    "custom": null
+   }
+  ]
+ }
+}

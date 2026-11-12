@@ -1,0 +1,55 @@
+{
+ "result": {
+  "name": "laravel",
+  "label": "Laravel",
+  "links": {
+   "icon": "https://cdn.jsdelivr.net/npm/simple-icons/icons/laravel.svg",
+   "html": "https://endoflife.date/laravel",
+   "releasePolicy": "https://laravel.com/framework/docs/releases#support-policy"
+  },
+  "releases": [
+   {
+    "name": "13",
+    "codename": null,
+    "label": "13",
+    "releaseDate": "2026-03-17",
+    "isLts": false,
+    "ltsFrom": null,
+    "isEoas": false,
+    "eoasFrom": "2027-09-30",
+    "isEol": false,
+    "eolFrom": "2028-03-17",
+    "isMaintained": true,
+    "latest": {
+     "name": "13.42.0",
+     "date": "2026-11-10",
+     "link": "https://laravel.com/framework/docs/13.x/releases"
+    },
+    "custom": {
+     "supportedPhpVersions": "8.3 - 8.5"
+    }
+   },
+   {
+    "name": "10",
+    "codename": null,
+    "label": "10",
+    "releaseDate": "2023-02-14",
+    "isLts": false,
+    "ltsFrom": null,
+    "isEoas": true,
+    "eoasFrom": "2024-08-06",
+    "isEol": true,
+    "eolFrom": "2025-02-04",
+    "isMaintained": false,
+    "latest": {
+     "name": "10.50.4",
+     "date": "2026-10-27",
+     "link": "https://laravel.com/framework/docs/10.x/releases"
+    },
+    "custom": {
+     "supportedPhpVersions": "8.1 - 8.3"
+    }
+   }
+  ]
+ }
+}

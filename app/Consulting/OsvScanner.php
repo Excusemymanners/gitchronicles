@@ -16,6 +16,10 @@ use Illuminate\Support\Str;
  * so this is public information. Nothing else is sent: only the lock file plugins run (no hashes of files),
  * the transitive resolution through deps.dev is off and so is the call analysis (for Rust it runs build scripts).
  *
+ * Fresh by default: without "--offline" OSV-Scanner asks api.osv.dev live on every run (its documentation,
+ * "Offline Mode", describes the local database as the opt-in alternative), so the report is as current as the
+ * database at "queried_at", which is stored with the tool's details and shown on the page.
+ *
  * "--no-ignore": the clone holds only the files git tracks, but without this flag OSV-Scanner also applies
  * the .gitignore of the folders above the clone (this application's own repository ignores storage/) and
  * then sees nothing.
@@ -91,6 +95,7 @@ final class OsvScanner extends ScanTool
         return new ToolOutput($findings, [
             'packages_scanned' => $packageCount,
             'lockfiles' => array_slice(array_values(array_unique($lockfiles)), 0, 20),
+            'queried_at' => now()->toIso8601String(),
         ]);
     }
 

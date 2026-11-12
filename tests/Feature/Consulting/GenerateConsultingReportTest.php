@@ -84,9 +84,9 @@ class GenerateConsultingReportTest extends TestCase
         $this->assertSame(0, $report->omitted_count);
         $this->assertSame([
             'critical' => 3, 'high' => 8, 'medium' => 14, 'low' => 4, 'info' => 0,
-            'bugs' => 4, 'code_vulnerabilities' => 13, 'dependency_advisories' => 12, 'vulnerable_packages' => 3,
+            'bugs' => 4, 'code_vulnerabilities' => 13, 'dependency_advisories' => 12, 'runtime_issues' => 0, 'vulnerable_packages' => 3,
         ], $report->counts);
-        $this->assertSame(['scc', 'osv-scanner', 'semgrep'], array_keys($report->tools));
+        $this->assertSame(['scc', 'osv-scanner', 'semgrep', 'runtime'], array_keys($report->tools));
         $this->assertSame(['name' => 'Semgrep', 'status' => 'ran', 'version' => '1.182.1'], array_intersect_key($report->tools['semgrep'], array_flip(['name', 'status', 'version'])));
         $this->assertSame(17, $report->tools['semgrep']['finding_count']);
         $this->assertSame('PHP', $report->code_statistics['languages'][0]['name']);
@@ -211,7 +211,8 @@ class GenerateConsultingReportTest extends TestCase
 
         $report = $repository->consultingReports()->sole();
         $this->assertStringStartsWith('The scan found 3 critical', $report->summary);
-        $this->assertSame(['model' => 'claude-opus-5-5', 'driver' => 'fake', 'input_tokens' => 100, 'output_tokens' => 50, 'cost_usd_equivalent' => null], $report->summary_meta);
+        $this->assertSame(['model' => 'claude-opus-5-5', 'driver' => 'fake', 'input_tokens' => 100, 'output_tokens' => 50, 'cost_usd_equivalent' => null], collect($report->summary_meta)->except('context_hash')->all());
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $report->summary_meta['context_hash']);
 
         $ai->assertSentCount(1);
         $this->assertStringContainsString('Write in English', $ai->requests[0]['system']);

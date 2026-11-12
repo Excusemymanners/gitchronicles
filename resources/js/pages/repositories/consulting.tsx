@@ -3,8 +3,10 @@ import { useEffect, useRef } from 'react';
 import CodeFindingsSection from '@/components/consulting/code-findings-section';
 import CodeStatisticsSection from '@/components/consulting/code-statistics-section';
 import DependenciesSection from '@/components/consulting/dependencies-section';
+import FreshnessLine from '@/components/consulting/freshness-line';
 import RiskZonesSection from '@/components/consulting/risk-zones-section';
 import RunAnalysisButton from '@/components/consulting/run-analysis-button';
+import RuntimeVersionsSection from '@/components/consulting/runtime-versions-section';
 import SummarySection from '@/components/consulting/summary-section';
 import ToolsSection from '@/components/consulting/tools-section';
 import DownloadLink from '@/components/media/download-link';
@@ -36,7 +38,7 @@ const ERROR_TEXT: Record<ConsultingError, TranslationKey> = {
  * Stări: nefăcut încă, în coadă sau în lucru (pagina se actualizează singură), eșuat cu motivul real, gata.
  */
 export default function RepositoriesConsulting({ repository, consulting, can_run_consulting: canRun }: Props) {
-    const { t, rich } = useI18n();
+    const { t, rich, plural } = useI18n();
     const isWorking = consulting?.is_working ?? false;
 
     // Cât timp analiza e în coadă sau rulează, cerem serverului la fiecare 3 secunde doar raportul și dreptul de a rula.
@@ -117,14 +119,25 @@ export default function RepositoriesConsulting({ repository, consulting, can_run
                 </p>
             )}
 
+            {consulting?.status === 'ready' && consulting.age_days !== null && consulting.age_days > consulting.stale_after_days && (
+                <div role="note" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-info-line bg-info-soft px-4 py-3 text-sm text-info-ink">
+                    <p>
+                        {t('consulting.aged', { age: plural('days', consulting.age_days) })} {canRun && t('consulting.agedHint')}
+                    </p>
+                    {canRun && <RunAnalysisButton repositoryId={repository.id} hasReport />}
+                </div>
+            )}
+
             {result && consulting && (
                 <div className="mt-8 flex flex-col gap-12">
                     <SummarySection result={result} />
                     <RiskZonesSection risk={result.risk} />
                     <CodeFindingsSection files={result.files} />
+                    {result.runtime !== null && <RuntimeVersionsSection runtime={result.runtime} />}
                     <DependenciesSection dependencies={result.dependencies} osvScanner={consulting.tools.find((tool) => tool.key === 'osv-scanner')} />
                     <CodeStatisticsSection statistics={result.code_statistics} />
                     <ToolsSection tools={consulting.tools} />
+                    <FreshnessLine freshness={consulting.freshness} finishedAt={consulting.finished_at} />
                 </div>
             )}
 

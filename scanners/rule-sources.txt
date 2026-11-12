@@ -1,0 +1,11 @@
+# Community Semgrep rules that scanners/update-rules.sh refreshes into rules/upstream/.
+# One source per line:  name | GitHub repository | folder with the rules ("." = the whole repository) | license
+#
+# Only rules under a permissive license (MIT) are listed. The official rules of the Semgrep Registry
+# (github.com/semgrep/semgrep-rules, "Semgrep Rules License v. 1.0") are NOT: that license allows them only for
+# the company's own internal use and forbids distributing them or offering them to others as a service,
+# which is what GitChronicle does with other people's repositories (see README.md, "Regulile Semgrep").
+#
+elttam | elttam/semgrep-rules | rules | MIT
+0xdea | 0xdea/semgrep-rules | rules | MIT
+dgryski | dgryski/semgrep-go | . | MIT

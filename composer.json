@@ -65,6 +65,10 @@
             "Composer\\Config::disableProcessTimeout",
             "bash scanners/install.sh"
         ],
+        "scanners:update": [
+            "Composer\\Config::disableProcessTimeout",
+            "bash scanners/update-rules.sh"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

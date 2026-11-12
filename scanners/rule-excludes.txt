@@ -1,0 +1,9 @@
+# Rules that update-rules.sh leaves out of rules/upstream/, one `find -path` or `-name` pattern per line:
+#   path:<glob>  a path inside a source (relative to the copy of that source, e.g. path:*/noisy/*)
+#   name:<glob>  a file name
+# The sources keep low-confidence "audit" and "noisy" rule sets next to their real rules. They flag words and API
+# names everywhere (one of them reported 143 "bad words" in a single .env.example), which would bury the real
+# problems in a report for other people's repositories.
+path:*/noisy/*
+path:*/audit/*
+name:typos.yaml

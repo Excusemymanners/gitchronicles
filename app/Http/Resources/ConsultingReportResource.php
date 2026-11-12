@@ -29,7 +29,7 @@ class ConsultingReportResource extends JsonResource
     /**
      * The order of the tools on the page (the order they run in).
      */
-    private const TOOL_ORDER = ['scc', 'osv-scanner', 'semgrep'];
+    private const TOOL_ORDER = ['scc', 'osv-scanner', 'semgrep', 'runtime'];
 
     /**
      * Transform the resource into an array.
@@ -47,8 +47,54 @@ class ConsultingReportResource extends JsonResource
             'is_stale' => $this->source_sha !== $this->repository->last_sha,
             'started_at' => $this->started_at?->toIso8601String(),
             'finished_at' => $this->finished_at?->toIso8601String(),
+            'age_days' => $this->status === ConsultingStatus::Ready ? (int) $this->finished_at?->diffInDays(now(), absolute: true) : null,
+            'stale_after_days' => (int) config('gitchronicle.consulting.stale_after_days'),
+            'freshness' => $this->freshness(),
             'tools' => $this->tools(),
             'result' => $this->status === ConsultingStatus::Ready ? $this->result() : null,
+        ];
+    }
+
+    /**
+     * How current the data of each source is: when the report was made, the date and revisions of the Semgrep rules
+     * (null when the refresh script never ran), when OSV-Scanner asked the vulnerability database and when the
+     * support dates of the runtimes were fetched. A source that did not run has no entry.
+     *
+     * @return array{rules: array{updated_at: string, revision: string, sources: int}|null, osv_queried_at: string|null, runtime_fetched_at: string|null, has_rules: bool, has_osv: bool, has_runtime: bool}
+     */
+    private function freshness(): array
+    {
+        $tools = $this->resource->tools ?? [];
+        $ran = fn (string $key): bool => ($tools[$key]['status'] ?? null) === ScanToolStatus::Ran->value;
+
+        return [
+            'has_rules' => $ran('semgrep'),
+            'rules' => $ran('semgrep') ? ($tools['semgrep']['details']['rules'] ?? null) : null,
+            'has_osv' => $ran('osv-scanner'),
+            'osv_queried_at' => $ran('osv-scanner') ? ($tools['osv-scanner']['details']['queried_at'] ?? null) : null,
+            'has_runtime' => $ran('runtime'),
+            'runtime_fetched_at' => $ran('runtime') ? ($tools['runtime']['details']['fetched_at'] ?? null) : null,
+        ];
+    }
+
+    /**
+     * The table of the declared runtime and framework versions, and whether the sources could be read.
+     *
+     * @return array{rows: list<array<string, mixed>>, error: string|null, error_value: int|null, fetched_at: string|null}|null
+     */
+    private function runtimeVersions(): ?array
+    {
+        $tool = $this->resource->tools['runtime'] ?? null;
+
+        if ($tool === null) {
+            return null;
+        }
+
+        return [
+            'rows' => $tool['details']['versions'] ?? [],
+            'error' => $tool['error'],
+            'error_value' => $tool['error_value'] ?? null,
+            'fetched_at' => $tool['details']['fetched_at'] ?? null,
         ];
     }
 
@@ -72,7 +118,7 @@ class ConsultingReportResource extends JsonResource
                 'omitted_count' => $tool['omitted_count'],
                 'error' => $tool['error'],
                 'error_value' => $tool['error_value'] ?? null,
-                'details' => (object) $tool['details'],
+                'details' => (object) [...collect($tool['details'])->except('versions')->all(), ...(isset($tool['details']['versions']) ? ['versions_declared' => count($tool['details']['versions'])] : [])],
             ])
             ->values()
             ->all();
@@ -102,8 +148,9 @@ class ConsultingReportResource extends JsonResource
                     'url' => $links->file($zone['path']),
                 ], app(RiskRanking::class)->zones($this->resource, $this->repository)),
             ],
-            'files' => $this->codeFiles($findings->whereNull('package'), $links),
-            'dependencies' => $findings->whereNotNull('package')
+            'runtime' => $this->runtimeVersions(),
+            'files' => $this->codeFiles($findings->where('tool', 'semgrep'), $links),
+            'dependencies' => $findings->where('tool', 'osv-scanner')
                 ->sortBy([fn (ConsultingFinding $a, ConsultingFinding $b): int => $a->severity->rank() <=> $b->severity->rank(), ['package', 'asc']])
                 ->map(fn (ConsultingFinding $finding): array => [
                     ...$this->severityOf($finding),

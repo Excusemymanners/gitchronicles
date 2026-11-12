@@ -195,6 +195,11 @@ return [
     | - queue: the "media" queue by default, so the scan and the video share one worker: both are slow,
     |   optional work after "ready", and one heavy job at a time keeps a laptop responsive;
     | - home: HOME and the cache folders of the tools, so nothing is written to the worker's home folder;
+    | - runtime and framework versions (App\Consulting\Runtime): support_data are the public sources compared with
+    |   (endoflife.date, Node.js's release index, php.net), kept cache_hours; only a product name is ever sent;
+    | - stale_after_days: a report older than this shows a notice, and `repositories:consult --stale` makes it
+    |   again (daily at stale_schedule_time); rules_update_schedule turns the weekly refresh of the Semgrep
+    |   rules (scanners/update-rules.sh) on or off; rules_version_file is where that script records the date;
     | - timeouts (seconds), max_output_bytes and max_findings (per tool): a hostile repository cannot keep
     |   a worker busy forever, fill its memory or flood the database; what the cap leaves out is counted.
     |
@@ -215,6 +220,17 @@ return [
         ],
         'max_output_bytes' => 50 * 1024 * 1024,
         'max_findings' => 500,
+        'stale_after_days' => (int) env('CONSULTING_STALE_AFTER_DAYS', 7),
+        'rules_update_schedule' => (bool) env('CONSULTING_RULES_UPDATE_SCHEDULE', true),
+        'stale_schedule_time' => env('CONSULTING_STALE_SCHEDULE_TIME', '05:00'),
+        'rules_version_file' => base_path('scanners/rules-version.json'),
+        'support_data' => [
+            'endoflife_url' => 'https://endoflife.date/api/v1/products',
+            'node_index_url' => 'https://nodejs.org/dist/index.json',
+            'php_releases_url' => 'https://www.php.net/releases/index.php',
+            'cache_hours' => 24,
+            'timeout' => 10,
+        ],
     ],
 
     /*

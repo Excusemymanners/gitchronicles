@@ -43,11 +43,15 @@ final class MarkdownReport
             '',
             ...$this->riskZones($report, $links),
             '',
-            ...$this->codeFindings($findings->whereNull('package'), $links),
+            ...$this->runtimeVersions($report),
             '',
-            ...$this->dependencies($findings->whereNotNull('package')),
+            ...$this->codeFindings($findings->where('tool', 'semgrep'), $links),
+            '',
+            ...$this->dependencies($findings->where('tool', 'osv-scanner')),
             '',
             ...$this->codeStatistics($report),
+            '',
+            ...$this->freshness($report),
         ])."\n";
     }
 
@@ -206,6 +210,85 @@ final class MarkdownReport
                 $finding->advisory_url,
                 MarpText::text($finding->title, 200),
             );
+        }
+
+        return $lines;
+    }
+
+    /**
+     * The declared runtime and framework versions with their status, or why they could not be checked.
+     *
+     * @return list<string>
+     */
+    private function runtimeVersions(ConsultingReport $report): array
+    {
+        $tool = $report->tools['runtime'] ?? null;
+        $lines = ['## Runtime and framework versions', ''];
+
+        if ($tool === null) {
+            return [...$lines, 'The versions were not checked in this report.'];
+        }
+
+        $rows = $tool['details']['versions'] ?? [];
+
+        if ($tool['error'] !== null) {
+            $lines[] = 'The support dates could not be fetched from the public sources (endoflife.date, nodejs.org, php.net), so these versions were not checked.';
+            $lines[] = '';
+        }
+
+        if ($rows === []) {
+            return [...$lines, 'No runtime or framework version is declared in the manifests of this repository.'];
+        }
+
+        $lines = [...$lines, '| Technology | Declared in | Status | Supported until | Newest in its line | Action |', '|---|---|---|---|---|---|'];
+
+        foreach ($rows as $row) {
+            $action = match (true) {
+                $row['status'] === 'end_of_life' && $row['target'] !== null => 'Move to '.$row['target'],
+                $row['status'] === 'behind' => 'Update to '.$row['newest'],
+                $row['status'] === 'security_only' && $row['target'] !== null => 'Plan the move to '.$row['target'],
+                default => '',
+            };
+
+            $lines[] = sprintf(
+                '| %s %s%s | %s%s | %s | %s | %s | %s |',
+                $row['label'],
+                $this->code((string) $row['version']),
+                $row['is_range'] ? ' (lowest allowed by '.$this->code((string) $row['declared']).')' : '',
+                $this->code($row['path']),
+                $row['line'] === null ? '' : ':'.(int) $row['line'],
+                str_replace('_', ' ', (string) $row['status']),
+                (string) $row['supported_until'],
+                $row['newest'] === null ? '' : $this->code((string) $row['newest']),
+                $action === '' ? '' : $this->code($action),
+            );
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Where the report's data comes from and how old it is.
+     *
+     * @return list<string>
+     */
+    private function freshness(ConsultingReport $report): array
+    {
+        $tools = $report->tools ?? [];
+        $rules = $tools['semgrep']['details']['rules'] ?? null;
+        $lines = [
+            '## How current this is',
+            '',
+            sprintf('- Report made: %s UTC, commit `%s`.', $report->finished_at?->format('Y-m-d H:i'), substr((string) $report->source_sha, 0, 7)),
+            sprintf('- Semgrep rules: %s.', $rules === null ? 'as installed, never refreshed' : 'refreshed '.substr((string) $rules['updated_at'], 0, 10).' ('.MarpText::text($rules['revision']).')'),
+        ];
+
+        if (isset($tools['osv-scanner']['details']['queried_at'])) {
+            $lines[] = sprintf('- Vulnerability database (OSV): asked live on %s UTC.', substr(str_replace('T', ' ', (string) $tools['osv-scanner']['details']['queried_at']), 0, 16));
+        }
+
+        if (isset($tools['runtime']['details']['fetched_at'])) {
+            $lines[] = sprintf('- Support dates of runtimes and frameworks (endoflife.date, nodejs.org, php.net): fetched %s UTC.', substr(str_replace('T', ' ', (string) $tools['runtime']['details']['fetched_at']), 0, 16));
         }
 
         return $lines;

@@ -2,6 +2,7 @@
 
 namespace App\Consulting;
 
+use App\Consulting\Runtime\RuntimeVersionCheck;
 use App\Enums\ConsultingStatus;
 use App\Enums\FindingKind;
 use App\Enums\FindingSeverity;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\DB;
  *
  * 1. runs the three tools one after the other — scc (code size), OSV-Scanner (vulnerable dependencies),
  *    Semgrep (problems in the code) — each one on its own, so a missing or failing tool never stops the others;
+ *    then the version check (RuntimeVersionCheck: end-of-life runtimes and frameworks), which reads manifests
+ *    and public support data and starts no program;
  * 2. saves, in one transaction, the findings (replacing the ones of an earlier run of the same commit)
  *    and the report: what each tool did, the code statistics and the counts;
  * 3. asks AI for the short executive summary in English, from the report's numbers only (SummaryWriter; skipped
@@ -35,6 +38,7 @@ final class ConsultingScanner
         private Scc $scc,
         private OsvScanner $osvScanner,
         private Semgrep $semgrep,
+        private RuntimeVersionCheck $runtimeCheck,
         private SummaryWriter $summaryWriter,
     ) {}
 
@@ -55,6 +59,9 @@ final class ConsultingScanner
     {
         $repository = $report->repository;
 
+        // The earlier summary of this commit (a report made again): kept when the facts did not change.
+        $earlier = ['text' => $report->summary, 'meta' => $report->summary_meta];
+
         $report->fill(['status' => ConsultingStatus::Running, 'error' => null, 'started_at' => now(), 'finished_at' => null])->save();
 
         if (! is_dir($repository->clonePath())) {
@@ -63,12 +70,14 @@ final class ConsultingScanner
             return;
         }
 
-        $runs = collect($this->tools())->map(fn (ScanTool $tool): ToolRun => $tool->run($repository->clonePath()));
+        $scans = collect($this->tools())->map(fn (ScanTool $tool): ToolRun => $tool->run($repository->clonePath()));
+        $runs = $scans->concat([$this->runtimeCheck->run($repository)]);
         $tools = $runs->mapWithKeys(fn (ToolRun $run): array => [$run->key => $run->toArray()])->all();
 
-        if ($runs->doesntContain(fn (ToolRun $run): bool => $run->status === ScanToolStatus::Ran)) {
+        // The report fails when none of the three programs ran: the version check alone is not a report.
+        if ($scans->doesntContain(fn (ToolRun $run): bool => $run->status === ScanToolStatus::Ran)) {
             $report->update(['tools' => $tools]);
-            $report->markFailed($runs->every(fn (ToolRun $run): bool => $run->status === ScanToolStatus::NotInstalled)
+            $report->markFailed($scans->every(fn (ToolRun $run): bool => $run->status === ScanToolStatus::NotInstalled)
                 ? ConsultingReport::ERROR_NOT_INSTALLED
                 : ConsultingReport::ERROR_NO_TOOL_RAN);
 
@@ -94,7 +103,7 @@ final class ConsultingScanner
             ]);
         });
 
-        $summary = $this->summaryWriter->write($report);
+        $summary = $this->summaryWriter->write($report, $earlier);
 
         if ($summary !== null) {
             $report->update(['summary' => $summary['text'], 'summary_meta' => $summary['meta']]);
@@ -117,14 +126,15 @@ final class ConsultingScanner
             $bySeverity[$severity->value] = $findings->filter(fn (Finding $finding): bool => $finding->severity === $severity)->count();
         }
 
-        $inCode = $findings->whereNull('package');
-        $inDependencies = $findings->whereNotNull('package');
+        $inCode = $findings->where('tool', 'semgrep');
+        $inDependencies = $findings->where('tool', 'osv-scanner');
 
         return [
             ...$bySeverity,
             'bugs' => $inCode->filter(fn (Finding $finding): bool => $finding->kind === FindingKind::Bug)->count(),
             'code_vulnerabilities' => $inCode->filter(fn (Finding $finding): bool => $finding->kind === FindingKind::Vulnerability)->count(),
             'dependency_advisories' => $inDependencies->count(),
+            'runtime_issues' => $findings->where('tool', RuntimeVersionCheck::KEY)->count(),
             'vulnerable_packages' => $inDependencies->unique(fn (Finding $finding): string => "{$finding->ecosystem}|{$finding->package}|{$finding->installedVersion}")->count(),
         ];
     }

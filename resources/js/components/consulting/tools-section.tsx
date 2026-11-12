@@ -10,6 +10,7 @@ const PURPOSE: Record<ConsultingTool['key'], TranslationKey> = {
     scc: 'consulting.tools.purpose.scc',
     'osv-scanner': 'consulting.tools.purpose.osv-scanner',
     semgrep: 'consulting.tools.purpose.semgrep',
+    runtime: 'consulting.tools.purpose.runtime',
 };
 
 /** De ce nu a mers o unealtă, după codul și numărul primite de la server. */
@@ -28,6 +29,10 @@ function scannedText(tool: ConsultingTool): string | null {
             packages: pluralize('packagesChecked', tool.details.packages_scanned),
             advisories: pluralize('advisories', tool.finding_count),
         });
+    }
+
+    if (tool.key === 'runtime' && tool.details.versions_declared !== undefined) {
+        return translate('consulting.tools.runtimeScanned', { versions: pluralize('versionsDeclared', tool.details.versions_declared), problems: pluralize('problems', tool.finding_count) });
     }
 
     return null;

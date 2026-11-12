@@ -44,6 +44,25 @@ v1.0”) le permite doar „pentru scopurile interne ale firmei tale” și inte
 serviciu” — exact ce face GitChronicle cu repository-urile altora. Regulile noastre sunt mai puține, dar fiecare
 rezultat se poate explica.
 
+## Date proaspete
+
+Raportul spune cât de proaspete sunt datele lui (linia „Cât de actual este” de pe pagină):
+
+- **OSV-Scanner** întreabă `api.osv.dev` la fiecare analiză; fără `--offline` (documentația OSV-Scanner, „Offline Mode”,
+  descrie baza locală ca alternativă opțională) folosește mereu baza de date de azi. Ora interogării se păstrează în raport.
+- **Regulile Semgrep** din `rules/upstream/` vin din regulile comunității cu licență MIT listate în `rule-sources.txt`
+  (elttam, 0xdea, dgryski) și se reînnoiesc cu `composer scanners:update` (`update-rules.sh`; Laravel Scheduler îl rulează
+  în fiecare luni noaptea). Scriptul se poate rula oricând: clonează fiecare sursă, validează cu `semgrep --validate`
+  (un fișier de reguli pe care Semgrep nu-l poate citi e lăsat deoparte și raportat), mută copia veche în `rules-previous/`
+  abia după aceea și scrie data și revizia fiecărei surse în `rules-version.json`. Dacă regulile noi nu trec validarea
+  împreună cu ale noastre, copia veche revine. Aceste fișiere generate nu se urcă în git. Regulile Registry-ului Semgrep
+  rămân excluse (licența lor interzice distribuirea și oferirea „ca serviciu”, vezi mai sus), așa că „oficialul” aici
+  înseamnă regulile cu licență permisivă ale comunității; regulile noastre din `rules/*.yml` nu se schimbă.
+- **Versiunile de runtime și framework** se compară cu date publice (endoflife.date, indexul Node.js, php.net), aduse la
+  analiză și ținute 24 de ore; din depozit pleacă doar numele produsului.
+- **Rapoartele vechi**: `php artisan repositories:consult --stale[=zile]` (implicit 7) refăcut raportul pentru
+  repository-urile gata al căror raport e mai vechi, pe clona păstrată; Scheduler îl rulează zilnic.
+
 ## Licențe
 
 | Ce | Versiune | Licență | Sursa |
@@ -52,4 +71,6 @@ rezultat se poate explica.
 | OSV-Scanner | 2.7.0 | Apache-2.0 | https://github.com/google/osv-scanner |
 | scc | 4.1.0 | MIT | https://github.com/boyter/scc |
 | Baza de date OSV (interogată prin `api.osv.dev`) | — | datele: licența fiecărei surse (GitHub Advisory Database, PyPI, …) | https://osv.dev |
-| Regulile din `rules/` | — | codul acestui proiect | — |
+| Regulile din `rules/*.yml` | — | codul acestui proiect | — |
+| Regulile din `rules/upstream/` (elttam/semgrep-rules, 0xdea/semgrep-rules, dgryski/semgrep-go) | revizia din `rules-version.json` | MIT (fișierul LICENSE al fiecărei surse e copiat lângă reguli) | https://github.com/elttam/semgrep-rules, https://github.com/0xdea/semgrep-rules, https://github.com/dgryski/semgrep-go |
+| Datele de suport ale versiunilor (endoflife.date, nodejs.org, php.net) | — | endoflife.date: MIT (datele sunt publice); Node.js și PHP: informații publice de release | https://endoflife.date |
