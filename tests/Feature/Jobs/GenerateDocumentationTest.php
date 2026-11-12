@@ -40,8 +40,8 @@ class GenerateDocumentationTest extends TestCase
     /**
      * An answer that has every heading of a module page and of the overview, so it is accepted for every page.
      */
-    private const AI_PAGE = "# The page\n\n## Role\n\nText.\n\n## Main components\n\n## How it works\n\n## Dependencies\n\n## Files\n\n"
-        ."## What the project does\n\n## Technologies\n\n## Architecture\n\n## Modules\n\n## How to run it\n";
+    private const AI_PAGE = "# The page\n\n## Role\n\nText.\n\n## How it works\n\n## Main components\n\n## Dependencies\n\n## Files\n\n"
+        ."## What the project does\n\n## How it solves it\n\n## What to read next\n\n## Technologies\n\n## Modules\n";
 
     public function test_pipeline_documents_the_fixture_project_with_the_template_when_ai_is_off(): void
     {
@@ -278,8 +278,9 @@ class GenerateDocumentationTest extends TestCase
 
         $this->assertSame(['overview', 'readme', 'src-models'], Document::whereBelongsTo($repository)->orderBy('slug')->pluck('slug')->all());
         $overview = Document::whereBelongsTo($repository)->firstWhere('slug', Document::OVERVIEW)->markdown;
-        $this->assertStringContainsString('| `/` | 2 | 13 | no page: over the limit: only the biggest module has a page', $overview);
-        $this->assertStringContainsString('| `src/Http` | 1 | 8 | no page: over the limit: only the biggest module has a page', $overview);
+        $this->assertStringContainsString('| [`src/Models`]', $overview);
+        $this->assertStringNotContainsString('| `src/Http` |', $overview);
+        $this->assertStringContainsString('2 smaller modules have no page of their own.', $overview);
     }
 
     public function test_removes_the_pages_of_modules_that_no_longer_exist(): void

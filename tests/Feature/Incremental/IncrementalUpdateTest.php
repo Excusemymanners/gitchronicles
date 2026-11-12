@@ -32,8 +32,8 @@ class IncrementalUpdateTest extends TestCase
     /**
      * An answer that has every heading of a module page and of the overview, so it is accepted for every page.
      */
-    private const AI_PAGE = "# The page\n\n## Role\n\nText.\n\n## Main components\n\n## How it works\n\n## Dependencies\n\n## Files\n\n"
-        ."## What the project does\n\n## Technologies\n\n## Architecture\n\n## Modules\n\n## How to run it\n";
+    private const AI_PAGE = "# The page\n\n## Role\n\nText.\n\n## How it works\n\n## Main components\n\n## Dependencies\n\n## Files\n\n"
+        ."## What the project does\n\n## How it solves it\n\n## What to read next\n\n## Technologies\n\n## Modules\n";
 
     private const MONEY_WITH_A_NEW_METHOD = "<?php\n\nnamespace Shop\\Support;\n\nfinal class Money\n{\n    public static function format(int \$cents): string\n    {\n        return number_format(\$cents / 100, 2).' lei';\n    }\n\n    public static function zero(): string\n    {\n        return self::format(0);\n    }\n}\n";
 

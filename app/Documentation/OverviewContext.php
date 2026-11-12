@@ -14,7 +14,7 @@ final readonly class OverviewContext
     /**
      * @param  string  $repository  "owner/name"
      * @param  string  $name  the repository's name
-     * @param  array{path: string, description: string|null, features: list<string>, excerpt: string, truncated: bool}|null  $readme  the README of the root folder
+     * @param  array{path: string, description: string|null, features: list<string>, problem: string|null, setup_commands: list<string>, excerpt: string, truncated: bool}|null  $readme  the README of the root folder
      * @param  list<array{name: string, files: int, lines: int}>  $languages  most lines first; ContextBuilder::OTHER_LANGUAGE = no recognized language
      * @param  list<array{path: string, kind: string, summary: array<string, mixed>}>  $manifests  the package manifests of the root folder
      * @param  list<array{path: string, files: int, lines: int, languages: list<string>}>  $topFolders  "/" = the files of the root folder
@@ -25,6 +25,7 @@ final readonly class OverviewContext
      * @param  list<array{name: string, version: string|null, source: string}>  $requirements  what must be installed, from the manifests
      * @param  array{frameworks: list<array{name: string, source: string}>, test_files: int}|null  $tests  the test setup, null when there is none
      * @param  array{name: string, source: string}|null  $license
+     * @param  string|null  $diagramsPage  the path of the repository's diagrams page, which the pages point to
      */
     public function __construct(
         public string $repository,
@@ -43,6 +44,7 @@ final readonly class OverviewContext
         public array $requirements,
         public ?array $tests,
         public ?array $license,
+        public ?string $diagramsPage = null,
     ) {}
 
     /**

@@ -120,7 +120,7 @@ class ContextBuilderTest extends TestCase
     public function test_overview_context_reads_the_readme_manifests_license_and_commands_of_the_root_folder(): void
     {
         ['repository' => $repository, 'root' => $root] = $this->shopRepository();
-        Storage::disk('local')->put("repositories/{$repository->id}/README.md", "# Magazin\n\nUn magazin mic.\n\n## Funcționalități\n\n- Coșul de cumpărături\n- Plata cu cardul\n\n## Altceva\n\n- nu e o funcționalitate\n");
+        Storage::disk('local')->put("repositories/{$repository->id}/README.md", "# Magazin\n\nUn magazin mic.\n\n## Why\n\nCoșurile se pierd la sfârșitul sesiunii.\n\n## Instalare\n\n```bash\n# nu e despre setup\n```\n\n## Installation\n\n```bash\ncp .env.example .env\n```\n\n## Funcționalități\n\n- Coșul de cumpărături\n- Plata cu cardul\n\n## Altceva\n\n- nu e o funcționalitate\n");
         $this->addFile($root, 'LICENSE', "MIT License\n\nCopyright (c) 2026 Acme\n", null);
         $this->addFile($root, 'package.json', json_encode(['scripts' => ['dev' => 'vite', 'postinstall' => 'echo gata'], 'devDependencies' => ['vitest' => '^3.0']])."\n", 'JSON');
         $this->addFile($root, 'artisan', "#!/usr/bin/env php\n", null);
@@ -130,6 +130,9 @@ class ContextBuilderTest extends TestCase
 
         $this->assertSame('Un magazin mic.', $context->readme['description']);
         $this->assertSame(['Coșul de cumpărături', 'Plata cu cardul'], $context->readme['features']);
+        $this->assertSame('Coșurile se pierd la sfârșitul sesiunii.', $context->readme['problem']);
+        $this->assertSame(['cp .env.example .env'], $context->readme['setup_commands']);
+        $this->assertSame("/repositories/{$repository->id}/diagrams", $context->diagramsPage);
         $this->assertSame(['name' => 'MIT', 'source' => 'LICENSE'], $context->license);
         $this->assertSame([
             ['command' => 'composer install', 'purpose' => 'install', 'source' => 'composer.json', 'detail' => null],

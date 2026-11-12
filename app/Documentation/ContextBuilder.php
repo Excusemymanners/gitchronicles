@@ -213,6 +213,7 @@ final class ContextBuilder
             requirements: $facts->requirements,
             tests: $facts->tests,
             license: $facts->license,
+            diagramsPage: route('repositories.diagrams', ['repository' => $repository], absolute: false),
         );
     }
 
@@ -381,10 +382,11 @@ final class ContextBuilder
 
     /**
      * The README of the root folder: its first paragraph, the items of its feature list (under a heading
-     * like "Features" or "Funcționalități") and its beginning, for the writers.
+     * like "Features" or "Funcționalități"), the problem it explains and the commands of its setup
+     * sections (see ReadmeSections) and its beginning, for the writers.
      *
      * @param  Collection<int, RepositoryFile>  $files
-     * @return array{path: string, description: string|null, features: list<string>, excerpt: string, truncated: bool}|null
+     * @return array{path: string, description: string|null, features: list<string>, problem: string|null, setup_commands: list<string>, excerpt: string, truncated: bool}|null
      */
     private function rootReadme(CloneFiles $clone, Collection $files): ?array
     {
@@ -399,6 +401,8 @@ final class ContextBuilder
             'path' => $readme->path,
             'description' => ReadmeDescription::fromMarkdown($text),
             'features' => $this->readmeFeatures($text),
+            'problem' => ReadmeSections::problem($text),
+            'setup_commands' => ReadmeSections::setupCommands($text),
             'excerpt' => Str::limit($text, self::README_CHARACTERS, ''),
             'truncated' => mb_strlen($text) > self::README_CHARACTERS,
         ];

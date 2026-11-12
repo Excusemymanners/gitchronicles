@@ -43,12 +43,19 @@ final class TemplateDocumentationWriter implements DocumentationWriter
     /**
      * The headings of a module page, in order (the AI writer must use the same ones).
      */
-    public const MODULE_SECTIONS = ['Role', 'Main components', 'How it works', 'Dependencies', 'Files'];
+    public const MODULE_SECTIONS = ['Role', 'How it works', 'Main components', 'Dependencies', 'Files'];
 
     /**
-     * The headings of the overview page, in order (the AI writer must use the same ones).
+     * The headings the overview page always has, in order (the AI writer must use the same ones). Between
+     * them come the sections that need evidence in the repository, see OPTIONAL_OVERVIEW_SECTIONS.
      */
-    public const OVERVIEW_SECTIONS = ['What the project does', 'Technologies', 'Architecture', 'Modules', 'How to run it'];
+    public const OVERVIEW_SECTIONS = ['What the project does', 'How it solves it', 'What to read next', 'Technologies', 'Modules'];
+
+    /**
+     * Overview sections left out when the repository gives no evidence: "The problem it addresses" (after
+     * "What the project does"), "Who it is for" and "Getting started" (before "What to read next"). The reference parts, "Technologies" and "Modules", come last.
+     */
+    public const OPTIONAL_OVERVIEW_SECTIONS = ['The problem it addresses', 'Who it is for', 'Getting started'];
 
     /**
      * Kinds of symbols left out of "Main components": TypeScript type aliases are mostly the props of
@@ -68,6 +75,22 @@ final class TemplateDocumentationWriter implements DocumentationWriter
         'method' => 'method',
         'type' => 'type',
         'struct' => 'struct',
+    ];
+
+    /**
+     * At most this many module pages are suggested in "What to read next".
+     */
+    public const MAX_READ_NEXT = 5;
+
+    /**
+     * What a command of each purpose does, in a few words.
+     */
+    private const PURPOSE_SENTENCES = [
+        'install' => 'installs the dependencies',
+        'run' => 'starts the project',
+        'build' => 'builds the project',
+        'test' => 'runs the tests',
+        'script' => 'runs a script defined in the file',
     ];
 
     /**
@@ -92,10 +115,10 @@ final class TemplateDocumentationWriter implements DocumentationWriter
             "# {$title}",
             '## Role',
             $this->moduleRole($context),
-            '## Main components',
-            $this->moduleComponents($context, $links),
             '## How it works',
             $this->moduleStructure($context),
+            '## Main components',
+            $this->moduleComponents($context, $links),
             '## Dependencies',
             $this->moduleDependencies($context),
             '## Files',
@@ -106,25 +129,35 @@ final class TemplateDocumentationWriter implements DocumentationWriter
     }
 
     /**
-     * The overview page: what the README says, the technologies, the architecture, every module, the commands.
+     * The overview page, in the order a newcomer needs: what the project is, the problem it addresses (only
+     * when the README states it), how it is built to solve it, the technologies, every module, the
+     * getting-started commands (only when the repository has them) and which module pages to read first.
      */
     public function overview(OverviewContext $context, SourceLinks $links): WrittenPage
     {
-        $markdown = implode("\n\n", [
-            '# '.self::escape($context->repository),
-            '## What the project does',
-            $this->projectDescription($context, $links),
+        $sections = ['# '.self::escape($context->repository), '## What the project does', $this->projectDescription($context, $links)];
+
+        if (($problem = $this->problemText($context, $links)) !== null) {
+            $sections = [...$sections, '## The problem it addresses', $problem];
+        }
+
+        $sections = [...$sections, '## How it solves it', $this->architecture($context)];
+
+        if ($this->hasGettingStarted($context)) {
+            $sections = [...$sections, '## Getting started', $this->gettingStarted($context)];
+        }
+
+        $sections = [
+            ...$sections,
+            '## What to read next',
+            $this->readNext($context),
             '## Technologies',
             $this->technologies($context),
-            '## Architecture',
-            $this->architecture($context),
             '## Modules',
             $this->moduleTable($context),
-            '## How to run it',
-            $this->howToRun($context),
-        ]);
+        ];
 
-        return WrittenPage::fromTemplate($markdown."\n");
+        return WrittenPage::fromTemplate(implode("\n\n", $sections)."\n");
     }
 
     /**
@@ -134,12 +167,12 @@ final class TemplateDocumentationWriter implements DocumentationWriter
     {
         $sections = ['# '.self::escape($context->name), $this->readmeDescription($context)];
 
-        if ($context->readme !== null && $context->readme['features'] !== []) {
-            $sections[] = "## Features\n\n".self::bulletList($context->readme['features']);
+        if (($problem = $this->problemText($context, $links)) !== null) {
+            $sections[] = "## The problem it addresses\n\n".$problem;
         }
 
-        if ($this->hasTechnologies($context)) {
-            $sections[] = "## Technologies\n\n".$this->technologies($context);
+        if ($context->readme !== null && $context->readme['features'] !== []) {
+            $sections[] = "## Features\n\n".self::bulletList($context->readme['features']);
         }
 
         if ($context->requirements !== []) {
@@ -149,30 +182,29 @@ final class TemplateDocumentationWriter implements DocumentationWriter
             ));
         }
 
-        $installCommands = $this->commandsFor($context, ['install']);
-
-        if ($installCommands !== []) {
-            $sections[] = "## Installation\n\n".self::shellBlock([
-                'git clone '.$links->cloneUrl(),
-                'cd '.$context->name,
-                ...$installCommands,
-            ]);
+        if ($this->hasGettingStarted($context)) {
+            $sections[] = "## Quick start\n\n".$this->quickStart($context, $links);
         }
 
-        $runCommands = $this->commandsFor($context, ['run', 'build', 'script']);
+        $built = [];
 
-        if ($runCommands !== []) {
-            $sections[] = "## Running\n\n".self::shellBlock($runCommands)."\n\n".$this->commandSources($context, ['run', 'build', 'script']);
+        if ($this->hasTechnologies($context)) {
+            $built[] = "**Technologies**\n\n".$this->technologies($context);
         }
 
-        $sections[] = "## Project structure\n\n".self::bulletList(array_map(
+        $built[] = "**Project structure**\n\n".self::bulletList(array_map(
             fn (array $folder): string => ($folder['path'] === '/' ? 'files in the root folder' : self::code($folder['path'].'/'))
                 .' — '.self::count($folder['files'], 'file', 'files').', '.self::count($folder['lines'], 'line', 'lines')
                 .($folder['languages'] !== [] ? ' ('.implode(', ', array_map(self::escape(...), $folder['languages'])).')' : ''),
             $context->topFolders,
         ));
 
-        $sections[] = "## Modules\n\n".$this->readmeModules($context, $links);
+        if ($context->diagramsPage !== null) {
+            $built[] = 'The architecture diagrams (layers, containers, components and the main flows) are on the '.self::link('Diagrams page', $context->diagramsPage).' of this repository in GitChronicle.';
+        }
+
+        $sections[] = "## How it is built\n\n".implode("\n\n", $built);
+        $sections[] = "## Where to go next\n\n".$this->readmeModules($context, $links);
 
         if ($context->tests !== null) {
             $sections[] = "## Tests\n\n".$this->readmeTests($context);
@@ -189,6 +221,129 @@ final class TemplateDocumentationWriter implements DocumentationWriter
     }
 
     /**
+     * The problem the README states, quoted with its source; null when the README says nothing about it
+     * (the page then has no problem section: GitChronicle never invents a motivation).
+     */
+    private function problemText(OverviewContext $context, SourceLinks $links): ?string
+    {
+        $problem = $context->readme['problem'] ?? null;
+
+        if ($problem === null) {
+            return null;
+        }
+
+        return 'From '.self::link(self::code($context->readme['path']), $links->file($context->readme['path'])).': “'.self::escape($problem).'”';
+    }
+
+    /**
+     * Whether the repository has setup or start commands (in its README or its project files).
+     */
+    private function hasGettingStarted(OverviewContext $context): bool
+    {
+        return $context->commands !== [] || ($context->readme['setup_commands'] ?? []) !== [];
+    }
+
+    /**
+     * "Getting started" of the overview: the requirements, the commands of the README's setup sections and
+     * the commands found in the project files, each with a line saying what it does.
+     */
+    private function gettingStarted(OverviewContext $context): string
+    {
+        $parts = [];
+
+        if ($context->requirements !== []) {
+            $parts[] = '**Requirements:** '.implode(', ', array_map(
+                fn (array $requirement): string => self::escape($requirement['name']).($requirement['version'] ? ' '.self::code($requirement['version']) : ''),
+                $context->requirements,
+            )).'.';
+        }
+
+        $fromReadme = $context->readme['setup_commands'] ?? [];
+
+        if ($fromReadme !== []) {
+            $parts[] = 'The README’s setup sections give these commands, in this order:'."\n\n".self::shellBlock($fromReadme);
+        }
+
+        foreach (self::COMMAND_GROUPS as $purpose => $title) {
+            $commands = array_filter($context->commands, fn (array $command): bool => $command['purpose'] === $purpose && ! in_array($command['command'], $fromReadme, true));
+
+            if ($commands === []) {
+                continue;
+            }
+
+            $parts[] = "**{$title}:**\n\n".self::bulletList(array_map(
+                fn (array $command): string => self::code($command['command']).' — '.self::PURPOSE_SENTENCES[$purpose].' (from '.self::code($command['source']).')'
+                    .($command['detail'] !== null ? ', runs '.self::code($command['detail']) : ''),
+                $commands,
+            ));
+        }
+
+        return implode("\n\n", $parts);
+    }
+
+    /**
+     * The README's "Quick start": the clone, then the README's own setup commands, or else the install and
+     * run commands of the project files, each step after a comment line saying what it does.
+     */
+    private function quickStart(OverviewContext $context, SourceLinks $links): string
+    {
+        $lines = ['git clone '.$links->cloneUrl(), 'cd '.$context->name];
+        $fromReadme = $context->readme['setup_commands'] ?? [];
+
+        if ($fromReadme !== []) {
+            $lines = [...$lines, ...array_values(array_filter($fromReadme, fn (string $command): bool => ! str_starts_with($command, 'git clone ')))];
+        } else {
+            foreach (array_filter($context->commands, fn (array $command): bool => in_array($command['purpose'], ['install', 'run', 'build', 'script'], true)) as $command) {
+                $lines[] = '# '.ucfirst(self::PURPOSE_SENTENCES[$command['purpose']]).' (from '.$command['source'].')';
+                $lines[] = $command['command'];
+            }
+        }
+
+        return self::shellBlock($lines);
+    }
+
+    /**
+     * "What to read next": the module whose files hold an entry point first, then the modules the other
+     * modules import from most, each with the fact that makes it worth reading.
+     */
+    private function readNext(OverviewContext $context): string
+    {
+        $pages = collect($context->modules)->whereNotNull('page')->keyBy('path');
+
+        if ($pages->isEmpty()) {
+            return 'No module has its own page: the analysis found no modules with code in a recognized language.';
+        }
+
+        $importedBy = [];
+
+        foreach ($context->dependencies as $dependency) {
+            $importedBy[$dependency['to']] = ($importedBy[$dependency['to']] ?? 0) + 1;
+        }
+
+        $items = [];
+
+        foreach ($context->entryPoints as $entryPoint) {
+            $module = $pages->filter(fn (array $module): bool => $module['path'] === '/' ? ! str_contains($entryPoint['path'], '/') : str_starts_with($entryPoint['path'], $module['path'].'/'))
+                ->sortByDesc(fn (array $module): int => strlen($module['path']))->first();
+
+            if ($module !== null && ! isset($items[$module['path']])) {
+                $items[$module['path']] = self::link(self::tableCode($module['path']), $module['page']).' — holds the entry point '.self::code($entryPoint['path']).' ('.self::escape($entryPoint['kind']).'), where the program starts.';
+            }
+        }
+
+        $others = $pages->reject(fn (array $module): bool => isset($items[$module['path']]))
+            ->sortBy([fn (array $a, array $b): int => ($importedBy[$b['path']] ?? 0) <=> ($importedBy[$a['path']] ?? 0), fn (array $a, array $b): int => $b['lines'] <=> $a['lines'], fn (array $a, array $b): int => strcmp($a['path'], $b['path'])]);
+
+        foreach ($others as $module) {
+            $items[$module['path']] = self::link(self::tableCode($module['path']), $module['page']).' — '.(isset($importedBy[$module['path']])
+                ? 'imported by '.self::count($importedBy[$module['path']], 'other module', 'other modules').'.'
+                : self::count($module['lines'], 'line', 'lines').' of code.');
+        }
+
+        return "The pages worth opening first, in this order:\n\n".self::bulletList(array_slice(array_values($items), 0, self::MAX_READ_NEXT));
+    }
+
+    /**
      * "Role": size and languages of the module, its own README and who uses it. No guessed purpose.
      */
     private function moduleRole(ModuleContext $context): string
@@ -196,22 +351,23 @@ final class TemplateDocumentationWriter implements DocumentationWriter
         $languages = collect($context->files)->pluck('language')->filter()->unique()->sort()->values()->all();
         $where = $context->path === '/' ? 'The root folder of the project' : 'The module '.self::code($context->path);
 
-        $paragraphs = [
-            "{$where} has ".self::count($context->fileCount, 'file', 'files').' with '.self::count($context->lineCount, 'line', 'lines')
-                .($languages !== [] ? ' of '.self::joinWords(array_map(self::escape(...), $languages)) : '').'.',
-        ];
+        $paragraphs = [];
 
         if ($context->folderReadme !== null) {
-            $paragraphs[] = 'The README in this folder says: “'.self::escape($context->folderReadme).'”';
+            $paragraphs[] = 'The README in this folder says what it is for: “'.self::escape($context->folderReadme).'”';
         }
 
+        $paragraphs[] = "{$where} has ".self::count($context->fileCount, 'file', 'files').' with '.self::count($context->lineCount, 'line', 'lines')
+            .($languages !== [] ? ' of '.self::joinWords(array_map(self::escape(...), $languages)) : '').'.';
+
         $users = array_map(fn (array $module): string => self::code($module['path']), array_slice($context->usedByModules, 0, self::MAX_LIST_ITEMS));
+        $used = array_map(fn (array $module): string => self::code($module['path']), array_slice($context->usesModules, 0, self::MAX_LIST_ITEMS));
 
         $paragraphs[] = match (count($users)) {
             0 => 'No other module of the project imports files from it.',
             1 => "The module {$users[0]} imports files from it.",
             default => 'The modules '.self::joinWords($users).' import files from it.',
-        };
+        }.($used === [] ? ' It imports from no other module.' : ' It imports from '.self::joinWords($used).'.');
 
         $paragraphs[] = '_This page is generated from the code analysis: it shows the structure (files, classes, functions, imports), not what the code does.'
             .($context->path === '/' ? '' : ' File paths are relative to '.self::code($context->path.'/').'.').'_';
@@ -395,7 +551,8 @@ final class TemplateDocumentationWriter implements DocumentationWriter
     }
 
     /**
-     * "Architecture": sizes, the top folders, the entry points and the strongest dependencies between modules.
+     * "How it solves it", from the structure only: sizes, the top folders, the entry points, the strongest
+     * dependencies between modules and a pointer to the diagrams. The idea behind the design is not guessed.
      */
     private function architecture(OverviewContext $context): string
     {
@@ -427,61 +584,31 @@ final class TemplateDocumentationWriter implements DocumentationWriter
             $parts[] = 'The analysis found no imports between modules.';
         }
 
+        if ($context->diagramsPage !== null) {
+            $parts[] = 'The '.self::link('Diagrams page', $context->diagramsPage).' of this repository draws these parts as layered, container and component diagrams.';
+        }
+
         return implode("\n\n", $parts);
     }
 
     /**
-     * "Modules": every module, with a link to its page or the reason it has none.
+     * "Modules": only the modules that have a page, biggest first, then one sentence counting the others.
      */
     private function moduleTable(OverviewContext $context): string
     {
-        if ($context->modules === []) {
-            return 'The analysis found no modules.';
+        $withPage = collect($context->modules)->whereNotNull('page')->sortBy([['lines', 'desc'], ['path', 'asc']]);
+        $withoutPage = count($context->modules) - $withPage->count();
+
+        if ($withPage->isEmpty()) {
+            return $context->modules === [] ? 'The analysis found no modules.' : 'No module has a page of its own: '.self::count($withoutPage, 'module', 'modules').' have no code in a recognized language or are too small.';
         }
 
-        $rows = array_map(
-            fn (array $module): string => '| '.($module['page'] !== null ? self::link(self::tableCode($module['path']), $module['page']) : self::tableCode($module['path']))
-                .' | '.self::number($module['files']).' | '.self::number($module['lines']).' | '
-                .($module['page'] !== null ? 'own page' : 'no page: '.self::cell($module['reason'] ?? '')).' |',
-            $context->modules,
+        $rows = $withPage->map(
+            fn (array $module): string => '| '.self::link(self::tableCode($module['path']), $module['page']).' | '.self::number($module['files']).' | '.self::number($module['lines']).' |',
         );
 
-        return "Modules with their own page link to it.\n\n| Module | Files | Lines | Documentation |\n|---|---:|---:|---|\n".implode("\n", $rows);
-    }
-
-    /**
-     * "How to run it": what must be installed and the commands found in the manifests, grouped by purpose.
-     */
-    private function howToRun(OverviewContext $context): string
-    {
-        if ($context->commands === []) {
-            return 'The project files do not show how to install or start it: the root folder has no package manifests or scripts (composer.json, package.json, Makefile, ...).';
-        }
-
-        $parts = ['These are the commands found in the project files, each with the file it comes from.'];
-
-        if ($context->requirements !== []) {
-            $parts[] = '**Requirements:** '.implode(', ', array_map(
-                fn (array $requirement): string => self::escape($requirement['name']).($requirement['version'] ? ' '.self::code($requirement['version']) : ''),
-                $context->requirements,
-            )).'.';
-        }
-
-        foreach (self::COMMAND_GROUPS as $purpose => $title) {
-            $commands = array_filter($context->commands, fn (array $command): bool => $command['purpose'] === $purpose);
-
-            if ($commands === []) {
-                continue;
-            }
-
-            $parts[] = "**{$title}:**\n\n".self::bulletList(array_map(
-                fn (array $command): string => self::code($command['command']).' — from '.self::code($command['source'])
-                    .($command['detail'] !== null ? ', runs '.self::code($command['detail']) : ''),
-                $commands,
-            ));
-        }
-
-        return implode("\n\n", $parts);
+        return "Modules with their own page, biggest first.\n\n| Module | Files | Lines |\n|---|---:|---:|\n".$rows->implode("\n")
+            .($withoutPage > 0 ? "\n\n".($withoutPage === 1 ? '1 smaller module has no page of its own.' : self::number($withoutPage).' smaller modules have no page of their own.') : '');
     }
 
     /**
@@ -548,18 +675,6 @@ final class TemplateDocumentationWriter implements DocumentationWriter
             fn (array $command): string => $command['command'],
             array_filter($context->commands, fn (array $command): bool => in_array($command['purpose'], $purposes, true)),
         ));
-    }
-
-    /**
-     * One line saying which files the commands of these purposes come from.
-     *
-     * @param  list<string>  $purposes
-     */
-    private function commandSources(OverviewContext $context, array $purposes): string
-    {
-        $sources = collect($context->commands)->whereIn('purpose', $purposes)->pluck('source')->unique()->sort()->map(self::code(...));
-
-        return 'The commands come from '.self::joinWords($sources->values()->all()).'.';
     }
 
     /**

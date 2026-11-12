@@ -4,6 +4,7 @@ namespace Tests\Feature\Documentation;
 
 use App\Documentation\AiDocumentationWriter;
 use App\Documentation\ModuleContext;
+use App\Documentation\OverviewContext;
 use App\Documentation\SourceLinks;
 use App\Documentation\UnusableAiPage;
 use App\Models\Document;
@@ -18,7 +19,7 @@ class AiDocumentationWriterTest extends TestCase
     /**
      * An answer with every section of a module page.
      */
-    private const MODULE_PAGE = "# Module `src/Models`\n\n## Role\n\nThe products.\n\n## Main components\n\n- Product\n\n## How it works\n\nSimply.\n\n## Dependencies\n\nNone.\n\n## Files\n\n| File | Language | Lines |\n";
+    private const MODULE_PAGE = "# Module `src/Models`\n\n## Role\n\nThe products.\n\n## How it works\n\nSimply.\n\n## Main components\n\n- Product\n\n## Dependencies\n\nNone.\n\n## Files\n\n| File | Language | Lines |\n";
 
     public function test_sends_the_stable_instructions_and_the_context_with_numbered_code_and_omitted_files(): void
     {
@@ -63,6 +64,93 @@ class AiDocumentationWriterTest extends TestCase
             $this->assertSame(100, $exception->result->inputTokens);
             $this->assertFalse($exception->retryable);
         }
+    }
+
+    public function test_the_overview_prompt_asks_for_the_newcomer_order_and_the_context_carries_problem_and_setup(): void
+    {
+        $generator = new FakeTextGenerator([$this->overviewPage('composer install')]);
+
+        (new AiDocumentationWriter($generator))->overview($this->overviewContext(), new SourceLinks('acme', 'magazin', 'abc123'));
+
+        $system = $generator->requests[0]['system'];
+        $this->assertLessThan(strpos($system, '## How it solves it'), strpos($system, '## The problem it addresses'));
+        $this->assertLessThan(strpos($system, '## Getting started'), strpos($system, '## Who it is for'));
+        $this->assertLessThan(strpos($system, '## Technologies'), strpos($system, '## What to read next'));
+        $this->assertLessThan(strpos($system, '## Modules'), strpos($system, '## Technologies'));
+        $this->assertStringContainsString('Never list modules without a page', $system);
+        $this->assertStringContainsString('Never invent a motivation or an audience', $system);
+        $this->assertStringContainsString('leave the problem section out entirely', $system);
+        $user = $generator->requests[0]['user'];
+        $this->assertStringContainsString('README problem statement: Shops lose carts when the session ends.', $user);
+        $this->assertStringContainsString("Commands from the README's setup sections (exactly as written):\n- cp .env.example .env", $user);
+        $this->assertStringContainsString('Diagrams page of this repository: /repositories/1/diagrams', $user);
+    }
+
+    public function test_the_context_says_when_the_readme_states_no_problem(): void
+    {
+        $generator = new FakeTextGenerator([$this->overviewPage('composer install')]);
+        $context = $this->overviewContext(problem: null, setupCommands: []);
+
+        (new AiDocumentationWriter($generator))->overview($context, new SourceLinks('acme', 'magazin', 'abc123'));
+
+        $this->assertStringContainsString('README problem statement: (none: the README has no section that explains the problem)', $generator->requests[0]['user']);
+    }
+
+    public function test_getting_started_commands_copied_from_the_context_are_accepted(): void
+    {
+        $generator = new FakeTextGenerator([$this->overviewPage("git clone https://github.com/acme/magazin.git\ncd magazin\n\$ cp .env.example .env\ncomposer install # the dependencies")]);
+
+        $page = (new AiDocumentationWriter($generator))->overview($this->overviewContext(), new SourceLinks('acme', 'magazin', 'abc123'));
+
+        $this->assertStringContainsString('cp .env.example .env', $page->markdown);
+    }
+
+    public function test_a_getting_started_command_that_the_repository_does_not_give_makes_the_page_unusable(): void
+    {
+        $generator = new FakeTextGenerator([$this->overviewPage("composer install\nnpm run invented-script")]);
+
+        try {
+            (new AiDocumentationWriter($generator))->overview($this->overviewContext(), new SourceLinks('acme', 'magazin', 'abc123'));
+            $this->fail('The invented command was accepted.');
+        } catch (UnusableAiPage $exception) {
+            $this->assertStringContainsString('npm run invented-script', $exception->getMessage());
+        }
+    }
+
+    public function test_the_generated_readme_commands_are_checked_too(): void
+    {
+        $generator = new FakeTextGenerator(["# magazin\n\n## Quick start\n\n```bash\nmake magic\n```\n"]);
+
+        $this->expectException(UnusableAiPage::class);
+
+        (new AiDocumentationWriter($generator))->readme($this->overviewContext(), new SourceLinks('acme', 'magazin', 'abc123'));
+    }
+
+    /**
+     * An overview answer with every required section and one bash block in "Getting started".
+     */
+    private function overviewPage(string $commands): string
+    {
+        return "# acme/magazin\n\n## What the project does\n\nA shop.\n\n## How it solves it\n\nCarts.\n\n## Getting started\n\n```bash\n{$commands}\n```\n\n## What to read next\n\nModels.\n\n## Technologies\n\nPHP.\n\n## Modules\n\n| Module |\n";
+    }
+
+    /**
+     * The context of a small shop whose README states a problem and gives setup commands.
+     *
+     * @param  list<string>|null  $setupCommands
+     */
+    private function overviewContext(?string $problem = 'Shops lose carts when the session ends.', ?array $setupCommands = null): OverviewContext
+    {
+        return new OverviewContext(
+            repository: 'acme/magazin', name: 'magazin',
+            readme: ['path' => 'README.md', 'description' => 'A small shop.', 'features' => [], 'problem' => $problem, 'setup_commands' => $setupCommands ?? ['cp .env.example .env', 'composer install'], 'excerpt' => 'A small shop.', 'truncated' => false],
+            fileCount: 1, lineCount: 3, languages: [['name' => 'PHP', 'files' => 1, 'lines' => 3]], manifests: [],
+            topFolders: [['path' => 'src', 'files' => 1, 'lines' => 3, 'languages' => ['PHP']]],
+            modules: [['path' => 'src/Models', 'files' => 1, 'lines' => 3, 'page' => '/repositories/1/docs/src-models', 'reason' => null]],
+            dependencies: [], dependencyCount: 0, entryPoints: [],
+            commands: [['command' => 'composer install', 'purpose' => 'install', 'source' => 'composer.json', 'detail' => null]],
+            requirements: [], tests: null, license: null, diagramsPage: '/repositories/1/diagrams',
+        );
     }
 
     /**

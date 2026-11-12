@@ -407,8 +407,8 @@ final class SlidePlanner
     {
         $commands = [];
         $sections = [
-            ...array_filter($readme, fn (string $heading): bool => preg_match('/^(installation|running|run|getting started|usage|instalare|rulare)/u', $heading) === 1, ARRAY_FILTER_USE_KEY),
-            ...array_filter($overview, fn (string $heading): bool => preg_match('/how to run|cum (se )?rulează|cum rulezi/u', $heading) === 1, ARRAY_FILTER_USE_KEY),
+            ...array_filter($readme, fn (string $heading): bool => preg_match('/^(installation|running|run|getting started|quick start|usage|instalare|rulare)/u', $heading) === 1, ARRAY_FILTER_USE_KEY),
+            ...array_filter($overview, fn (string $heading): bool => preg_match('/how to run|getting started|cum (se )?rulează|cum rulezi/u', $heading) === 1, ARRAY_FILTER_USE_KEY),
         ];
 
         foreach ($sections as $text) {
