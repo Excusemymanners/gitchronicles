@@ -42,8 +42,8 @@ class RenderPresentationVideoTest extends TestCase
         $this->assertSame(['context_hash' => 'ctx', 'answer' => ['hook' => []]], array_intersect_key($asset->meta['script'], ['context_hash' => 1, 'answer' => 1]));
         $this->assertSame(['captured_at' => '2026-11-12T06:24:56.547Z', 'reason' => null], $asset->meta['capture']);
 
-        // Hook: one sentence (0.35 + 2.5 + 0.45 = 3.3). Start: two sentences. The scenes keep their sources, not the camera data.
-        $this->assertEquals([0, 3.3, 9.233], array_column($asset->meta['scenes'], 'start'));
+        // Hook: one sentence (0.35 + 2.5 + 0.4 = 3.25 → 3.267). Start: two sentences. The scenes keep their sources, not the camera data.
+        $this->assertEquals([0, 3.267, 9.333], array_column($asset->meta['scenes'], 'start'));
         $this->assertSame(['What it is', 'The shop that remembers your cart.'], [$asset->meta['scenes'][0]['label'], $asset->meta['scenes'][0]['narration']]);
         $this->assertSame('Un magazin mic.', $asset->meta['scenes'][0]['source']['quote']);
         $this->assertArrayNotHasKey('shots', $asset->meta['scenes'][0]);
@@ -51,9 +51,9 @@ class RenderPresentationVideoTest extends TestCase
         $this->assertStringContainsString('00:00:00.350 --> ', Storage::disk('local')->get("{$directory}/captions-en.vtt"));
         $this->assertStringContainsString('The shop that', Storage::disk('local')->get("{$directory}/captions-en.vtt"));
 
-        // One Piper clip per sentence (4), then the picture, the music, the loudness of the voice, the mix and the poster.
+        // One Piper clip per sentence (4), each clip trimmed of its silence, then the picture, the loudness (no music by default) of the voice, the mix and the poster.
         $this->assertSame(
-            ['piper', 'piper', 'piper', 'piper', 'ffprobe', 'ffprobe', 'ffprobe', 'ffprobe', 'hyperframes', 'music', 'loudness', 'ffmpeg', 'ffmpeg'],
+            ['piper', 'piper', 'piper', 'piper', 'ffmpeg', 'ffprobe', 'ffmpeg', 'ffprobe', 'ffmpeg', 'ffprobe', 'ffmpeg', 'ffprobe', 'hyperframes', 'loudness', 'ffmpeg', 'ffmpeg'],
             array_map($this->toolOf(...), $this->toolCommands),
         );
     }
@@ -76,7 +76,7 @@ class RenderPresentationVideoTest extends TestCase
         $this->assertSame('Magazinul', $data['scenes'][0]['cues'][0]['words'][0]['text']);
         $this->assertArrayNotHasKey('narration', $data['scenes'][0]);
         $this->assertArrayNotHasKey('source', $data['scenes'][0]);
-        $this->assertStringContainsString('data-duration="13.033"', $this->toolInputs['composition']);
+        $this->assertStringContainsString('data-duration="13.133"', $this->toolInputs['composition']);
 
         [$hyperframes] = $this->commandsOf('hyperframes');
         // HyperFrames writes an almost lossless master: the final picture is encoded once, by the mix.
@@ -98,15 +98,18 @@ class RenderPresentationVideoTest extends TestCase
         $this->assertSame(['-m', 'piper', '--model', Storage::disk('local')->path('voice/ro.onnx')], array_slice($piper, 1, 4));
         $this->assertNotContains('Magazinul care ține minte coșul.', $piper);
 
-        [$mix] = $this->commandsOf('ffmpeg');
+        $mix = array_values(array_filter($this->commandsOf('ffmpeg'), fn (array $command): bool => in_array('-filter_complex', $command, true)))[0];
         $filters = $this->argumentAfter($mix, '-filter_complex');
         $this->assertStringContainsString('[1:a]aresample=48000,aformat=channel_layouts=stereo,adelay=350:all=1[v0]', $filters);
         // The second sentence of the „Cum începi” scene starts after the first one and a short breath.
-        $this->assertStringContainsString('adelay=3650:all=1[v1]', $filters);
-        $this->assertStringContainsString('adelay=6290:all=1[v2]', $filters);
+        $this->assertStringContainsString('adelay=3617:all=1[v1]', $filters);
+        $this->assertStringContainsString('adelay=6437:all=1[v2]', $filters);
         // The fake voice measures -20 LUFS: it is raised by 3 dB to the common level.
-        $this->assertStringContainsString('amix=inputs=4:normalize=0:duration=longest,volume=3.00dB,apad[voice]', $filters);
-        $this->assertStringContainsString('[5:a]aresample=48000,volume='.AudioMixer::MUSIC_VOLUME.'[music]', $filters);
+        $this->assertStringContainsString('amix=inputs=4:normalize=0:duration=longest,volume=3.00dB,apad,volume='.AudioMixer::FINAL_GAIN.',alimiter=limit=0.9:level=false[out]', $filters);
+        // The voice alone: no music input, no ducking.
+        $this->assertStringNotContainsString('music', $filters);
+        $this->assertStringNotContainsString('sidechaincompress', $filters);
+        $this->assertCount(5, array_keys($mix, '-i', true));
         $this->assertSame(['-c:v', 'libx264', '-preset', 'slow', '-crf', '20'], array_slice($mix, array_search('-c:v', $mix, true), 6));
         $this->assertSame(['-c:a', 'aac'], array_slice($mix, array_search('-c:a', $mix, true), 2));
     }

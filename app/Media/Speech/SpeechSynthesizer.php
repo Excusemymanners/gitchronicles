@@ -26,8 +26,9 @@ interface SpeechSynthesizer
      * every sentence starts and ends).
      *
      * @param  array<string, string>  $clips  the WAV path of each clip => the text it says (already respelled for the voice)
+     * @param  array<string, array{rate: float, pitch: float}>  $shapes  the delivery of each clip by its WAV path (SpeechDelivery); a clip without one is read plainly
      *
      * @throws RuntimeException when the engine fails
      */
-    public function speak(array $clips): void;
+    public function speak(array $clips, array $shapes = []): void;
 }

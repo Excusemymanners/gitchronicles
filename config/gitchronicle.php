@@ -119,9 +119,12 @@ return [
     |   (renderers/capture/github.mjs). Off, or when GitHub cannot be reached, the video falls back
     |   to typographic scenes. max_height is how much of the page is photographed, in CSS pixels;
     | - voice: who reads the video, one line per language, "engine:voice" (App\Media\Narrator):
-    |   piper:<model>, kokoro:<voice> (English, offline) or edge:<voice> (online, unofficial — optional).
+    |   piper:<model>, kokoro:<voice> (English, offline), edge:<voice> (online, unofficial — optional) or
+    |   chatterbox:<exaggeration> (English, GPU, optional; chatterbox.python is the Python of its own environment).
     |   Piper with the language's own model (models, length_scale below 1 speaks faster) is the
-    |   fallback when the chosen engine is missing or fails. renderers/tts/install.sh installs them;
+    |   fallback when the chosen engine is missing or fails. renderers/tts/install.sh installs them.
+    |   The speeds (Kokoro speed, Edge rate, Piper length_scale) are chosen so the narration runs at
+    |   about 150-170 words per minute (measured on the same passage, 2026-11-12): natural, never rushed;
     | - video: how the final picture is encoded (AudioMixer). "auto" picks libx264 when FFmpeg has it,
     |   else NVENC on an NVIDIA GPU, else keeps HyperFrames' file; quality is the CRF / CQ (lower = sharper
     |   and larger; 20 is visually lossless for the page's text).
@@ -140,6 +143,7 @@ return [
         'workers' => (int) env('MEDIA_RENDER_WORKERS', 4),
         'languages' => array_values(array_filter(array_map('trim', explode(',', (string) env('MEDIA_LANGUAGES', 'en,ro'))))),
         'max_seconds' => (float) env('MEDIA_MAX_SECONDS', 60),
+        'music' => (bool) env('MEDIA_MUSIC', false),
         'capture' => [
             'enabled' => (bool) env('MEDIA_CAPTURE', true),
             'max_height' => (int) env('MEDIA_CAPTURE_MAX_HEIGHT', 20000),
@@ -147,7 +151,7 @@ return [
         ],
         'voice' => [
             'engines' => [
-                'en' => env('MEDIA_VOICE_EN', 'kokoro:am_puck'),
+                'en' => env('MEDIA_VOICE_EN', 'kokoro:am_fenrir'),
                 'ro' => env('MEDIA_VOICE_RO', 'edge:ro-RO-EmilNeural'),
             ],
             'python' => env('MEDIA_PIPER_PYTHON', base_path('renderers/tts/.venv/bin/python')),
@@ -158,16 +162,19 @@ return [
                 'en' => env('MEDIA_PIPER_MODEL_EN', base_path('renderers/tts/voices/en_US-joe-medium.onnx')),
             ],
             'length_scale' => [
-                'ro' => (float) env('MEDIA_VOICE_LENGTH_SCALE', 0.85),
+                'ro' => (float) env('MEDIA_VOICE_LENGTH_SCALE', 1.13),
                 'en' => (float) env('MEDIA_VOICE_LENGTH_SCALE_EN', 0.92),
             ],
             'kokoro' => [
                 'model' => base_path('renderers/tts/voices/kokoro-v1.0.onnx'),
                 'voices' => base_path('renderers/tts/voices/voices-v1.0.bin'),
-                'speed' => (float) env('MEDIA_KOKORO_SPEED', 1.0),
+                'speed' => (float) env('MEDIA_KOKORO_SPEED', 0.85),
+            ],
+            'chatterbox' => [
+                'python' => env('MEDIA_CHATTERBOX_PYTHON', ''),
             ],
             'edge' => [
-                'rate' => env('MEDIA_EDGE_RATE', '+10%'),
+                'rate' => env('MEDIA_EDGE_RATE', '-14%'),
             ],
         ],
         'video' => [

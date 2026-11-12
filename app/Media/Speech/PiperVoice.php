@@ -37,8 +37,9 @@ final class PiperVoice implements SpeechSynthesizer
 
     /**
      * One Piper process per sentence; the text goes on the standard input, never on the command line.
+     * Piper has no pitch: only the speed of the sentence changes (length-scale shrinks as the rate grows).
      */
-    public function speak(array $clips): void
+    public function speak(array $clips, array $shapes = []): void
     {
         foreach ($clips as $wavPath => $text) {
             $result = Process::timeout(120)
@@ -47,7 +48,7 @@ final class PiperVoice implements SpeechSynthesizer
                     $this->python, '-m', 'piper',
                     '--model', $this->model,
                     '--output-file', $wavPath,
-                    '--length-scale', (string) $this->lengthScale,
+                    '--length-scale', (string) round($this->lengthScale / (1 + ($shapes[$wavPath]['rate'] ?? 0.0)), 3),
                     '--sentence-silence', '0.05',
                 ]);
 

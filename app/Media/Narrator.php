@@ -3,6 +3,7 @@
 namespace App\Media;
 
 use App\Enums\MediaLanguage;
+use App\Media\Speech\ChatterboxVoice;
 use App\Media\Speech\EdgeVoice;
 use App\Media\Speech\KokoroVoice;
 use App\Media\Speech\PiperVoice;
@@ -17,6 +18,7 @@ use RuntimeException;
  *   piper:en_US-ryan-high         Piper, offline, on the processor (renderers/tts/voices/{voice}.onnx)
  *   kokoro:am_michael             Kokoro-82M, offline neural voice, English only
  *   edge:ro-RO-EmilNeural         Microsoft Edge's online voices — optional and unofficial (EdgeVoice)
+ *   chatterbox:0.7                Chatterbox, English, on the GPU, with its emotion setting — optional, needs its own environment
  *
  * Piper with the language's own model (voice.models) is always the fallback: when the chosen engine is not
  * installed or fails (an online voice without internet), the whole video is read by Piper instead, so one
@@ -69,6 +71,7 @@ final class Narrator
 
         return match ($engine) {
             'kokoro' => new KokoroVoice($python, $script, (string) $config['kokoro']['model'], (string) $config['kokoro']['voices'], $name ?: 'am_michael', (float) $config['kokoro']['speed']),
+            'chatterbox' => new ChatterboxVoice((string) $config['chatterbox']['python'], $script, (float) ($name ?: 0.5)),
             'edge' => new EdgeVoice($python, $script, $name, (string) config('gitchronicle.media.ffmpeg_path'), (string) $config['edge']['rate']),
             default => $name === '' ? null : new PiperVoice($python, rtrim((string) $config['voices_path'], '/')."/{$name}.onnx", (float) ($config['length_scale'][$language->value] ?? 1.0)),
         };
@@ -95,10 +98,11 @@ final class Narrator
      * the chosen one is missing or fails.
      *
      * @param  array<string, string>  $clips  the WAV path of each clip => the sentence as the captions show it
+     * @param  array<string, array{rate: float, pitch: float}>  $shapes  the delivery of each clip by its path (SpeechDelivery::shapesFor())
      *
      * @throws RuntimeException when no voice could read them
      */
-    public function speak(array $clips): void
+    public function speak(array $clips, array $shapes = []): void
     {
         $spoken = array_map(fn (string $text): string => SpokenText::for($text, $this->language), $clips);
         $failure = null;
@@ -109,7 +113,7 @@ final class Narrator
             }
 
             try {
-                $voice->speak($spoken);
+                $voice->speak($spoken, $shapes);
                 $this->used = $voice;
 
                 return;

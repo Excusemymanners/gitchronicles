@@ -3,6 +3,7 @@
 namespace App\Media;
 
 use App\Enums\MediaLanguage;
+use App\Media\Speech\SpeechDelivery;
 use App\Models\Repository;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -82,8 +83,13 @@ final class VideoRenderer
 
             $this->renderPicture($timeline, $workPath, $repository, $language, $capture);
 
-            $music = "{$workPath}/music.wav";
-            $this->run([config('gitchronicle.media.node_bin'), $this->renderers('audio/music.mjs'), (string) $timeline['total'], $music], 120, 'music');
+            // No music bed by default (MEDIA_MUSIC=true brings it back).
+            $music = null;
+
+            if (config('gitchronicle.media.music')) {
+                $music = "{$workPath}/music.wav";
+                $this->run([config('gitchronicle.media.node_bin'), $this->renderers('audio/music.mjs'), (string) $timeline['total'], $music], 120, 'music');
+            }
 
             $clips = $this->placedClips($timeline['scenes'], $clipFiles);
             $gain = $this->mixer->voiceGain(array_column($clips, 'path'));
@@ -133,14 +139,20 @@ final class VideoRenderer
         }
 
         $clips = [];
+        $shapes = [];
+        $delivery = SpeechDelivery::shapesFor(
+            array_map(fn (array $scene): array => Captions::sentences((string) ($scene['narration'] ?? '')), $scenes),
+            array_column($scenes, 'key'),
+        );
 
         foreach ($scenes as $position => $scene) {
             foreach (Captions::sentences((string) ($scene['narration'] ?? '')) as $number => $sentence) {
                 $clips["{$workPath}/voice-{$position}-{$number}.wav"] = $sentence;
+                $shapes["{$workPath}/voice-{$position}-{$number}.wav"] = $delivery[$position][$number];
             }
         }
 
-        $narrator->speak($clips);
+        $narrator->speak($clips, $shapes);
 
         $voices = [];
         $files = [];
@@ -150,6 +162,7 @@ final class VideoRenderer
 
             foreach (Captions::sentences((string) ($scene['narration'] ?? '')) as $number => $sentence) {
                 $path = "{$workPath}/voice-{$position}-{$number}.wav";
+                $this->mixer->trimSilence($path);
                 $files[self::clipKey($scene, $sentence)] = $path;
                 $voice[] = ['text' => $sentence, 'seconds' => $this->mixer->duration($path)];
             }

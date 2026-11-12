@@ -321,8 +321,8 @@ final class TemplateScenes
             'source' => ['label' => 'README.md', 'quote' => $command, 'url' => $facts->startCommand['url'] ?? $facts->sources['README.md']['url'] ?? null],
             ...self::spoken(
                 'start',
-                $written['en'] ?? 'Want to try it? The README starts with this command.',
-                $written['ro'] ?? 'Vrei să-l încerci? README-ul începe cu comanda asta.',
+                $written['en'] ?? 'Want to try it? The first step in the README is the command on screen.',
+                $written['ro'] ?? 'Vrei să-l încerci? Primul pas din README e comanda de pe ecran.',
             ),
         ];
     }

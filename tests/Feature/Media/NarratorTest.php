@@ -4,6 +4,7 @@ namespace Tests\Feature\Media;
 
 use App\Enums\MediaLanguage;
 use App\Media\Narrator;
+use App\Media\Speech\ChatterboxVoice;
 use App\Media\Speech\EdgeVoice;
 use App\Media\Speech\KokoroVoice;
 use App\Media\Speech\PiperVoice;
@@ -42,6 +43,20 @@ class NarratorTest extends TestCase
         }
     }
 
+    public function test_the_shape_of_each_sentence_reaches_the_engine_with_its_text(): void
+    {
+        $this->fakeMediaTools();
+        config(['gitchronicle.media.voice.engines.en' => 'edge:en-US-AndrewMultilingualNeural']);
+        $clips = $this->clips(['First.', 'Second.']);
+        $paths = array_keys($clips);
+
+        Narrator::for(MediaLanguage::En)->speak($clips, [$paths[0] => ['rate' => -0.05, 'pitch' => 0.06]]);
+
+        $sent = json_decode($this->toolInputs['speech'], true);
+        $this->assertSame([-0.05, 0.06], [$sent[0]['rate'], $sent[0]['pitch']]);
+        $this->assertEquals([0.0, 0.0], [$sent[1]['rate'], $sent[1]['pitch']]);
+    }
+
     public function test_when_the_online_voice_fails_piper_reads_the_whole_video(): void
     {
         $this->fakeMediaTools(failing: ['speak']);
@@ -60,6 +75,7 @@ class NarratorTest extends TestCase
         $config = config('gitchronicle.media.voice');
 
         $this->assertInstanceOf(KokoroVoice::class, Narrator::voice('kokoro:bm_george', MediaLanguage::En, $config));
+        $this->assertInstanceOf(ChatterboxVoice::class, Narrator::voice('chatterbox:0.7', MediaLanguage::En, $config));
         $this->assertSame('Edge (online) · en-US-AndrewMultilingualNeural', Narrator::voice('edge:en-US-AndrewMultilingualNeural', MediaLanguage::En, $config)->label());
         $this->assertNull(Narrator::voice('piper', MediaLanguage::Ro, $config));
 

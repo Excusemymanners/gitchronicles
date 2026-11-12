@@ -70,7 +70,7 @@ class ScriptWriterTest extends TestCase
         // The number 3 is in the quote, so the scene that says it stays; the README's own command replaces the invented one.
         $english = $script->scenesFor(MediaLanguage::En);
         $this->assertSame(['It remembers 3 products.', 1, 1], [$english[1]['narration'], $english[1]['index'], $english[1]['count']]);
-        $this->assertSame(['composer install', 'Want to try it? The README starts with this command.'], [$english[4]['command'], $english[4]['narration']]);
+        $this->assertSame(['composer install', 'Want to try it? The first step in the README is the command on screen.'], [$english[4]['command'], $english[4]['narration']]);
     }
 
     public function test_without_ai_the_script_is_built_from_the_facts_in_both_languages(): void

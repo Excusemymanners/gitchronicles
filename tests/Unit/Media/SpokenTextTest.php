@@ -64,4 +64,11 @@ class SpokenTextTest extends TestCase
         $this->assertSame(MediaLanguage::En, SpokenText::languageOf('Write HTML. Render video. Built for agents.'));
         $this->assertNull(SpokenText::languageOf('hello-world'));
     }
+
+    public function test_sentence_final_punctuation_and_dashes_survive_the_respelling(): void
+    {
+        $spoken = SpokenText::for('Why does `npm` fail? Because of the README — and that is fine… Really!', MediaLanguage::En);
+        $this->assertSame('Why does N P M fail? Because of the read me — and that is fine… Really!', $spoken);
+        $this->assertSame('De ce eșuează ghit? Pentru că – ei bine – așa e!', SpokenText::for('De ce eșuează Git? Pentru că – ei bine – așa e!', MediaLanguage::Ro));
+    }
 }

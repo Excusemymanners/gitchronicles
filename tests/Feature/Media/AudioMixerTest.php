@@ -44,4 +44,35 @@ class AudioMixerTest extends TestCase
         $this->assertContains('yuv420p', $arguments);
         Process::assertNothingRan();
     }
+
+    public function test_the_mix_has_no_music_input_unless_a_music_file_is_given(): void
+    {
+        $mixer = new AudioMixer('/usr/bin/ffmpeg', '/usr/bin/ffprobe', 'copy');
+        $clips = [['path' => '/w/a.wav', 'at' => 0.35]];
+
+        $voiceOnly = $mixer->command('/w/silent.mp4', $clips, null, 5.0, '/w/out.mp4');
+        $this->assertCount(2, array_keys($voiceOnly, '-i', true));
+        $this->assertStringNotContainsString('sidechaincompress', implode(' ', $voiceOnly));
+        $this->assertStringContainsString('alimiter', implode(' ', $voiceOnly));
+
+        $withMusic = $mixer->command('/w/silent.mp4', $clips, '/w/music.wav', 5.0, '/w/out.mp4');
+        $this->assertCount(3, array_keys($withMusic, '-i', true));
+        $this->assertStringContainsString('sidechaincompress', implode(' ', $withMusic));
+
+        $silent = $mixer->command('/w/silent.mp4', [], null, 5.0, '/w/out.mp4');
+        $this->assertStringContainsString('anullsrc', implode(' ', $silent));
+    }
+
+    public function test_a_voice_clip_is_trimmed_at_both_ends_and_left_alone_when_ffmpeg_fails(): void
+    {
+        Process::fake(['*' => Process::result(errorOutput: 'boom', exitCode: 1)]);
+        $path = tempnam(sys_get_temp_dir(), 'clip');
+        file_put_contents($path, 'RIFF');
+
+        (new AudioMixer('/usr/bin/ffmpeg', '/usr/bin/ffprobe'))->trimSilence($path);
+
+        Process::assertRan(fn ($process): bool => str_contains(implode(' ', (array) $process->command), 'silenceremove') && str_contains(implode(' ', (array) $process->command), 'areverse'));
+        $this->assertSame('RIFF', file_get_contents($path));
+        unlink($path);
+    }
 }

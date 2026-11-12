@@ -39,13 +39,13 @@ final class KokoroVoice implements SpeechSynthesizer
         return 'Kokoro · '.$this->voice;
     }
 
-    public function speak(array $clips): void
+    public function speak(array $clips, array $shapes = []): void
     {
         $this->runSpeakScript([
             $this->python, $this->script, 'kokoro',
             '--model', $this->model, '--voices', $this->voices,
             '--voice', $this->voice, '--speed', (string) $this->speed,
             '--lang', str_starts_with($this->voice, 'b') ? 'en-gb' : 'en-us',
-        ], $clips, 'Kokoro', 20);
+        ], $clips, $shapes, 'Kokoro', 20);
     }
 }

@@ -14,11 +14,12 @@ use RuntimeException;
  * 1. every voice clip is moved to its moment (adelay), the clips are mixed into one voice track and the
  *    track is brought to the same loudness whatever the voice (voiceGain(): each Piper model speaks at
  *    its own level, and the English and the Romanian video must sound equally loud);
- * 2. the music (renderers/audio/music.mjs) is turned down to MUSIC_VOLUME;
- * 3. the music is "ducked" under the voice: a compressor listens to the voice (sidechain) and lowers
- *    the music while somebody speaks, then lets it come back;
- * 4. voice and music are mixed, raised by FINAL_GAIN and kept under 0 dB by a limiter;
- * 5. the result is encoded as AAC next to the picture, with the index at the start of the file (faststart),
+ * 2. the voice is raised by FINAL_GAIN and kept under 0 dB by a limiter. By default that is the whole sound:
+ *    the voice alone, silence between the sentences (the owner does not want a music bed);
+ * 3. only when a music file is given (config gitchronicle.media.music, off by default): the music
+ *    (renderers/audio/music.mjs) is turned down to MUSIC_VOLUME and "ducked" under the voice (a compressor
+ *    listens to the voice, the sidechain, and lowers the music while somebody speaks), then mixed in;
+ * 4. the result is encoded as AAC next to the picture, with the index at the start of the file (faststart),
  *    so the browser can play and seek before downloading everything.
  */
 final class AudioMixer
@@ -150,6 +151,28 @@ final class AudioMixer
     }
 
     /**
+     * Cut the silence at the start and at the end of a voice clip (each engine leaves its own, from 0.05 to
+     * 0.3 s), keeping a few hundredths of a second so no word is clipped. The pauses of the video are then
+     * exactly the ones the timeline plans (VideoTimeline::SENTENCE_GAP, VOICE_TAIL), whatever the voice.
+     * The clip is left as it was when FFmpeg fails.
+     */
+    public function trimSilence(string $path): void
+    {
+        $edge = 'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=%s';
+        $temporary = $path.'.trim.wav';
+        $result = Process::timeout(30)->run([
+            $this->ffmpeg, '-v', 'error', '-y', '-i', $path,
+            '-af', sprintf($edge, '0.03').',areverse,'.sprintf($edge, '0.05').',areverse', $temporary,
+        ]);
+
+        if ($result->successful() && is_file($temporary) && filesize($temporary) > 1000) {
+            rename($temporary, $path);
+        } elseif (is_file($temporary)) {
+            unlink($temporary);
+        }
+    }
+
+    /**
      * How many dB the voice clips must be raised (or lowered) to reach VOICE_LUFS: FFmpeg measures the
      * loudness of all the clips played one after another (EBU R128, the "loudnorm" filter in measuring
      * mode). 0 when it cannot be measured.
@@ -184,14 +207,15 @@ final class AudioMixer
     }
 
     /**
-     * Put the voice clips and the music on the silent video.
+     * Put the voice clips (and, if one is given, the music) on the silent video.
      *
      * @param  list<array{path: string, at: float}>  $clips  each voice clip and the second it starts at
+     * @param  string|null  $music  the music file, or null for the voice alone (the default)
      * @param  float  $voiceGainDb  the correction of the voice's loudness (voiceGain())
      *
      * @throws RuntimeException when FFmpeg fails
      */
-    public function mix(string $silentVideo, array $clips, string $music, float $totalSeconds, string $output, float $voiceGainDb = 0.0): void
+    public function mix(string $silentVideo, array $clips, ?string $music, float $totalSeconds, string $output, float $voiceGainDb = 0.0): void
     {
         $result = Process::timeout(600)->run($this->command($silentVideo, $clips, $music, $totalSeconds, $output, $voiceGainDb));
 
@@ -206,7 +230,7 @@ final class AudioMixer
      * @param  list<array{path: string, at: float}>  $clips
      * @return list<string>
      */
-    public function command(string $silentVideo, array $clips, string $music, float $totalSeconds, string $output, float $voiceGainDb = 0.0): array
+    public function command(string $silentVideo, array $clips, ?string $music, float $totalSeconds, string $output, float $voiceGainDb = 0.0): array
     {
         $inputs = ['-i', $silentVideo];
 
@@ -214,13 +238,14 @@ final class AudioMixer
             array_push($inputs, '-i', $clip['path']);
         }
 
-        array_push($inputs, '-i', $music);
-        $musicInput = count($clips) + 1;
         $filters = [];
 
         if ($clips === []) {
-            $filters[] = "[{$musicInput}:a]aresample=48000,volume=".self::MUSIC_VOLUME.',volume='.self::FINAL_GAIN.',alimiter=limit=0.9:level=false[out]';
+            // Nothing to say: the music alone, or silence.
+            array_push($inputs, ...($music === null ? ['-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo'] : ['-i', $music]));
+            $filters[] = '[1:a]aresample=48000'.($music === null ? '' : ',volume='.self::MUSIC_VOLUME).',volume='.self::FINAL_GAIN.',alimiter=limit=0.9:level=false[out]';
         } else {
+            $music === null || array_push($inputs, '-i', $music);
             $labels = '';
 
             foreach ($clips as $position => $clip) {
@@ -230,11 +255,18 @@ final class AudioMixer
                 $labels .= "[v{$position}]";
             }
 
-            $filters[] = $labels.'amix=inputs='.count($clips).':normalize=0:duration=longest,volume='.number_format($voiceGainDb, 2, '.', '').'dB,apad[voice]';
-            $filters[] = '[voice]asplit=2[voicekey][voicemix]';
-            $filters[] = "[{$musicInput}:a]aresample=48000,volume=".self::MUSIC_VOLUME.'[music]';
-            $filters[] = '[music][voicekey]sidechaincompress=threshold=0.015:ratio=8:attack=15:release=500[ducked]';
-            $filters[] = '[ducked][voicemix]amix=inputs=2:normalize=0:duration=first,volume='.self::FINAL_GAIN.',alimiter=limit=0.9:level=false[out]';
+            $voice = $labels.'amix=inputs='.count($clips).':normalize=0:duration=longest,volume='.number_format($voiceGainDb, 2, '.', '').'dB,apad';
+
+            if ($music === null) {
+                $filters[] = $voice.',volume='.self::FINAL_GAIN.',alimiter=limit=0.9:level=false[out]';
+            } else {
+                $musicInput = count($clips) + 1;
+                $filters[] = $voice.'[voice]';
+                $filters[] = '[voice]asplit=2[voicekey][voicemix]';
+                $filters[] = "[{$musicInput}:a]aresample=48000,volume=".self::MUSIC_VOLUME.'[music]';
+                $filters[] = '[music][voicekey]sidechaincompress=threshold=0.015:ratio=8:attack=15:release=500[ducked]';
+                $filters[] = '[ducked][voicemix]amix=inputs=2:normalize=0:duration=first,volume='.self::FINAL_GAIN.',alimiter=limit=0.9:level=false[out]';
+            }
         }
 
         return [

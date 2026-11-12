@@ -71,7 +71,8 @@ final class ScriptWriter
         Sound like a developer who just found this project and is telling a friend about it: curious, warm, plain words. Write for the ear:
         - The first line makes people want the next one: start from the situation or the question the project answers, not "X is a tool that".
         - Say the project's name once, early (in the opening or right after it), the way you would introduce it to a friend.
-        - The problem comes before the solution: what is annoying or hard, then what this project does about it.
+        - The video must leave the viewer UNDERSTANDING, in this order: (1) the problem, in plain words anyone can follow: what hurts, or takes too long, without this project; (2) how THIS project solves it, as one idea ("it does X by Y"), not a list of features; (3) when the CONTEXT has setup steps, how to start: say in words what the first step is (install it, run the setup, open the app), the command itself is shown on screen. Explain a technical term in a few plain words the first time it matters.
+        - Let the narrator care, honestly: one short reaction, only where the CONTEXT supports it (a number that is surprising, a step that removes real pain: "that's the part that saves the afternoon"). Facts only, no hype, no more than one such line.
         - Concrete details from THIS repository (its real features and names), never generic claims.
         - Short spoken sentences, natural contractions (it's, you'll, doesn't), varied rhythm; a question now and then is fine.
         - Punctuation is the voice's breathing: commas, full stops, an em dash or a colon for a beat. No parentheses, no exclamation marks.
@@ -83,9 +84,9 @@ final class ScriptWriter
 
         Answer with ONE JSON object and nothing else:
         {"hook": {"en": "the opening line, max 100 characters", "ro": "...", "quote": "..."},
-         "problem": {"en": "the problem, max 160 characters", "ro": "...", "quote": "..."} or null,
-         "features": [{"heading": "...", "title_en": "max 28 characters", "title_ro": "max 28 characters", "en": "one thing it does, concretely, max 150 characters", "ro": "...", "quote": "..."}] (2 to 4 items, the most interesting first),
-         "start": {"en": "how to try it, max 100 characters", "ro": "...", "command": "one shell command copied exactly from a README code block"} or null,
+         "problem": {"en": "the problem in plain words, what hurts without this project, max 160 characters", "ro": "...", "quote": "..."} or null,
+         "features": [{"heading": "...", "title_en": "max 28 characters", "title_ro": "max 28 characters", "en": "one thing it does and how, concretely, max 150 characters", "ro": "...", "quote": "..."}] (2 to 4 items, the most interesting first),
+         "start": {"en": "what the first step is, in words, max 100 characters", "ro": "...", "command": "one shell command copied exactly from a README code block"} or null,
          "ending": {"en": "the last line, max 110 characters", "ro": "...", "quote": "..."} or null}
         Count the characters: a text over its limit is thrown away.
         PROMPT;

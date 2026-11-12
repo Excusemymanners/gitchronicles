@@ -20,13 +20,13 @@ class VideoTimelineTest extends TestCase
         );
 
         [$hook, $cta] = $plan['scenes'];
-        // 0.35 lead + 2 + 0.14 breath + 3 + 0.45 tail = 5.94 → 5.933 on a whole frame.
-        $this->assertSame([0.0, 5.933, 0.367], [$hook['start'], $hook['duration'], $hook['voice_at']]);
-        $this->assertSame([['text' => 'One.', 'start' => 0.35, 'end' => 2.35], ['text' => 'Two.', 'start' => 2.49, 'end' => 5.49]], $hook['sentences']);
+        // 0.35 lead + 2 + 0.32 breath + 3 + 0.4 tail = 6.07 → 6.067 on a whole frame.
+        $this->assertSame([0.0, 6.067, 0.367], [$hook['start'], $hook['duration'], $hook['voice_at']]);
+        $this->assertSame([['text' => 'One.', 'start' => 0.35, 'end' => 2.35], ['text' => 'Two.', 'start' => 2.67, 'end' => 5.67]], $hook['sentences']);
         $this->assertSame('One.', $hook['cues'][0]['text']);
         // A short voice does not cut the scene under its minimum.
-        $this->assertSame([5.933, VideoTimeline::MIN_SECONDS['cta']], [$cta['start'], $cta['duration']]);
-        $this->assertSame(9.733, $plan['total']);
+        $this->assertSame([6.067, VideoTimeline::MIN_SECONDS['cta']], [$cta['start'], $cta['duration']]);
+        $this->assertSame(9.867, $plan['total']);
     }
 
     public function test_without_a_voice_a_scene_lasts_as_long_as_reading_it_and_still_has_captions(): void
@@ -35,7 +35,7 @@ class VideoTimelineTest extends TestCase
 
         [$scene] = $plan['scenes'];
         $this->assertNull($scene['voice_at']);
-        $this->assertEqualsWithDelta(0.35 + 101 * VideoTimeline::READING_SECONDS_PER_CHARACTER + 0.45, $scene['duration'], 0.04);
+        $this->assertEqualsWithDelta(0.35 + 101 * VideoTimeline::READING_SECONDS_PER_CHARACTER + VideoTimeline::VOICE_TAIL, $scene['duration'], 0.04);
         $this->assertNotEmpty($scene['cues']);
     }
 
@@ -58,7 +58,7 @@ class VideoTimelineTest extends TestCase
         // The first is on screen from the first frame; the second at the middle of sentence 1; the third with sentence 2.
         $this->assertEqualsWithDelta(0.0, $timed[0]['time'], 0.001);
         $this->assertEqualsWithDelta(0.35 + 2.0 - VideoTimeline::SHOT_LEAD, $timed[1]['time'], 0.001);
-        $this->assertEqualsWithDelta(0.35 + 4.0 + 0.14 - VideoTimeline::SHOT_LEAD, $timed[2]['time'], 0.001);
+        $this->assertEqualsWithDelta(0.35 + 4.0 + VideoTimeline::SENTENCE_GAP - VideoTimeline::SHOT_LEAD, $timed[2]['time'], 0.001);
         $this->assertArrayNotHasKey('sentence', $timed[0]);
     }
 

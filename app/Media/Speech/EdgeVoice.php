@@ -35,11 +35,11 @@ final class EdgeVoice implements SpeechSynthesizer
         return 'Edge (online) · '.$this->voice;
     }
 
-    public function speak(array $clips): void
+    public function speak(array $clips, array $shapes = []): void
     {
         $this->runSpeakScript(
             [$this->python, $this->script, 'edge', '--voice', $this->voice, '--rate', $this->rate, '--ffmpeg', $this->ffmpeg],
-            $clips, 'Edge', 15,
+            $clips, $shapes, 'Edge', 15,
         );
     }
 }

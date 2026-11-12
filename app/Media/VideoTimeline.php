@@ -27,13 +27,15 @@ final class VideoTimeline
 
     /**
      * How long after the cut the voice starts, how long the scene stays after the voice, and the breath
-     * between two sentences.
+     * between two sentences. The voice clips are trimmed of their own
+     * silence (AudioMixer::trimSilence()), so what is heard is these numbers plus about 0.08 s: 0.4 s between
+     * sentences and 0.4 + 0.35 + 0.08 = 0.83 s between scenes.
      */
     public const VOICE_LEAD = 0.35;
 
-    public const VOICE_TAIL = 0.45;
+    public const VOICE_TAIL = 0.4;
 
-    public const SENTENCE_GAP = 0.14;
+    public const SENTENCE_GAP = 0.32;
 
     /**
      * How long before its words the camera starts moving to a shot.
