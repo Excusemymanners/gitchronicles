@@ -44,6 +44,8 @@ class ScriptWriterTest extends TestCase
         // An unknown heading is forgotten, the scene stays.
         $this->assertNull($english[3]['heading']);
         $this->assertSame(['composer install', 'Install it with Composer.'], [$english[6]['command'], $english[6]['narration']]);
+        // The last line is the AI's ending; the address stays on the screen.
+        $this->assertSame(['Data viitoare, coșul te așteaptă.', 'github.com/acme/magazin'], [$romanian[7]['narration'], $romanian[7]['text']]);
         $this->assertArrayNotHasKey('en', $english[0]);
         $this->assertSame($this->answer(), $script->answer);
         $this->assertSame(ScriptWriter::contextHash($this->facts()), $script->contextHash);
@@ -67,7 +69,7 @@ class ScriptWriterTest extends TestCase
         // The number 3 is in the quote, so the scene that says it stays; the README's own command replaces the invented one.
         $english = $script->scenesFor(MediaLanguage::En);
         $this->assertSame(['It remembers 3 products.', 1, 1], [$english[1]['narration'], $english[1]['index'], $english[1]['count']]);
-        $this->assertSame(['composer install', 'To try it yourself, the README starts with this command.'], [$english[4]['command'], $english[4]['narration']]);
+        $this->assertSame(['composer install', 'Want to try it? The README starts with this command.'], [$english[4]['command'], $english[4]['narration']]);
     }
 
     public function test_without_ai_the_script_is_built_from_the_facts_in_both_languages(): void
@@ -84,17 +86,19 @@ class ScriptWriterTest extends TestCase
         $romanian = $script->scenesFor(MediaLanguage::Ro);
 
         // The English description is read by the English voice only; the Romanian one says the name.
-        $this->assertSame('Magazin. A small shop with online payments.', $english[0]['narration']);
-        $this->assertSame('Acesta este magazin, de la acme, pe GitHub.', $romanian[0]['narration']);
+        $this->assertSame('This is magazin, by acme. A small shop with online payments.', $english[0]['narration']);
+        $this->assertSame('Acesta e magazin, de la acme.', $romanian[0]['narration']);
         $this->assertSame('A small shop with online payments.', $romanian[0]['text']);
-        $this->assertSame([['Features', 'Install'], 'Its README walks you through Features and Install.'], [$english[1]['headings'], $english[1]['narration']]);
-        $this->assertSame('Under the hood it is written mostly in PHP and TypeScript, organised in 12 modules.', $english[2]['narration']);
-        $this->assertSame('Sub capotă e scris mai ales în PHP și TypeScript, organizat în 12 module.', $romanian[2]['narration']);
-        $this->assertSame('On GitHub it has over 1 thousand stars and 56 forks. 3 contributors made 214 commits. The latest one is from November 2026.', $english[3]['narration']);
-        $this->assertSame('Pe GitHub are peste o mie de stele și 56 de forkuri. 3 contribuitori au făcut 214 commituri. Cel mai recent e din noiembrie 2026.', $romanian[3]['narration']);
+        $this->assertSame([['Features', 'Install'], "Open the README and you'll find Features and Install."], [$english[1]['headings'], $english[1]['narration']]);
+        $this->assertSame("Under the hood, it's mostly PHP and TypeScript, split into 12 modules.", $english[2]['narration']);
+        $this->assertSame('Pe dinăuntru e scris mai ales în PHP și TypeScript, împărțit în 12 module.', $romanian[2]['narration']);
+        $this->assertSame("It's picked up over 1 thousand stars and 56 forks on GitHub. 214 commits so far — the latest in November 2026. 3 contributors have worked on it.", $english[3]['narration']);
+        $this->assertSame('Pe GitHub a strâns peste o mie de stele și 56 de forkuri. Până acum, 214 commituri — ultimul în noiembrie 2026. La el au lucrat 3 contribuitori.', $romanian[3]['narration']);
         $this->assertSame([['value' => '214', 'label' => 'commits'], ['value' => '3', 'label' => 'contributors'], ['value' => 'November 2026', 'label' => 'latest commit']], $english[3]['stats']);
         $this->assertSame('github.com/acme/magazin', $english[5]['url']);
-        $this->assertStringContainsString('GitChronicle', $english[5]['narration']);
+        // The video is about the repository: GitChronicle is only a small credit on the screen, never said.
+        $this->assertStringNotContainsString('GitChronicle', $english[5]['narration']);
+        $this->assertSame('Made with GitChronicle', $english[5]['credit']);
     }
 
     public function test_the_same_sources_reuse_the_answer_without_a_new_call(): void
@@ -140,6 +144,7 @@ class ScriptWriterTest extends TestCase
                 ['heading' => 'Pricing', 'title_en' => 'No account needed', 'title_ro' => 'Fără cont', 'en' => 'Pay by card without an account.', 'ro' => 'Plătești cu cardul, fără cont.', 'quote' => 'Card payments, without an account.'],
             ],
             'start' => ['en' => 'Install it with Composer.', 'ro' => 'Îl instalezi cu Composer.', 'command' => 'composer install'],
+            'ending' => ['en' => 'Next visit, your cart is still there.', 'ro' => 'Data viitoare, coșul te așteaptă.', 'quote' => 'remembers the products between visits'],
         ];
     }
 

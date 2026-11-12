@@ -5,18 +5,23 @@
  *
  * Ce scrie în folderul de ieșire:
  *   - page-00.png, page-01.png, …  pagina tăiată în bucăți (o singură imagine foarte înaltă ar depăși
- *     textura maximă a lui Chrome, 16.384 px); lățimea e 432 px CSS × 3 = 1296 px, deci rămâne clară la 1080;
+ *     textura maximă a lui Chrome, 16.384 px). Pagina e așezată pe 400 px CSS (aspectul de telefon al
+ *     GitHub, cu literele mari) și fotografiată de 2,7 ori mai fin, adică exact 1080 px: lățimea video-ului.
+ *     Așa, video-ul arată fiecare pixel al fotografiei ca pe un pixel al lui, fără nicio mărire sau
+ *     micșorare — textul rămâne la fel de clar ca pe ecranul unui telefon;
  *   - landmarks.json  unde se află, în pixeli CSS ai paginii, reperele reale: numele, descrierea, stelele,
  *     fork-urile, lista de fișiere, rândul ultimului commit, bara de limbaje, fiecare titlu, imagine și
  *     paragraf din README;
- *   - social.(png|jpg)  imaginea de previzualizare a repository-ului (og:image), avatar.(png|jpg) al proprietarului.
+ *   - social.(png|jpg)  imaginea de previzualizare a repository-ului (og:image), avatar.(png|jpg) al proprietarului;
+ *   - logo.png  logo-ul repository-ului, când README-ul începe cu unul (fotografiat de pe pagină).
  *
  * Reguli de siguranță:
  *   - se deschid doar github.com și gazdele de fișiere ale GitHub (githubassets.com, githubusercontent.com);
  *     orice altă cerere e oprită înainte să plece;
  *   - Chrome pornește cu un mediu minim, construit aici: nicio variabilă a workerului (chei, parole) nu ajunge la el;
  *   - nimic din conținutul repository-ului nu e modificat: se ascund doar elementele care plutesc peste
- *     pagină (bannere, ferestre, bare lipite de ecran);
+ *     pagină (bannere, ferestre, bare lipite de ecran) și bara de sus a GitHub pentru vizitatori
+ *     („Sign in”, „Sign up”), care nu ține de repository;
  *   - totul are limită de timp; la orice problemă scriptul iese cu cod 1 și un motiv pe stdout (JSON),
  *     iar video-ul se face fără fotografie — niciodată cu una falsă.
  *
@@ -29,10 +34,14 @@ import puppeteer from 'puppeteer-core';
 
 const [owner, name, outputDirectory, maxHeightArgument] = process.argv.slice(2);
 
-/** Lățimea unui telefon, în pixeli CSS, și de câte ori mai fină e fotografia. */
-const WIDTH = 432;
-const SCALE = 3;
-/** Înălțimea unei bucăți, în pixeli CSS (3600 px reali). */
+/**
+ * Lățimea unui telefon, în pixeli CSS, și de câte ori mai fină e fotografia: 400 × 2,7 = 1080 px, lățimea
+ * video-ului. GitHub trimite sub 544 px aspectul de telefon (o coloană, litere mari).
+ */
+const WIDTH = 400;
+const FRAME_WIDTH = 1080;
+const SCALE = FRAME_WIDTH / WIDTH;
+/** Înălțimea unei bucăți, în pixeli CSS (3240 px reali, un număr întreg). */
 const TILE_HEIGHT = 1200;
 /** Cât din pagină se fotografiază cel mult, în pixeli CSS. */
 const MAX_HEIGHT = Math.max(TILE_HEIGHT, Number(maxHeightArgument) || 20000);
@@ -216,6 +225,11 @@ try {
                 element.style.setProperty('position', 'static', 'important');
             }
         }
+
+        /* Bara de sus pentru vizitatori („Sign in”, „Sign up”) nu e a repository-ului: pagina începe cu el. */
+        for (const header of document.querySelectorAll('header.header-logged-out, header.HeaderMktg')) {
+            header.style.setProperty('display', 'none', 'important');
+        }
     });
 
     /* Derulăm o dată toată pagina, ca imaginile încărcate „leneș” să apară, apoi ne întoarcem sus. */
@@ -299,6 +313,21 @@ try {
             const section = languagesHeading.parentElement;
             const list = section ? [...section.querySelectorAll('li')].filter(visible).map((item) => clean(item.textContent)) : [];
             languages = section && visible(section) ? { text: list.join(' · ').slice(0, 300), ...box(section) } : null;
+        }
+
+        /* Contribuitorii: titlul „Contributors” și avatarele de sub el, luate împreună. */
+        const contributorsHeading = [...document.querySelectorAll('h2, h3')].find((heading) => visible(heading) && /^Contributors/.test(clean(heading.textContent)));
+        let contributors = null;
+
+        if (contributorsHeading) {
+            let section = contributorsHeading.parentElement;
+
+            /* Urcăm până la elementul care cuprinde și avatarele (titlul singur e prea mic). */
+            while (section && section.parentElement && section.getBoundingClientRect().height < contributorsHeading.getBoundingClientRect().height + 30) {
+                section = section.parentElement;
+            }
+
+            contributors = section && visible(section) && section.getBoundingClientRect().height < 600 ? { text: clean(contributorsHeading.textContent).slice(0, 80), ...box(section) } : null;
         }
 
         const files = document.querySelector('table[aria-labelledby="folders-and-files"]');
@@ -388,6 +417,23 @@ try {
             }
         }
 
+        /*
+         * Logo-ul repository-ului: prima imagine a README-ului, când stă la începutul lui (înainte de primul
+         * paragraf de text) și nu e o insignă (insignele sunt mici: sub 32 px înălțime).
+         */
+        let logo = null;
+
+        if (article) {
+            const firstText = [...article.querySelectorAll('p, li, pre')].find((element) => visible(element) && clean(element.textContent).length > 40);
+            const limit = firstText ? box(firstText).y : box(article).y + 500;
+            const candidate = [...article.querySelectorAll('img, picture img')].find((image) => visible(image) && box(image).y < limit && box(image).w >= 96 && box(image).h >= 32);
+
+            if (candidate) {
+                candidate.setAttribute('data-gitchronicle-logo', '1');
+                logo = { alt: clean(candidate.getAttribute('alt')).slice(0, 120), ...box(candidate) };
+            }
+        }
+
         const social = document.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? null;
 
         return {
@@ -402,7 +448,9 @@ try {
                 files: files && visible(files) ? { text: '', ...box(files) } : null,
                 commit: mark(commit),
                 languages,
+                contributors,
                 readme: article && visible(article) ? { text: '', ...box(article) } : null,
+                logo: logo ? { text: logo.alt, x: logo.x, y: logo.y, w: logo.w, h: logo.h } : null,
             },
             headings: headings.filter(inside),
             images: images.filter(inside),
@@ -438,9 +486,16 @@ try {
     const socialIsCustom = typeof found.social === 'string' && new URL(found.social, url).host === 'repository-images.githubusercontent.com';
     const socialFile = found.social ? await downloadImage(new URL(found.social, url).toString(), 'social') : null;
     const avatarFile = await downloadImage(`https://github.com/${owner}.png?size=240`, 'avatar');
+    /* Logo-ul se fotografiază de pe pagină, la aceeași finețe: e exact imaginea pe care o arată README-ul. */
+    let logoFile = null;
+
+    if (found.landmarks.logo !== null) {
+        const element = await page.$('[data-gitchronicle-logo]');
+        logoFile = element ? await element.screenshot({ path: join(outputDirectory, 'logo.png'), type: 'png', captureBeyondViewport: true }).then(() => 'logo.png').catch(() => null) : null;
+    }
 
     const result = {
-        version: 1,
+        version: 2,
         url,
         captured_at: new Date().toISOString(),
         viewport: { width: WIDTH, scale: SCALE },
@@ -452,6 +507,7 @@ try {
         blocks: found.blocks,
         social: socialFile ? { file: socialFile, custom: socialIsCustom } : null,
         avatar: avatarFile ? { file: avatarFile } : null,
+        logo: logoFile ? { file: logoFile } : null,
         blocked_requests: blockedRequests,
     };
 

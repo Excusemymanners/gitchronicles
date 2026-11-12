@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Stands in for every tool of the video and the slides (the GitHub page capture, Piper, ffprobe,
+ * Stands in for every tool of the video and the slides (the GitHub page capture, the voices — Piper and
+ * speak.py for Kokoro and Edge —, ffprobe,
  * HyperFrames, the music script, FFmpeg, the diagram script, Marp), so a test never starts Node, Python,
  * Chrome or FFmpeg and never reaches GitHub: each fake tool only writes the small file the real one would
  * write, and the commands are remembered. The fake capture writes the landmarks recorded once from a real
@@ -50,7 +51,7 @@ trait FakesMediaTools
     /**
      * Fake the tools.
      *
-     * @param  list<string>  $failing  the tools that exit with an error: "capture", "hyperframes", "marp", "diagram", "piper", "ffmpeg"
+     * @param  list<string>  $failing  the tools that exit with an error: "capture", "hyperframes", "marp", "diagram", "piper", "speak" (Kokoro, Edge), "ffmpeg"
      * @param  bool  $withVoice  whether Piper and its voice model look installed
      * @param  float  $clipSeconds  the length ffprobe reports for every voice clip
      */
@@ -68,6 +69,9 @@ trait FakesMediaTools
 
         if ($withVoice) {
             $disk->put('voice/python', '');
+            $disk->put('voice/speak.py', '');
+            $disk->put('voice/kokoro.onnx', '');
+            $disk->put('voice/voices.bin', '');
             foreach (['ro', 'en'] as $language) {
                 $disk->put("voice/{$language}.onnx", '');
                 $disk->put("voice/{$language}.onnx.json", '{}');
@@ -79,7 +83,14 @@ trait FakesMediaTools
             'gitchronicle.media.hyperframes_home' => $disk->path('hyperframes'),
             'gitchronicle.media.voice.python' => $disk->path('voice/python'),
             'gitchronicle.media.voice.models' => ['ro' => $disk->path('voice/ro.onnx'), 'en' => $disk->path('voice/en.onnx')],
+            // Both languages read by their Piper model unless a test chooses another engine.
+            'gitchronicle.media.voice.engines' => ['en' => 'piper', 'ro' => 'piper'],
+            'gitchronicle.media.voice.script' => $disk->path('voice/speak.py'),
+            'gitchronicle.media.voice.kokoro.model' => $disk->path('voice/kokoro.onnx'),
+            'gitchronicle.media.voice.kokoro.voices' => $disk->path('voice/voices.bin'),
             'gitchronicle.media.capture.enabled' => true,
+            // A fixed encoder: "auto" would ask FFmpeg which encoders it has.
+            'gitchronicle.media.video.encoder' => 'libx264',
         ]);
 
         // The slides download the owner's avatar and the README's logo: here nobody answers.
@@ -102,6 +113,7 @@ trait FakesMediaTools
             match ($tool) {
                 'capture' => $this->fakeCapture($command[4]),
                 'piper' => File::put($this->argumentAfter($command, '--output-file'), 'RIFF'),
+                'speak' => $this->fakeSpeak((string) $process->input),
                 'hyperframes' => $this->fakeHyperframes($command),
                 'music', 'ffmpeg' => File::put($command[array_key_last($command)], 'media'),
                 'diagram' => File::put($command[3], base64_decode(self::TINY_PNG)),
@@ -126,6 +138,7 @@ trait FakesMediaTools
             str_contains($line, 'capture/github.mjs') => 'capture',
             str_contains($line, 'loudnorm=print_format=json') => 'loudness',
             str_contains($line, '-m piper') => 'piper',
+            str_contains($line, 'speak.py') => 'speak',
             str_contains($command[0], 'ffprobe') => 'ffprobe',
             str_contains($line, 'hyperframes.mjs') => 'hyperframes',
             str_contains($line, 'music.mjs') => 'music',
@@ -166,6 +179,18 @@ trait FakesMediaTools
 
         foreach (['page-00.png', 'social.png', 'avatar.png'] as $image) {
             File::put("{$folder}/{$image}", base64_decode(self::TINY_PNG));
+        }
+    }
+
+    /**
+     * speak.py (Kokoro, Edge): one WAV per clip of the JSON list it reads; the texts are remembered.
+     */
+    private function fakeSpeak(string $input): void
+    {
+        $this->toolInputs['speech'] = $input;
+
+        foreach (json_decode($input, true) as $clip) {
+            File::put($clip['path'], 'RIFF');
         }
     }
 

@@ -52,7 +52,7 @@ class RenderPresentationVideoTest extends TestCase
 
         // One Piper clip per sentence (4), then the picture, the music, the loudness of the voice, the mix and the poster.
         $this->assertSame(
-            ['piper', 'ffprobe', 'piper', 'ffprobe', 'piper', 'ffprobe', 'piper', 'ffprobe', 'hyperframes', 'music', 'loudness', 'ffmpeg', 'ffmpeg'],
+            ['piper', 'piper', 'piper', 'piper', 'ffprobe', 'ffprobe', 'ffprobe', 'ffprobe', 'hyperframes', 'music', 'loudness', 'ffmpeg', 'ffmpeg'],
             array_map($this->toolOf(...), $this->toolCommands),
         );
     }
@@ -66,7 +66,7 @@ class RenderPresentationVideoTest extends TestCase
 
         $data = json_decode($this->toolInputs['data'], true);
         $this->assertSame(['ro', ['owner' => 'excusemymanners', 'name' => 'gitchronicles']], [$data['language'], $data['repo']]);
-        $this->assertSame([432, 'capture/page-00.png', 'capture/avatar.png'], [$data['capture']['width'], $data['capture']['tiles'][0]['file'], $data['capture']['avatar']]);
+        $this->assertSame([400, 2.7, 'capture/page-00.png', 'capture/avatar.png'], [$data['capture']['width'], $data['capture']['scale'], $data['capture']['tiles'][0]['file'], $data['capture']['avatar']]);
         $this->assertSame(['hook', 'start', 'cta'], array_column($data['scenes'], 'key'));
         $this->assertSame('Ce este', $data['scenes'][0]['label']);
         // The camera: the real name of the repository, then the exact line of the command.
@@ -78,7 +78,8 @@ class RenderPresentationVideoTest extends TestCase
         $this->assertStringContainsString('data-duration="13.033"', $this->toolInputs['composition']);
 
         [$hyperframes] = $this->commandsOf('hyperframes');
-        $this->assertSame(['--format', 'mp4', '--fps', '30', '--quality', 'looks', '--workers', '4', '--quiet', '--json'], array_slice($hyperframes, -10));
+        // HyperFrames writes an almost lossless master: the final picture is encoded once, by the mix.
+        $this->assertSame(['--format', 'mp4', '--fps', '30', '--quality', 'looks', '--crf', '10', '--workers', '4', '--quiet', '--json'], array_slice($hyperframes, -12));
 
         $environment = $this->toolEnvironments[array_search($hyperframes, $this->toolCommands, true)];
         $home = Storage::disk('local')->path('hyperframes');
@@ -105,7 +106,8 @@ class RenderPresentationVideoTest extends TestCase
         // The fake voice measures -20 LUFS: it is raised by 3 dB to the common level.
         $this->assertStringContainsString('amix=inputs=4:normalize=0:duration=longest,volume=3.00dB,apad[voice]', $filters);
         $this->assertStringContainsString('[5:a]aresample=48000,volume='.AudioMixer::MUSIC_VOLUME.'[music]', $filters);
-        $this->assertSame(['-c:v', 'copy', '-c:a', 'aac'], array_slice($mix, array_search('-c:v', $mix, true), 4));
+        $this->assertSame(['-c:v', 'libx264', '-preset', 'slow', '-crf', '20'], array_slice($mix, array_search('-c:v', $mix, true), 6));
+        $this->assertSame(['-c:a', 'aac'], array_slice($mix, array_search('-c:a', $mix, true), 2));
     }
 
     public function test_without_the_photo_the_video_has_typographic_scenes_and_says_why(): void

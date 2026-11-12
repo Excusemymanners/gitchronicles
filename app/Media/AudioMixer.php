@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Process;
 use RuntimeException;
 
 /**
- * The sound of the video, made with FFmpeg in one command and put on the silent video from HyperFrames
- * (the picture is copied as it is, not encoded again):
+ * The sound of the video, made with FFmpeg in one command and put on the silent video from HyperFrames.
+ * The same command encodes the final picture (videoArguments()): HyperFrames writes a "master" of almost
+ * lossless quality and the final file is encoded here once, with settings chosen for screen content (sharp
+ * text on flat colours), so we decide the quality instead of the renderer's defaults:
  *
  * 1. every voice clip is moved to its moment (adelay), the clips are mixed into one voice track and the
  *    track is brought to the same loudness whatever the voice (voiceGain(): each Piper model speaks at
@@ -16,7 +18,7 @@ use RuntimeException;
  * 3. the music is "ducked" under the voice: a compressor listens to the voice (sidechain) and lowers
  *    the music while somebody speaks, then lets it come back;
  * 4. voice and music are mixed, raised by FINAL_GAIN and kept under 0 dB by a limiter;
- * 5. the result is encoded as AAC next to the video, with the index at the start of the file (faststart),
+ * 5. the result is encoded as AAC next to the picture, with the index at the start of the file (faststart),
  *    so the browser can play and seek before downloading everything.
  */
 final class AudioMixer
@@ -40,11 +42,24 @@ final class AudioMixer
     public const MAX_VOICE_GAIN_DB = 9.0;
 
     /**
+     * The quality of HyperFrames' master when the picture is encoded again here (CRF / NVENC CQ 10: about
+     * 20 Mbit/s, visually identical to Chrome's frames). It is a work file, deleted after the mix.
+     */
+    public const MASTER_QUALITY = 10;
+
+    /**
+     * The encoder picked for "auto" (asking FFmpeg once per mixer).
+     */
+    private ?string $detectedEncoder = null;
+
+    /**
      * Create the mixer with the paths from config('gitchronicle.media').
      */
     public function __construct(
         private string $ffmpeg,
         private string $ffprobe,
+        private string $videoEncoder = 'copy',
+        private int $videoQuality = 20,
     ) {}
 
     /**
@@ -52,7 +67,66 @@ final class AudioMixer
      */
     public static function fromConfig(): self
     {
-        return new self(config('gitchronicle.media.ffmpeg_path'), config('gitchronicle.media.ffprobe_path'));
+        return new self(
+            config('gitchronicle.media.ffmpeg_path'),
+            config('gitchronicle.media.ffprobe_path'),
+            (string) config('gitchronicle.media.video.encoder', 'auto'),
+            (int) config('gitchronicle.media.video.quality', 20),
+        );
+    }
+
+    /**
+     * The encoder of the final picture: the configured one, or for "auto" the best this FFmpeg has —
+     * libx264 (the reference H.264 encoder), else NVENC when an NVIDIA GPU is present (Fedora's FFmpeg is
+     * built without libx264), else "copy" (HyperFrames' own file is the final one).
+     */
+    public function encoder(): string
+    {
+        if ($this->videoEncoder !== 'auto') {
+            return $this->videoEncoder;
+        }
+
+        if ($this->detectedEncoder === null) {
+            $encoders = Process::timeout(30)->run([$this->ffmpeg, '-hide_banner', '-encoders'])->output();
+
+            $this->detectedEncoder = match (true) {
+                preg_match('/\slibx264\s/', $encoders) === 1 => 'libx264',
+                preg_match('/\sh264_nvenc\s/', $encoders) === 1 && file_exists('/dev/nvidiactl') => 'h264_nvenc',
+                default => 'copy',
+            };
+        }
+
+        return $this->detectedEncoder;
+    }
+
+    /**
+     * The quality HyperFrames renders at: almost lossless when the picture is encoded again here, the final
+     * quality when its file is kept as it is.
+     */
+    public function masterQuality(): int
+    {
+        return $this->encoder() === 'copy' ? $this->videoQuality : self::MASTER_QUALITY;
+    }
+
+    /**
+     * The FFmpeg options of the final picture. Both encoders aim at constant visual quality (CRF / CQ =
+     * config gitchronicle.media.video.quality, 20 by default: measured indistinguishable from the master on
+     * text), H.264 High profile, yuv420p (plays in every browser) and a keyframe every 2 seconds (seeking).
+     *
+     * @return list<string>
+     */
+    public function videoArguments(): array
+    {
+        $quality = (string) $this->videoQuality;
+
+        return match ($this->encoder()) {
+            'libx264' => ['-c:v', 'libx264', '-preset', 'slow', '-crf', $quality, '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', '60'],
+            'h264_nvenc' => [
+                '-c:v', 'h264_nvenc', '-preset', 'p7', '-tune', 'hq', '-rc', 'vbr', '-cq', $quality, '-b:v', '0',
+                '-spatial-aq', '1', '-temporal-aq', '1', '-rc-lookahead', '32', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', '60',
+            ],
+            default => ['-c:v', 'copy'],
+        };
     }
 
     /**
@@ -119,7 +193,7 @@ final class AudioMixer
      */
     public function mix(string $silentVideo, array $clips, string $music, float $totalSeconds, string $output, float $voiceGainDb = 0.0): void
     {
-        $result = Process::timeout(180)->run($this->command($silentVideo, $clips, $music, $totalSeconds, $output, $voiceGainDb));
+        $result = Process::timeout(600)->run($this->command($silentVideo, $clips, $music, $totalSeconds, $output, $voiceGainDb));
 
         if ($result->failed()) {
             throw new RuntimeException('FFmpeg could not mix the sound: '.mb_substr(trim($result->errorOutput()), -800));
@@ -168,7 +242,8 @@ final class AudioMixer
             ...$inputs,
             '-filter_complex', implode(';', $filters),
             '-map', '0:v', '-map', '[out]',
-            '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k',
+            ...$this->videoArguments(),
+            '-c:a', 'aac', '-b:a', '160k',
             '-t', number_format($totalSeconds, 3, '.', ''),
             '-movflags', '+faststart',
             $output,

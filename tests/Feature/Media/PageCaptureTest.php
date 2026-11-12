@@ -54,6 +54,23 @@ class PageCaptureTest extends TestCase
         $this->assertSame(["media/{$repository->id}/capture/".str_repeat('b', 40)], Storage::disk('local')->directories("media/{$repository->id}/capture"));
     }
 
+    public function test_a_photo_of_an_older_version_is_taken_again(): void
+    {
+        $this->fakeMediaTools();
+        $repository = Repository::factory()->ready()->create(['last_sha' => str_repeat('a', 40)]);
+        $folder = "media/{$repository->id}/capture/".str_repeat('a', 40);
+        $older = [...$this->data(), 'version' => 1, 'viewport' => ['width' => 432, 'scale' => 3]];
+        Storage::disk('local')->put("{$folder}/landmarks.json", json_encode($older));
+        Storage::disk('local')->put("{$folder}/page-00.png", 'png');
+
+        $this->assertFalse(app(GitHubCapture::class)->stored($repository)->isAvailable());
+
+        $capture = app(GitHubCapture::class)->capture($repository);
+
+        $this->assertCount(1, $this->commandsOf('capture'));
+        $this->assertSame(2.7, $capture->forComposition('capture')['scale']);
+    }
+
     public function test_a_failed_or_disabled_capture_is_missing_with_its_reason_and_never_a_stale_photo(): void
     {
         $this->fakeMediaTools(failing: ['capture']);
@@ -91,8 +108,10 @@ class PageCaptureTest extends TestCase
         $this->assertNull($capture->locate('și'));
 
         $composition = $capture->forComposition('capture');
-        $this->assertSame([432, 'capture/page-00.png'], [$composition['width'], $composition['tiles'][0]['file']]);
+        // 400 CSS pixels photographed 2.7 times finer: exactly the 1080 pixels of the video, shown 1:1.
+        $this->assertSame([400, 2.7, 'capture/page-00.png'], [$composition['width'], $composition['scale'], $composition['tiles'][0]['file']]);
         $this->assertNull($composition['social']);
+        $this->assertNull($composition['logo']);
     }
 
     public function test_the_fingerprint_ignores_positions_and_changes_with_the_text(): void

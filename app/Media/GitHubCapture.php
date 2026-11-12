@@ -41,6 +41,12 @@ final class GitHubCapture
     public const FAILED_REASON = 'Pagina de GitHub nu a putut fi fotografiată.';
 
     /**
+     * The version of the photo the composition expects (renderers/capture/github.mjs writes it). Version 2 is
+     * taken at exactly the video's width (shown 1:1); an older photo is taken again instead of being used.
+     */
+    public const VERSION = 2;
+
+    /**
      * The photo of the repository's page for its current commit: the stored one, or a new one.
      */
     public function capture(Repository $repository, bool $fresh = false): PageCapture
@@ -116,7 +122,7 @@ final class GitHubCapture
 
     /**
      * The landmarks of a capture folder, or null when the folder is not a complete capture: the map must
-     * name the repository and every tile it lists must exist.
+     * be of the current VERSION, name the repository and every tile it lists must exist.
      *
      * @return array<string, mixed>|null
      */
@@ -128,7 +134,7 @@ final class GitHubCapture
 
         $data = json_decode((string) file_get_contents("{$directory}/landmarks.json"), true);
 
-        if (! is_array($data) || ! is_array($data['landmarks']['name'] ?? null) || ! is_array($data['tiles'] ?? null) || $data['tiles'] === []) {
+        if (! is_array($data) || ($data['version'] ?? null) !== self::VERSION || ! is_array($data['landmarks']['name'] ?? null) || ! is_array($data['tiles'] ?? null) || $data['tiles'] === []) {
             return null;
         }
 

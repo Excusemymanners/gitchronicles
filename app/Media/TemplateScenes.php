@@ -13,7 +13,10 @@ use Illuminate\Support\Str;
  * - „Cum e construit”: the languages and the modules found by the code analysis;
  * - „În cifre”: the stars and forks from GitHub, the commits and contributors of the imported history;
  * - „Cum începi” with the README's command;
- * - the closing, which points to the full documentation on GitChronicle.
+ * - the closing, with the repository's address and GitChronicle as a small credit on the screen.
+ *
+ * The sentences are written to be said aloud: short, with contractions in English, in natural spoken
+ * Romanian (not translated), each scene with its own sentence shape.
  *
  * The AI script uses the same „Cum e construit”, „În cifre” and closing scenes (their numbers and names
  * never pass through the AI), and these scenes replace any AI scene that does not pass the checks.
@@ -80,12 +83,17 @@ final class TemplateScenes
         }
 
         $plain = [
-            'en' => "This is {$facts->name}, from {$facts->owner} on GitHub.",
-            'ro' => "Acesta este {$facts->name}, de la {$facts->owner}, pe GitHub.",
+            'en' => "This is {$facts->name}, by {$facts->owner}.",
+            'ro' => "Acesta e {$facts->name}, de la {$facts->owner}.",
         ];
 
         if ($facts->description === null) {
-            return [...$scene, 'quote' => null, 'source' => null, ...self::spoken('hook', $plain['en'], $plain['ro'], text: null)];
+            return [...$scene, 'quote' => null, 'source' => null, ...self::spoken(
+                'hook',
+                $plain['en']." Let's see what's inside.",
+                $plain['ro'].' Hai să vedem ce are înăuntru.',
+                text: null,
+            )];
         }
 
         $text = self::shorten($facts->description);
@@ -101,7 +109,7 @@ final class TemplateScenes
         foreach (MediaLanguage::cases() as $language) {
             // The description is read only by the voice of the language it is written in.
             $lines[$language->value] = $writtenIn === $language
-                ? Str::ucfirst($facts->name).'. '.self::sentence(rtrim($text, '…'))
+                ? $plain[$language->value].' '.self::sentence(rtrim($text, '…'))
                 : $plain[$language->value];
         }
 
@@ -128,8 +136,8 @@ final class TemplateScenes
             return null;
         }
 
-        $english = 'Its README walks you through '.EnglishText::join($sections).'.';
-        $romanian = 'README-ul lui te duce prin '.RomanianText::join($sections).'.';
+        $english = "Open the README and you'll find ".EnglishText::join($sections).'.';
+        $romanian = 'Deschizi README-ul și dai de '.RomanianText::join($sections).'.';
 
         return [
             'key' => 'feature',
@@ -167,10 +175,10 @@ final class TemplateScenes
         $chips = $chips === [] ? $languages : $chips;
 
         $lines = [
-            'en' => 'Under the hood it is written mostly in '.EnglishText::join($languages)
-                .($modules > 1 ? ', organised in '.SpokenText::count($modules, 'module', MediaLanguage::En).'.' : '.'),
-            'ro' => 'Sub capotă e scris mai ales în '.RomanianText::join($languages)
-                .($modules > 1 ? ', organizat în '.SpokenText::count($modules, 'module', MediaLanguage::Ro).'.' : '.'),
+            'en' => "Under the hood, it's mostly ".EnglishText::join($languages)
+                .($modules > 1 ? ', split into '.SpokenText::count($modules, 'module', MediaLanguage::En).'.' : '.'),
+            'ro' => 'Pe dinăuntru e scris mai ales în '.RomanianText::join($languages)
+                .($modules > 1 ? ', împărțit în '.SpokenText::count($modules, 'module', MediaLanguage::Ro).'.' : '.'),
         ];
 
         $scene = [
@@ -186,7 +194,7 @@ final class TemplateScenes
                 'text' => $lines[$language->value],
                 'narration' => $lines[$language->value],
                 'chips' => $chips,
-                'note' => $language === MediaLanguage::Ro ? 'din analiza codului făcută de GitChronicle' : 'from GitChronicle\'s code analysis',
+                'note' => $language === MediaLanguage::Ro ? 'din analiza codului' : 'from the code analysis',
                 'source' => [
                     'label' => $language === MediaLanguage::Ro ? 'Analiza codului' : 'Code analysis',
                     'quote' => implode(' · ', array_filter([...$chips, $modules > 1 ? SpokenText::shownCount($modules, 'module', $language) : null])),
@@ -236,16 +244,25 @@ final class TemplateScenes
                     SpokenText::count($stars, 'star', $language),
                     $forks === null ? null : SpokenText::count($forks, 'fork', $language),
                 ]));
-                $sentences[] = ($isRomanian ? 'Pe GitHub are ' : 'On GitHub it has ').SpokenText::join($counted, $language).'.';
+                $sentences[] = $isRomanian
+                    ? 'Pe GitHub a strâns '.SpokenText::join($counted, $language).'.'
+                    : "It's picked up ".SpokenText::join($counted, $language).' on GitHub.';
             }
 
             if ($history !== null) {
                 $commits = SpokenText::count($history['commit_count'], 'commit', $language);
                 $contributors = SpokenText::count($history['contributor_count'], 'contributor', $language);
                 $month = SpokenText::monthYear($history['last_commit_at'], $language);
+                // Two sentences, in the order the camera shows them: the commits with the latest one (top of the
+                // page), then the people (the contributors, near the end of the page).
                 $sentences[] = $isRomanian
-                    ? Str::ucfirst($contributors).($history['contributor_count'] === 1 ? ' a făcut ' : ' au făcut ')."{$commits}. Cel mai recent e din {$month}."
-                    : Str::ucfirst($contributors)." made {$commits}. The latest one is from {$month}.";
+                    ? "Până acum, {$commits} — ultimul în {$month}."
+                    : Str::ucfirst($commits)." so far — the latest in {$month}.";
+                $sentences[] = match (true) {
+                    $history['contributor_count'] === 1 => $isRomanian ? 'Totul e munca unui singur om.' : "So far, it's the work of one person.",
+                    $isRomanian => "La el au lucrat {$contributors}.",
+                    default => Str::ucfirst($contributors).' have worked on it.',
+                };
 
                 $stats = [
                     ['value' => self::number($history['commit_count'], $language), 'label' => SpokenText::noun($history['commit_count'], 'commit', $language)],
@@ -260,7 +277,7 @@ final class TemplateScenes
                 'narration' => implode(' ', $sentences),
                 'stats' => $stats,
                 'chips' => array_values(array_filter([...$languages, $facts->license])),
-                'note' => $isRomanian ? 'din istoricul git importat de GitChronicle' : 'from the git history imported by GitChronicle',
+                'note' => $isRomanian ? 'din istoricul git' : 'from the git history',
                 'source' => [
                     'label' => match (true) {
                         $stars !== null && $history !== null => $isRomanian ? 'GitHub și istoricul git' : 'GitHub and the git history',
@@ -304,32 +321,40 @@ final class TemplateScenes
             'source' => ['label' => 'README.md', 'quote' => $command, 'url' => $facts->startCommand['url'] ?? $facts->sources['README.md']['url'] ?? null],
             ...self::spoken(
                 'start',
-                $written['en'] ?? 'To try it yourself, the README starts with this command.',
-                $written['ro'] ?? 'Ca să îl încerci, README-ul începe cu această comandă.',
+                $written['en'] ?? 'Want to try it? The README starts with this command.',
+                $written['ro'] ?? 'Vrei să-l încerci? README-ul începe cu comanda asta.',
             ),
         ];
     }
 
     /**
-     * The closing: where the rest is — the full documentation, the diagrams and the history on GitChronicle —
-     * with the repository's address on GitHub on the screen.
+     * The closing: where to find the repository, with its address on GitHub on the screen. The last spoken
+     * line is the AI's ending when it passed the checks, otherwise where the repository is. The video is
+     * about the repository, so GitChronicle is only a small credit under it ("credit"), never said aloud.
      *
+     * @param  array{en: string, ro: string, source: array{label: string, quote: string, url: string|null}}|null  $ending  the AI's last line
      * @return array<string, mixed>
      */
-    public static function cta(PresentationFacts $facts): array
+    public static function cta(PresentationFacts $facts, ?array $ending = null): array
     {
-        return [
+        $scene = [
             'key' => 'cta',
             'heading' => null,
             'quote' => null,
             'url' => $facts->shortUrl(),
-            'source' => ['label' => 'GitChronicle', 'quote' => $facts->shortUrl(), 'url' => $facts->url],
+            'source' => $ending['source'] ?? ['label' => 'GitHub', 'quote' => $facts->shortUrl(), 'url' => $facts->url],
             ...self::spoken(
                 'cta',
-                'The full documentation, the architecture diagrams and the history are on GitChronicle.',
-                'Documentația completă, diagramele de arhitectură și istoricul sunt pe GitChronicle.',
+                $ending['en'] ?? "It's all on GitHub, under {$facts->owner}. Go have a look.",
+                $ending['ro'] ?? "Totul e pe GitHub, la {$facts->owner}. Aruncă o privire.",
+                text: $facts->shortUrl(),
             ),
         ];
+
+        $scene['en']['credit'] = 'Made with GitChronicle';
+        $scene['ro']['credit'] = 'Realizat cu GitChronicle';
+
+        return $scene;
     }
 
     /**

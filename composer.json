@@ -59,9 +59,7 @@
         "media:install": [
             "Composer\\Config::disableProcessTimeout",
             "npm ci --prefix renderers --no-audit --no-fund",
-            "python3 -m venv renderers/tts/.venv",
-            "renderers/tts/.venv/bin/pip install --quiet --no-cache-dir --disable-pip-version-check -r renderers/tts/requirements.txt",
-            "renderers/tts/.venv/bin/python -m piper.download_voices --download-dir renderers/tts/voices ro_RO-mihai-medium en_US-ljspeech-high"
+            "bash renderers/tts/install.sh"
         ],
         "consulting:install": [
             "Composer\\Config::disableProcessTimeout",

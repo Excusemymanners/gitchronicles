@@ -15,7 +15,7 @@ use RuntimeException;
  * (media/{id}/work-video-{language} on the "local" disk) that is deleted at the end:
  *
  * 1. the camera: what each scene shows on the photographed GitHub page (SceneDirector);
- * 2. the voice: one Piper clip per sentence (Narrator), measured with ffprobe;
+ * 2. the voice: one clip per sentence, read by the language's voice (Narrator), measured with ffprobe;
  * 3. the timeline: every scene as long as its voice, with the caption phrases and the moments of the
  *    camera shots (VideoTimeline);
  * 4. the picture: a copy of the HyperFrames composition (renderers/video) with the photo of the page
@@ -36,7 +36,7 @@ final class VideoRenderer
      */
     private const COMPOSITION_FIELDS = [
         'key', 'label', 'start', 'duration', 'kicker', 'title', 'text', 'index', 'count',
-        'command', 'stars', 'chips', 'stats', 'modules', 'note', 'url', 'shots', 'cues',
+        'command', 'stars', 'chips', 'stats', 'modules', 'note', 'url', 'credit', 'shots', 'cues',
     ];
 
     /**
@@ -118,8 +118,8 @@ final class VideoRenderer
     }
 
     /**
-     * One voice clip per sentence of every scene; without Piper, no clips at all (the video then has
-     * music and captions only).
+     * One voice clip per sentence of every scene, all read in one go (a neural engine loads its model
+     * once); without any voice installed, no clips at all (the video then has music and captions only).
      *
      * @param  list<array<string, mixed>>  $scenes
      * @return array{0: list<list<array{text: string, seconds: float}>|null>, 1: array<string, string>} the sentences of each scene with their lengths, and the clip file of each "scene-sentence" key
@@ -127,10 +127,20 @@ final class VideoRenderer
     private function speak(array $scenes, Narrator $narrator, string $workPath): array
     {
         if (! $narrator->isAvailable()) {
-            Log::info('Piper is not installed: the video is made without a voice.');
+            Log::info('No voice is installed: the video is made without a voice.');
 
             return [array_fill(0, count($scenes), null), []];
         }
+
+        $clips = [];
+
+        foreach ($scenes as $position => $scene) {
+            foreach (Captions::sentences((string) ($scene['narration'] ?? '')) as $number => $sentence) {
+                $clips["{$workPath}/voice-{$position}-{$number}.wav"] = $sentence;
+            }
+        }
+
+        $narrator->speak($clips);
 
         $voices = [];
         $files = [];
@@ -140,7 +150,6 @@ final class VideoRenderer
 
             foreach (Captions::sentences((string) ($scene['narration'] ?? '')) as $number => $sentence) {
                 $path = "{$workPath}/voice-{$position}-{$number}.wav";
-                $narrator->speak($sentence, $path);
                 $files[self::clipKey($scene, $sentence)] = $path;
                 $voice[] = ['text' => $sentence, 'seconds' => $this->mixer->duration($path)];
             }
@@ -228,7 +237,7 @@ final class VideoRenderer
             'render', $composition,
             '--variables-file', "{$workPath}/data.json",
             '--output', "{$workPath}/silent.mp4",
-            '--format', 'mp4', '--fps', (string) VideoTimeline::FPS, '--quality', 'looks',
+            '--format', 'mp4', '--fps', (string) VideoTimeline::FPS, '--quality', 'looks', '--crf', (string) $this->mixer->masterQuality(),
             '--workers', (string) config('gitchronicle.media.workers'),
             '--quiet', '--json',
         ], self::RENDER_TIMEOUT_SECONDS, 'hyperframes');

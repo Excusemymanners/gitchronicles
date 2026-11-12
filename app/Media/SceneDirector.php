@@ -8,12 +8,14 @@ namespace App\Media;
  * the scene when the camera goes to it. The composition scrolls the page to the box, zooms a little and
  * draws a frame around it.
  *
- *   opening          the repository's name, then its description (or the README text the line quotes)
+ *   opening          the repository's name, then its description (or the README text the line quotes),
+ *                    then the logo the README opens with, when it has one
  *   problem          the README paragraph the line quotes
  *   feature          the section's heading, the quoted paragraph, then the section's image when it has one
  *   README tour      each named heading in turn
  *   how it is built  the file list, then the language bar
- *   numbers          the star counter and the fork counter while the voice says them, then the latest commit
+ *   numbers          the star counter and the fork counter while the voice says them, the latest commit,
+ *                    then the contributors while it speaks about the people
  *   how to start     the exact line of the command in its code block
  *   closing          the top of the page again
  *
@@ -81,6 +83,8 @@ final class SceneDirector
                 self::shot('name', $capture->landmark('name'), 0.0),
                 // The description comes with the second sentence when the opening has two (name, then description).
                 self::shot('about', $capture->landmark('about') ?? $quote, 0.0, sentence: 1),
+                // The repository's own logo, when its README opens with one: the face of the project.
+                self::shot('logo', $capture->landmark('logo'), 0.0, sentence: 2),
             ],
             'problem' => [
                 self::shot('quote', $quote, 0.0),
@@ -102,7 +106,10 @@ final class SceneDirector
             'proof' => [
                 ($scene['stars'] ?? null) === null ? null : self::shot('stars', $capture->landmark('stars'), 0.0, sentence: 0, view: $counters),
                 ($scene['has_forks'] ?? false) ? self::shot('forks', $capture->landmark('forks'), 0.5, sentence: 0, view: $counters) : null,
+                // The history is told in two sentences: the commits and the latest one (the latest-commit row),
+                // then the people (the contributors, near the end of the page).
                 ($scene['has_history'] ?? false) ? self::shot('commit', self::row($capture->landmark('commit'), $capture), 0.0, sentence: ($scene['stars'] ?? null) === null ? 0 : 1) : null,
+                ($scene['has_history'] ?? false) ? self::shot('contributors', $capture->landmark('contributors'), 0.0, sentence: ($scene['stars'] ?? null) === null ? 1 : 2) : null,
             ],
             'start' => [
                 self::shot('command', $quote, 0.0),

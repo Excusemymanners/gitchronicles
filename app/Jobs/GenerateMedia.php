@@ -52,7 +52,7 @@ class GenerateMedia implements ShouldBeUnique, ShouldQueue
      * Changing how the video looks or is told (the composition, the scenes) makes the old videos
      * outdated even when the repository did not change: this number is part of the input hash.
      */
-    public const VIDEO_VERSION = 3;
+    public const VIDEO_VERSION = 4;
 
     /**
      * One attempt: the only slow part is the AI call, which already falls back to the template.

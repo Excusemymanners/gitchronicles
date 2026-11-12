@@ -209,8 +209,10 @@ final readonly class PageCapture
 
     /**
      * What the composition needs to draw the page: the tiles (paths relative to the composition), the
-     * sizes, the page's own background color and the two images. $prefix is the folder the capture is
-     * copied to inside the composition.
+     * sizes ("scale" = video pixels per CSS pixel of the page: the tiles are shown 1:1), the page's own
+     * background color and the repository's images: the preview (and whether its owner made it), the
+     * owner's avatar and the README's logo. $prefix is the folder the capture is copied to inside the
+     * composition.
      *
      * @return array<string, mixed>|null
      */
@@ -226,11 +228,14 @@ final readonly class PageCapture
 
         return [
             'width' => (int) $this->data['viewport']['width'],
+            'scale' => (float) $this->data['viewport']['scale'],
             'height' => (int) $this->data['page']['captured_height'],
             'background' => (string) ($this->data['page']['background'] ?? '#0d1117'),
             'tiles' => array_map(fn (array $tile): array => ['file' => "{$prefix}/{$tile['file']}", 'y' => (int) $tile['y'], 'height' => (int) $tile['height']], $this->data['tiles']),
             'social' => $file($this->data['social'] ?? null),
+            'social_custom' => (bool) ($this->data['social']['custom'] ?? false),
             'avatar' => $file($this->data['avatar'] ?? null),
+            'logo' => $file($this->data['logo'] ?? null),
         ];
     }
 

@@ -72,7 +72,7 @@ The thesis plan and the journal under `docs/` are written in Romanian; everythin
 | Marp | The repository presentation as slides (PDF and PPTX) | 7 | ✅ |
 | HyperFrames + FFmpeg | The short videos about the repository (HTML + GSAP → MP4) | bonus | ✅ |
 | Puppeteer + Chrome | The capture of the real GitHub page that the video scrolls through | bonus | ✅ |
-| Piper TTS | The video voices (English and Romanian), generated locally, offline | bonus | ✅ |
+| Kokoro, Piper TTS (edge-tts optional) | The video voices: a male narrator in English and Romanian, generated locally; one setting per language picks the voice | bonus | ✅ |
 | GitHub Search API + Laravel Scheduler | Leaderboard: records repos’ stars daily and computes who grows fastest | bonus | ✅ |
 | Instagram Graph API | Automatic posting of the “repository of the day” Reel | bonus | ⏳ |
 | k3s + KEDA | Deploy on a VPS; workers scale with the queue length | 10 | ⏳ |
@@ -115,7 +115,7 @@ php artisan key:generate
 php artisan migrate
 npm install
 composer analyzer:install   # the code analyzer: analyzer/.venv + the tree-sitter grammars
-composer media:install      # optional, for video and slides: renderers/node_modules + the Piper voices (English, Romanian)
+composer media:install      # optional, for video and slides: renderers/node_modules + renderers/tts/install.sh (the voices)
 composer consulting:install # optional, for consulting: Semgrep, OSV-Scanner and scc in scanners/ (no root)
 ```
 
@@ -129,7 +129,7 @@ php artisan queue:work  # the worker that runs the jobs (cloning, code analysis,
 
 Or everything in a single terminal: `composer run dev`. Without a worker, added repositories stay “Queued”. For those added before Phase 3: `php artisan repositories:process --all-pending`.
 
-The presentation video (one per language: `MEDIA_LANGUAGES=en,ro`) and the slides (PDF, PPTX) are made once the repository is ready, on the separate `media` queue, or on demand, with the button on the “Video and slides” page or with `php artisan repositories:media {id} --force`. At generation time the repository’s GitHub page is captured, so internet access is needed (`MEDIA_CAPTURE=false` turns it off). `composer run dev` also starts its worker, and by hand it is `php artisan queue:work --queue=media`. They need `composer media:install`, Google Chrome and FFmpeg (their paths: `MEDIA_BROWSER_PATH`, `MEDIA_FFMPEG_PATH`, `MEDIA_FFPROBE_PATH` in `.env`); `MEDIA_AUTO_GENERATE=false` turns them off. By hand: `php artisan repositories:media {id}` (`--force` redoes them even for the same commit, `--now` renders them directly in the terminal). The tools and their licenses are in [renderers/README.md](renderers/README.md).
+The presentation video (one per language: `MEDIA_LANGUAGES=en,ro`) and the slides (PDF, PPTX) are made once the repository is ready, on the separate `media` queue, or on demand, with the button on the “Video and slides” page or with `php artisan repositories:media {id} --force`. At generation time the repository’s GitHub page is captured, so internet access is needed (`MEDIA_CAPTURE=false` turns it off). `composer run dev` also starts its worker, and by hand it is `php artisan queue:work --queue=media`. They need `composer media:install`, Google Chrome and FFmpeg (their paths: `MEDIA_BROWSER_PATH`, `MEDIA_FFMPEG_PATH`, `MEDIA_FFPROBE_PATH` in `.env`); `MEDIA_AUTO_GENERATE=false` turns them off. By hand: `php artisan repositories:media {id}` (`--force` redoes them even for the same commit, `--now` renders them directly in the terminal). Each language's voice is one line in `.env` (`MEDIA_VOICE_EN`, `MEDIA_VOICE_RO`, written `engine:voice`); Piper is the fallback. The tools, the voices and their licenses are in [renderers/README.md](renderers/README.md).
 
 Consulting (bugs, vulnerabilities, risk zones, code statistics) also runs on the `media` queue, after every processing (`CONSULTING_AUTO_RUN=false` turns it off). By hand: `php artisan repositories:consult {id}` (`--force` redoes it for the same commit, `--now` runs the tools directly in the terminal). It needs `composer consulting:install`; a missing tool appears on the page as “Not installed”. During an analysis, the only thing that leaves the computer is the names, versions and ecosystems of the packages in the lock files, sent by OSV-Scanner to `api.osv.dev`. The details, versions and licenses: [scanners/README.md](scanners/README.md).
 

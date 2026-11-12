@@ -1,5 +1,5 @@
-# Vocea video-ului: Piper TTS (GPL-3.0-or-later), rulat local, fără internet după instalare.
-# Versiuni fixe, ca instalarea să dea mereu același rezultat (composer media:install).
+# Vocile video-ului, rulate local (renderers/tts/install.sh). Versiuni fixe, ca instalarea să dea mereu același rezultat.
+# Piper TTS (GPL-3.0-or-later) — rezerva fiecărei limbi și vocea română implicită.
 piper-tts==1.8.0
 onnxruntime==1.31.1
 numpy==2.5.4
@@ -7,3 +7,41 @@ flatbuffers==25.12.19
 packaging==26.3
 protobuf==7.36.2
 pathvalidate==3.3.1
+# Kokoro-82M prin kokoro-onnx (MIT; modelul: Apache-2.0) — vocea engleză implicită, fără internet.
+kokoro-onnx==0.4.7
+espeakng-loader==0.2.4
+phonemizer-fork==3.3.1
+colorlog==6.12.0
+attrs==26.1.0
+babel==2.18.0
+csvw==4.2.0
+dlinfo==2.0.0
+isodate==0.7.2
+joblib==1.6.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+language-tags==1.3.2
+pyparsing==3.3.3
+python-dateutil==4.0.0
+rdflib==7.6.0
+referencing==0.37.0
+regex==2026.11.9
+rfc3986==1.5.0
+rpds-py==2026.9.1
+segments==2.4.0
+termcolor==3.3.0
+typing_extensions==4.16.0
+tzdata==2026.6
+uritemplate==4.2.0
+# edge-tts (LGPL-3.0) — vocile online gratuite ale Microsoft Edge, driver OPȚIONAL și neoficial.
+edge-tts==7.3.1
+aiohttp==3.14.5
+aiohappyeyeballs==2.7.1
+aiosignal==1.4.0
+certifi==2026.10.23
+frozenlist==1.8.0
+idna==3.20
+multidict==7.2.1
+propcache==0.5.4
+tabulate==0.10.0
+yarl==1.25.1

@@ -14,7 +14,12 @@ use Illuminate\Support\Facades\Log;
  *
  * With AI, Claude receives the real sources of the repository (README, „Despre proiect”, GitHub; see
  * PresentationFacts::aiContext()) and answers with strict JSON: the opening line, the problem the
- * project solves, two to four things it does and how to start — every line once in each language.
+ * project solves, two to four things it does, how to start and the last line — every line once in each
+ * language. The instructions ask for words written for the ear: a person telling a friend about the
+ * project (an opening that makes you want the next sentence, the problem before the solution, concrete
+ * details, short sentences with contractions, punctuation for the voice's pauses, a real ending) and
+ * forbid what makes a narration sound like an advert (marketing adjectives, "in this video", lists read
+ * aloud, the same sentence shape again and again). Romanian is written as Romanian, not translated.
  * Every scene carries its anchor: a "quote" copied exactly from the context and, for a feature, the
  * README "heading" it stands under. The server then checks every scene:
  *
@@ -25,8 +30,9 @@ use Illuminate\Support\Facades\Log;
  * - the command of „Cum începi” is copied exactly from the README.
  *
  * A scene that fails is dropped (and listed in "rejected"), never shown; a missing opening is replaced by
- * the template one. „Cum e construit”, „În cifre” and the closing are never written by the AI: they come
- * straight from the code analysis, GitHub and the git history (TemplateScenes).
+ * the template one. „Cum e construit” and „În cifre” are never written by the AI: they come straight from
+ * the code analysis, GitHub and the git history (TemplateScenes). The closing keeps its address on the
+ * screen; only its last spoken line can come from the AI, checked like every other scene.
  *
  * Without AI (AiDisabled), when Claude fails, or when the answer is not usable JSON, the whole script is
  * built by TemplateScenes: shorter, from the description, the README's sections and the numbers.
@@ -43,11 +49,12 @@ final class ScriptWriter
      * @var array<string, int>
      */
     public const LIMITS = [
-        'hook' => 110,
-        'problem' => 180,
-        'feature' => 170,
+        'hook' => 120,
+        'problem' => 190,
+        'feature' => 180,
         'feature_title' => 34,
         'start' => 120,
+        'ending' => 130,
     ];
 
     /**
@@ -59,17 +66,26 @@ final class ScriptWriter
      * The instructions for Claude (short: the CLI driver passes them on the command line).
      */
     private const SYSTEM_PROMPT = <<<'PROMPT'
-        You write the voice-over of a 45-60 second vertical video (like the Instagram reels that present GitHub projects) about ONE repository. On screen the viewer sees the repository's real GitHub page being scrolled; your lines are read aloud by a voice and shown as captions.
-        Tell the story from start to finish for curious people who have never seen the project: what it is, which problem it solves, what it does and what it is good at.
-        Write every line twice: "en" in natural spoken English and "ro" in natural spoken Romanian with correct diacritics (ă, â, î, ș, ț with comma below). Both say the same thing, each phrased the way a native presenter would say it, not translated word for word. Short, clear sentences. No Markdown, emoji, URLs, file names or code; never read a command aloud. Keep technology names as they are written.
+        You write the voice-over of a 45-60 second vertical video about ONE GitHub repository. On screen the viewer sees the repository's real GitHub page scrolling; your lines are spoken by a voice and shown as captions.
+        Sound like a developer who just found this project and is telling a friend about it: curious, warm, plain words. Write for the ear:
+        - The first line makes people want the next one: start from the situation or the question the project answers, not "X is a tool that".
+        - Say the project's name once, early (in the opening or right after it), the way you would introduce it to a friend.
+        - The problem comes before the solution: what is annoying or hard, then what this project does about it.
+        - Concrete details from THIS repository (its real features and names), never generic claims.
+        - Short spoken sentences, natural contractions (it's, you'll, doesn't), varied rhythm; a question now and then is fine.
+        - Punctuation is the voice's breathing: commas, full stops, an em dash or a colon for a beat. No parentheses, no exclamation marks.
+        - Never: marketing adjectives (powerful, seamless, robust, blazing, revolutionary, game-changing), "in this video", "let's dive in", "meet", lists read aloud, the same sentence shape twice in a row.
+        - The ending is a real ending: a last thought that closes the story (often by coming back to the opening), not a slogan.
+        "ro" is spoken Romanian written directly by a native speaker (its own word order and idioms, addressing the viewer as "tu"), not a translation of "en"; correct diacritics ă â î ș ț with comma below. Keep technology names as written. No Markdown, emoji, URLs, file names or code; never read a command aloud.
 
-        Use ONLY facts stated in the CONTEXT. Never invent features, numbers, users, comparisons or praise. Every scene has "quote": one sentence or phrase copied EXACTLY, character for character, from the CONTEXT (15-200 characters), which proves what you say. For a feature, copy the quote from the README section that describes it and give that section's heading in "heading" (copied exactly from a README line that starts with #, without the #; null when there is none). Say a number only if the scene's quote contains it. If the CONTEXT does not support a scene, use null (or fewer features).
+        FACTS: use ONLY what the CONTEXT states. Never invent features, numbers, users, comparisons or praise. Every scene has "quote": one sentence or phrase copied EXACTLY, character for character, from the CONTEXT (15-200 characters), which proves what the scene says. A feature's quote comes from the README section that describes it, and "heading" is that section's heading (copied exactly from a README line that starts with #, without the #; null when there is none). Say a number only if the scene's quote contains it. If the CONTEXT does not support a scene, use null (or fewer features).
 
         Answer with ONE JSON object and nothing else:
-        {"hook": {"en": "what the project is and what it promises, one sentence, max 90 characters", "ro": "...", "quote": "..."},
-         "problem": {"en": "the problem it solves, max 150 characters", "ro": "...", "quote": "..."} or null,
-         "features": [{"heading": "...", "title_en": "max 28 characters", "title_ro": "max 28 characters", "en": "what it does, concretely, max 140 characters", "ro": "...", "quote": "..."}] (2 to 4 items, the most important first),
-         "start": {"en": "how to try it, max 100 characters", "ro": "...", "command": "one shell command copied exactly from a README code block"} or null}
+        {"hook": {"en": "the opening line, max 100 characters", "ro": "...", "quote": "..."},
+         "problem": {"en": "the problem, max 160 characters", "ro": "...", "quote": "..."} or null,
+         "features": [{"heading": "...", "title_en": "max 28 characters", "title_ro": "max 28 characters", "en": "one thing it does, concretely, max 150 characters", "ro": "...", "quote": "..."}] (2 to 4 items, the most interesting first),
+         "start": {"en": "how to try it, max 100 characters", "ro": "...", "command": "one shell command copied exactly from a README code block"} or null,
+         "ending": {"en": "the last line, max 110 characters", "ro": "...", "quote": "..."} or null}
         Count the characters: a text over its limit is thrown away.
         PROMPT;
 
@@ -238,7 +254,8 @@ final class ScriptWriter
         $scenes[] = TemplateScenes::built($facts);
         $scenes[] = TemplateScenes::proof($facts);
         $scenes[] = $this->startScene($answer['start'] ?? null, $facts, $rejected);
-        $scenes[] = TemplateScenes::cta($facts);
+        $ending = isset($answer['ending']) ? $check('ending', $answer['ending'], self::LIMITS['ending']) : null;
+        $scenes[] = TemplateScenes::cta($facts, $ending);
 
         return [array_values(array_filter($scenes)), $rejected];
     }

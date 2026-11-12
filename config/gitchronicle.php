@@ -118,8 +118,13 @@ return [
     | - capture: the photo of the repository's real GitHub page that the video scrolls through
     |   (renderers/capture/github.mjs). Off, or when GitHub cannot be reached, the video falls back
     |   to typographic scenes. max_height is how much of the page is photographed, in CSS pixels;
-    | - voice: Piper's Python, the model of each language and its speed (length_scale below 1
-    |   speaks faster).
+    | - voice: who reads the video, one line per language, "engine:voice" (App\Media\Narrator):
+    |   piper:<model>, kokoro:<voice> (English, offline) or edge:<voice> (online, unofficial — optional).
+    |   Piper with the language's own model (models, length_scale below 1 speaks faster) is the
+    |   fallback when the chosen engine is missing or fails. renderers/tts/install.sh installs them;
+    | - video: how the final picture is encoded (AudioMixer). "auto" picks libx264 when FFmpeg has it,
+    |   else NVENC on an NVIDIA GPU, else keeps HyperFrames' file; quality is the CRF / CQ (lower = sharper
+    |   and larger; 20 is visually lossless for the page's text).
     |
     */
 
@@ -141,15 +146,33 @@ return [
             'timeout' => (int) env('MEDIA_CAPTURE_TIMEOUT', 100),
         ],
         'voice' => [
+            'engines' => [
+                'en' => env('MEDIA_VOICE_EN', 'kokoro:am_puck'),
+                'ro' => env('MEDIA_VOICE_RO', 'edge:ro-RO-EmilNeural'),
+            ],
             'python' => env('MEDIA_PIPER_PYTHON', base_path('renderers/tts/.venv/bin/python')),
+            'script' => base_path('renderers/tts/speak.py'),
+            'voices_path' => base_path('renderers/tts/voices'),
             'models' => [
                 'ro' => env('MEDIA_PIPER_MODEL', base_path('renderers/tts/voices/ro_RO-mihai-medium.onnx')),
-                'en' => env('MEDIA_PIPER_MODEL_EN', base_path('renderers/tts/voices/en_US-ljspeech-high.onnx')),
+                'en' => env('MEDIA_PIPER_MODEL_EN', base_path('renderers/tts/voices/en_US-joe-medium.onnx')),
             ],
             'length_scale' => [
                 'ro' => (float) env('MEDIA_VOICE_LENGTH_SCALE', 0.85),
                 'en' => (float) env('MEDIA_VOICE_LENGTH_SCALE_EN', 0.92),
             ],
+            'kokoro' => [
+                'model' => base_path('renderers/tts/voices/kokoro-v1.0.onnx'),
+                'voices' => base_path('renderers/tts/voices/voices-v1.0.bin'),
+                'speed' => (float) env('MEDIA_KOKORO_SPEED', 1.0),
+            ],
+            'edge' => [
+                'rate' => env('MEDIA_EDGE_RATE', '+10%'),
+            ],
+        ],
+        'video' => [
+            'encoder' => env('MEDIA_VIDEO_ENCODER', 'auto'),
+            'quality' => (int) env('MEDIA_VIDEO_QUALITY', 20),
         ],
     ],
 
