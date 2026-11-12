@@ -281,8 +281,8 @@ class RepositoryTest extends TestCase
             ->post('/register', [
                 'name' => 'Ana Popescu',
                 'email' => 'ana@example.com',
-                'password' => 'parola-sigura',
-                'password_confirmation' => 'parola-sigura',
+                'password' => 'parola-sigura-2026',
+                'password_confirmation' => 'parola-sigura-2026',
             ]);
 
         $user = User::where('email', 'ana@example.com')->sole();
@@ -333,6 +333,7 @@ class RepositoryTest extends TestCase
 
     public function test_store_allows_each_user_ten_requests_per_minute(): void
     {
+        config(['gitchronicle.limits.repositories.per_user_per_day' => 100]);
         Bus::fake([ProcessRepository::class]);
         $this->actingAs(User::factory()->create());
         $this->postNewRepositories(10);
@@ -346,6 +347,7 @@ class RepositoryTest extends TestCase
 
     public function test_store_limit_of_one_user_does_not_block_another_user(): void
     {
+        config(['gitchronicle.limits.repositories.per_user_per_day' => 100]);
         Bus::fake([ProcessRepository::class]);
         $this->actingAs(User::factory()->create());
         $this->postNewRepositories(10);
@@ -369,6 +371,99 @@ class RepositoryTest extends TestCase
 
         $response->assertTooManyRequests();
         $response->assertSessionHas(AddRepository::PENDING_URL_SESSION_KEY, 'https://github.com/example/repo-10');
+    }
+
+    public function test_a_user_may_add_only_the_daily_number_of_new_repositories(): void
+    {
+        config(['gitchronicle.limits.repositories.per_user_per_day' => 2]);
+        Bus::fake([ProcessRepository::class]);
+        $this->actingAs($user = User::factory()->create());
+        $this->postNewRepositories(2);
+
+        $response = $this->from('/')->post('/repositories', ['url' => 'https://github.com/laravel/framework']);
+
+        $response->assertRedirect('/');
+        $response->assertSessionHasErrors(['url' => AddRepository::DAILY_LIMIT_MESSAGE]);
+        $this->assertDatabaseCount('repositories', 2);
+        Bus::assertDispatchedTimes(ProcessRepository::class, 2);
+
+        // An existing repository still opens, and the next day the user may add again.
+        $this->post('/repositories', ['url' => 'https://github.com/example/repo-1'])->assertRedirect();
+        $this->travel(25)->hours();
+        $this->post('/repositories', ['url' => 'https://github.com/laravel/framework'])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('repositories', ['user_id' => $user->id, 'url' => 'https://github.com/laravel/framework']);
+    }
+
+    public function test_an_administrator_is_exempt_from_the_per_user_repository_quotas(): void
+    {
+        config(['gitchronicle.limits.repositories.per_user_per_day' => 1, 'gitchronicle.limits.repositories.per_user_per_minute' => 1]);
+        Bus::fake([ProcessRepository::class]);
+        $this->actingAs(User::factory()->admin()->create());
+
+        $this->postNewRepositories(3);
+
+        $this->assertDatabaseCount('repositories', 3);
+    }
+
+    public function test_deleting_a_repository_does_not_give_its_daily_place_back(): void
+    {
+        config(['gitchronicle.limits.repositories.per_user_per_day' => 1]);
+        Bus::fake([ProcessRepository::class]);
+        $this->actingAs(User::factory()->create());
+        $this->postNewRepositories(1);
+        $this->delete('/repositories/'.Repository::sole()->id);
+
+        $response = $this->post('/repositories', ['url' => 'https://github.com/laravel/framework']);
+
+        $response->assertSessionHasErrors(['url' => AddRepository::DAILY_LIMIT_MESSAGE]);
+        $this->assertDatabaseEmpty('repositories');
+    }
+
+    public function test_the_daily_limit_also_applies_to_the_repository_waiting_for_the_login(): void
+    {
+        config(['gitchronicle.limits.repositories.per_user_per_day' => 1]);
+        Bus::fake([ProcessRepository::class]);
+        $user = User::factory()->create();
+        Repository::factory()->for($user)->create();
+        $this->actingAs($user)->post('/repositories', ['url' => 'https://github.com/example/repo-1']);
+        $this->post('/logout');
+
+        $response = $this->withSession([AddRepository::PENDING_URL_SESSION_KEY => 'https://github.com/laravel/framework'])
+            ->post('/login', ['email' => $user->email, 'password' => 'password']);
+
+        $response->assertRedirect('/');
+        $response->assertInertiaFlash('error', AddRepository::DAILY_LIMIT_MESSAGE);
+        $this->assertAuthenticatedAs($user);
+        $this->assertDatabaseMissing('repositories', ['url' => 'https://github.com/laravel/framework']);
+    }
+
+    public function test_logged_in_users_share_one_limit_per_hour_for_the_whole_site(): void
+    {
+        config(['gitchronicle.limits.repositories.global_per_hour' => 3]);
+        Bus::fake([ProcessRepository::class]);
+
+        foreach (range(1, 3) as $number) {
+            $this->actingAs(User::factory()->create())
+                ->post('/repositories', ['url' => "https://github.com/example/repo-{$number}"])
+                ->assertRedirect();
+        }
+
+        $response = $this->actingAs(User::factory()->create())->post('/repositories', ['url' => 'https://github.com/laravel/framework']);
+
+        $response->assertTooManyRequests();
+        $this->assertDatabaseCount('repositories', 3);
+    }
+
+    public function test_guests_do_not_use_up_the_limit_of_the_whole_site(): void
+    {
+        config(['gitchronicle.limits.repositories.global_per_hour' => 2]);
+        Bus::fake([ProcessRepository::class]);
+        $this->postNewRepositories(5);
+
+        $response = $this->actingAs(User::factory()->create())->post('/repositories', ['url' => 'https://github.com/laravel/framework']);
+
+        $response->assertRedirect();
+        $this->assertDatabaseCount('repositories', 1);
     }
 
     public function test_destroy_deletes_the_repository_of_the_user_who_added_it_and_goes_home(): void

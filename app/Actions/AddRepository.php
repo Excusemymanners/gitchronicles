@@ -9,6 +9,8 @@ use App\Models\Repository;
 use App\Models\User;
 use App\Support\GitHubUrl;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
@@ -23,6 +25,11 @@ final class AddRepository
     public const PENDING_URL_SESSION_KEY = 'pending_repository_url';
 
     /**
+     * The message when the user has added as many repositories as one day allows.
+     */
+    public const DAILY_LIMIT_MESSAGE = 'Ai adăugat deja numărul maxim de repository-uri pentru o zi. Încearcă din nou mâine.';
+
+    /**
      * Return the repository with this URL, creating it for the user if nobody has added it yet.
      *
      * The URL must already be canonical (StoreRepositoryRequest normalizes and validates it).
@@ -30,6 +37,12 @@ final class AddRepository
      *
      * Only a new repository is sent to the queue for processing (clone, ...): an existing one
      * already has its own pipeline.
+     *
+     * One account may add at most config('gitchronicle.limits.repositories.per_user_per_day') new
+     * repositories in 24 hours (administrators are exempt), because each one costs a clone and many Claude calls. The count lives
+     * in the rate limiter (not in the table), so deleting a repository does not give the place back.
+     *
+     * @throws ValidationException on the "url" field when the user's daily limit is reached
      */
     public function handle(User $user, string $url): Repository
     {
@@ -39,6 +52,13 @@ final class AddRepository
             return $existingRepository;
         }
 
+        $dailyKey = 'add-repository:'.$user->id;
+
+        if (! $user->is_admin && RateLimiter::tooManyAttempts($dailyKey, config('gitchronicle.limits.repositories.per_user_per_day'))) {
+            throw ValidationException::withMessages(['url' => self::DAILY_LIMIT_MESSAGE]);
+        }
+
+        RateLimiter::hit($dailyKey, 24 * 60 * 60);
         $parts = GitHubUrl::parse($url);
 
         $repository = $user->repositories()->create([
@@ -57,7 +77,8 @@ final class AddRepository
      * Right after a login or a registration: add the repository the user asked for as a guest
      * and flash the message for its page. Returns null when no repository was waiting.
      *
-     * The URL is pulled from the session (read and removed), so it is added only once.
+     * The URL is pulled from the session (read and removed), so it is added only once. When the user's
+     * daily limit is reached, the login still succeeds and the limit is shown as an error message.
      * The message lives here because the login and the registration show the same one.
      */
     public function completePending(Request $request): ?Repository
@@ -68,7 +89,13 @@ final class AddRepository
             return null;
         }
 
-        $repository = $this->handle($request->user(), $url);
+        try {
+            $repository = $this->handle($request->user(), $url);
+        } catch (ValidationException $exception) {
+            Inertia::flash('error', $exception->getMessage());
+
+            return null;
+        }
 
         if ($repository->wasRecentlyCreated) {
             Inertia::flash('success', __('repositories.flash.added_pending', ['repository' => "{$repository->owner}/{$repository->name}"]));

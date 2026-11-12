@@ -3,8 +3,7 @@
 namespace Tests\Feature\Ai;
 
 use App\Ai\AiDisabled;
-use App\Ai\ClaudeApiGenerator;
-use App\Ai\ClaudeCodeGenerator;
+use App\Ai\BudgetedTextGenerator;
 use App\Ai\NullTextGenerator;
 use App\Ai\TextGenerator;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -16,13 +15,15 @@ use Tests\TestCase;
 class TextGeneratorTest extends TestCase
 {
     /**
+     * A real driver always comes wrapped in the daily budget (BudgetedTextGenerator); see BudgetedTextGeneratorTest.
+     *
      * @return array<string, array{string, string|null, class-string<TextGenerator>}>
      */
     public static function drivers(): array
     {
         return [
-            'Claude Code CLI' => ['claude-code', null, ClaudeCodeGenerator::class],
-            'API with a key' => ['claude', 'sk-ant-test', ClaudeApiGenerator::class],
+            'Claude Code CLI' => ['claude-code', null, BudgetedTextGenerator::class],
+            'API with a key' => ['claude', 'sk-ant-test', BudgetedTextGenerator::class],
             'API without a key' => ['claude', null, NullTextGenerator::class],
             'AI turned off' => ['none', 'sk-ant-test', NullTextGenerator::class],
             'unknown driver' => ['openai', 'sk-ant-test', NullTextGenerator::class],

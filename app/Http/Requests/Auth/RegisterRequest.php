@@ -9,10 +9,13 @@ use Illuminate\Validation\Rules\Password;
 class RegisterRequest extends FormRequest
 {
     /**
-     * Anyone who is not logged in may create an account (the route uses the "guest" middleware).
+     * Anyone who is not logged in may create an account (the route uses the "guest" middleware), unless the
+     * server closed registration (config gitchronicle.auth.registration_open).
      */
     public function authorize(): bool
     {
+        abort_unless(config('gitchronicle.auth.registration_open'), 404);
+
         return true;
     }
 

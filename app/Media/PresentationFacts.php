@@ -2,6 +2,7 @@
 
 namespace App\Media;
 
+use App\Ai\PromptTag;
 use Illuminate\Support\Str;
 
 /**
@@ -66,17 +67,21 @@ final readonly class PresentationFacts
     }
 
     /**
-     * The text sent to the AI: every source under its label. Every quote of the script must be a piece of it.
+     * The lines sent to the AI (see PromptText::lines()): every source in a <source label="…"> tag. Every quote of the script must be a piece of it.
+     *
+     * @return list<string|PromptTag>
      */
-    public function aiContext(): string
+    public function aiContext(): array
     {
-        $sections = [];
+        $lines = [];
 
         foreach ($this->sources as $label => $source) {
-            $sections[] = "### {$label}\n\n{$source['text']}";
+            $lines[] = PromptTag::open('source', ['label' => $label]);
+            $lines[] = $source['text'];
+            $lines[] = PromptTag::close('source');
         }
 
-        return implode("\n\n", $sections);
+        return $lines;
     }
 
     /**

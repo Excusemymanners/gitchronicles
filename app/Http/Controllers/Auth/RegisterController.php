@@ -21,6 +21,8 @@ class RegisterController extends Controller
      */
     public function create(Request $request): Response
     {
+        abort_unless(config('gitchronicle.auth.registration_open'), 404);
+
         return Inertia::render('auth/register', [
             'pending_repository' => $request->session()->get(AddRepository::PENDING_URL_SESSION_KEY),
         ]);

@@ -23,6 +23,8 @@ class DownloadReadmeController extends Controller
         return response($readme->markdown, 200, [
             'Content-Type' => 'text/markdown; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="README.md"',
+            // The text comes from Claude, who read a repository anyone can write: no browser may guess another type.
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 }

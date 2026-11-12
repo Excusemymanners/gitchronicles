@@ -40,3 +40,7 @@ Schedule::exec('bash scanners/update-rules.sh')
 Schedule::command('repositories:consult --stale')
     ->dailyAt(config('gitchronicle.consulting.stale_schedule_time'))
     ->withoutOverlapping();
+
+// The database cache store deletes an expired row only when its key is read again, so the keys of the rate
+// limiters (one per visitor) would pile up: once a day the expired rows are deleted.
+Schedule::command('cache:prune-expired')->daily()->withoutOverlapping();

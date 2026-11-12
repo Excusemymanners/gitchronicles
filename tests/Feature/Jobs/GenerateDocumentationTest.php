@@ -351,7 +351,7 @@ class GenerateDocumentationTest extends TestCase
              */
             public function __construct(private $answer) {}
 
-            public function generate(string $system, string $user): AiResult
+            public function generate(string $system, string $user, ?int $timeoutSeconds = null): AiResult
             {
                 return ($this->answer)();
             }

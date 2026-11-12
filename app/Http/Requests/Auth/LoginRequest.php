@@ -81,10 +81,11 @@ class LoginRequest extends FormRequest
 
     /**
      * The rate limiter key: the email (lowercase, diacritics removed) and the IP address,
-     * so an attacker cannot lock out an account from every network at once.
+     * so an attacker cannot lock out an account from every network at once. It is hashed, so the cache
+     * table does not keep the typed addresses and the IPs that tried them (security audit WEB-LAYER-12).
      */
     private function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email'))).'|'.$this->ip();
+        return hash('sha256', Str::transliterate(Str::lower($this->string('email'))).'|'.$this->ip());
     }
 }

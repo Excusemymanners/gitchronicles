@@ -19,7 +19,7 @@ final class FakeTextGenerator implements TextGenerator
     /**
      * Every request received, in order.
      *
-     * @var list<array{system: string, user: string}>
+     * @var list<array{system: string, user: string, timeout: int|null}>
      */
     public array $requests = [];
 
@@ -35,9 +35,9 @@ final class FakeTextGenerator implements TextGenerator
     /**
      * Remember the request, then answer with the next text (or throw the configured exception).
      */
-    public function generate(string $system, string $user): AiResult
+    public function generate(string $system, string $user, ?int $timeoutSeconds = null): AiResult
     {
-        $this->requests[] = ['system' => $system, 'user' => $user];
+        $this->requests[] = ['system' => $system, 'user' => $user, 'timeout' => $timeoutSeconds];
 
         if ($this->exception !== null) {
             throw $this->exception;

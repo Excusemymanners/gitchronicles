@@ -260,4 +260,87 @@ return [
         'refresh_limit' => (int) env('DISCOVER_REFRESH_LIMIT', 40),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Abuse and cost limits
+    |--------------------------------------------------------------------------
+    |
+    | The site is public, so every action that starts a clone or a Claude call has a limit for one
+    | visitor AND a limit for the whole site: many addresses or throwaway accounts cannot add up to more.
+    |
+    | - ai_daily_calls: Claude calls per day for the whole site, all features together
+    |   (App\Ai\BudgetedTextGenerator); over it, every feature uses its offline mode until the next day;
+    | - repositories: adding a repository, „Reîncearcă” and the other actions that start a clone, per user
+    |   (per IP for guests) per minute and for all logged-in users together per hour; per_user_per_day is how
+    |   many new repositories one account may add in 24 hours (App\Actions\AddRepository);
+    | - assistant: questions per IP per hour, and for the whole site per minute and per day; ai_timeout is
+    |   the longest one AI answer may keep a web request waiting (documentation pages, in the queue, may take
+    |   300 s); ai_slots is how many AI answers may be written at the same time (the other questions get the
+    |   code fragments without AI, so the web workers are never all waiting for Claude).
+    |
+    */
+
+    'limits' => [
+        'login' => [
+            'per_ip_per_minute' => (int) env('LOGIN_PER_IP_PER_MINUTE', 10),
+        ],
+
+        // 0 = no cap: the default while APP_ENV is local (the owner tests with many full regenerations), 200 elsewhere.
+        'ai_daily_calls' => (int) env('AI_DAILY_CALLS', env('APP_ENV', 'production') === 'local' ? 0 : 200),
+
+        'repositories' => [
+            'per_user_per_minute' => (int) env('REPOSITORIES_PER_MINUTE', 10),
+            'global_per_hour' => (int) env('REPOSITORIES_GLOBAL_PER_HOUR', 30),
+            'per_user_per_day' => (int) env('REPOSITORIES_PER_USER_PER_DAY', 5),
+        ],
+
+        'assistant' => [
+            'per_ip_per_hour' => (int) env('ASSISTANT_PER_IP_PER_HOUR', 20),
+            'global_per_minute' => (int) env('ASSISTANT_GLOBAL_PER_MINUTE', 6),
+            'global_per_day' => (int) env('ASSISTANT_GLOBAL_PER_DAY', 300),
+            'ai_timeout' => (int) env('ASSISTANT_AI_TIMEOUT', 60),
+            'ai_slots' => (int) env('ASSISTANT_AI_SLOTS', 2),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accounts
+    |--------------------------------------------------------------------------
+    |
+    | - min_password_length: the shortest password a new account may have (it must also have a letter and a
+    |   number; in production it must not be in a known data leak);
+    | - registration_open: whether anyone may create an account (REGISTRATION_OPEN). Without email verification
+    |   a visitor can find out whether an address has an account (the registration says it is taken), so a
+    |   public deployment may prefer to close registration and create accounts by hand. false answers 404.
+    |
+    */
+
+    'auth' => [
+        'min_password_length' => (int) env('MIN_PASSWORD_LENGTH', 10),
+        'registration_open' => (bool) env('REGISTRATION_OPEN', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Proxies, hosts and HTTPS
+    |--------------------------------------------------------------------------
+    |
+    | Nothing is trusted by default: the address of a visitor is the one that reaches PHP.
+    | Behind a reverse proxy, a CDN or a Kubernetes ingress name it here, never "*", and make it overwrite
+    | X-Forwarded-For; otherwise every visitor looks like the proxy and the limits above count them together.
+    |
+    | - trusted_proxies: comma separated addresses or CIDR ranges of the proxies (TRUSTED_PROXIES);
+    | - trusted_hosts: comma separated host names the app answers to (TRUSTED_HOSTS); empty = any host.
+    |   Requests with another Host header get a 404;
+    | - hsts_seconds: Strict-Transport-Security max-age, sent only on HTTPS requests; 0 turns it off.
+    |
+    */
+
+    'http' => [
+        'trusted_proxies' => array_values(array_filter(array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', ''))))),
+        'trusted_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('TRUSTED_HOSTS', ''))))),
+        'hsts_seconds' => (int) env('HSTS_SECONDS', 31536000),
+    ],
+
 ];

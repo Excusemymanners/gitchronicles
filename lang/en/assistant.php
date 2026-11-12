@@ -14,6 +14,8 @@ return [
 
     'not_indexed' => 'The code of this repository isn’t ready for the assistant yet. Try again once processing has finished.',
 
+    'busy' => 'The assistant has received a great many questions from all visitors. Try again later.',
+
     'validation' => [
         'question_required' => 'Write a question.',
         'question_min' => 'The question must be at least 3 characters long.',

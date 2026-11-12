@@ -40,9 +40,9 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            // Longer than the slowest job (CloneRepository: 300 s): a job still running after
+            // Longer than the slowest job (the video render: 1200 s): a job still running after
             // retry_after seconds would be handed to a second worker while the first one works on it.
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 360),
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1260),
             'after_commit' => false,
         ],
 

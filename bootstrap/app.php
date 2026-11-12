@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
             SetLocale::class,
             HandleInertiaRequests::class,
         ]);
+
+        // The security headers go on every response, error pages of URLs without a route included.
+        $middleware->append(SecurityHeaders::class);
+
+        // Hosts: the list comes from config/gitchronicle.php ("http"), which is read when a request arrives (the
+        // configuration is not loaded yet here). An empty list means no restriction. Trusted proxies are set in
+        // AppServiceProvider::register() for the same reason.
+        $middleware->trustHosts(at: fn (): array => config('gitchronicle.http.trusted_hosts'), subdomains: false);
 
         // A URL that matches no route skips the "web" group, so the 404 page would use the server's default language:
         // SetLocale also runs globally, which makes every error page follow the visitor's language too.

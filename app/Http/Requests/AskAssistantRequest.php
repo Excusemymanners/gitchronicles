@@ -7,8 +7,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * A question for the assistant (Faza 8): the question itself and, optionally, the last messages
- * of the conversation (so a follow-up question can be understood). The conversation lives only
+ * A question for the assistant (Faza 8): the question itself and, optionally, the visitor's earlier
+ * questions of the conversation (so a follow-up question can be understood). The conversation lives only
  * in the visitor's browser, so the browser sends it with every question.
  */
 class AskAssistantRequest extends FormRequest
@@ -32,7 +32,9 @@ class AskAssistantRequest extends FormRequest
             'question' => ['required', 'string', 'min:3', 'max:1000'],
             'history' => ['sometimes', 'array', 'max:6'],
             'history.*' => ['array:role,content'],
-            'history.*.role' => ['required', Rule::in(['user', 'assistant'])],
+            // Only the visitor's own earlier questions: an "assistant" message sent by the browser could
+            // put words in Claude's mouth (security audit AI-LAYER-08).
+            'history.*.role' => ['required', Rule::in(['user'])],
             'history.*.content' => ['required', 'string', 'max:4000'],
         ];
     }

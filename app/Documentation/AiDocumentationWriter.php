@@ -3,6 +3,8 @@
 namespace App\Documentation;
 
 use App\Ai\AiException;
+use App\Ai\PromptTag;
+use App\Ai\PromptText;
 use App\Ai\TextGenerator;
 use App\Support\ContentLanguage;
 
@@ -22,6 +24,11 @@ use App\Support\ContentLanguage;
  */
 final class AiDocumentationWriter implements DocumentationWriter
 {
+    /**
+     * How many links to other sites a page may have (LinkGuard turns them into text) before it is not used.
+     */
+    private const MAX_REMOVED_LINKS = 3;
+
     /**
      * The instructions for every documentation call; {language} is replaced by the content language.
      */
@@ -95,7 +102,7 @@ final class AiDocumentationWriter implements DocumentationWriter
      */
     public function module(ModuleContext $context, SourceLinks $links): WrittenPage
     {
-        return $this->write($this->prompt('module', $context, $links), TemplateDocumentationWriter::MODULE_SECTIONS, checkCommands: false);
+        return $this->write($this->prompt('module', $context, $links), TemplateDocumentationWriter::MODULE_SECTIONS, checkCommands: false, links: $links);
     }
 
     /**
@@ -103,7 +110,7 @@ final class AiDocumentationWriter implements DocumentationWriter
      */
     public function overview(OverviewContext $context, SourceLinks $links): WrittenPage
     {
-        return $this->write($this->prompt('overview', $context, $links), TemplateDocumentationWriter::OVERVIEW_SECTIONS, checkCommands: true);
+        return $this->write($this->prompt('overview', $context, $links), TemplateDocumentationWriter::OVERVIEW_SECTIONS, checkCommands: true, links: $links);
     }
 
     /**
@@ -111,7 +118,7 @@ final class AiDocumentationWriter implements DocumentationWriter
      */
     public function readme(OverviewContext $context, SourceLinks $links): WrittenPage
     {
-        return $this->write($this->prompt('readme', $context, $links), [], checkCommands: true);
+        return $this->write($this->prompt('readme', $context, $links), [], checkCommands: true, links: $links);
     }
 
     /**
@@ -123,7 +130,7 @@ final class AiDocumentationWriter implements DocumentationWriter
      */
     public function prompt(string $pageType, ModuleContext|OverviewContext $context, SourceLinks $links): string
     {
-        return "Page type: {$pageType}\n".$this->linkLines($links)."\n\n"
+        return "Page type: {$pageType}\n".PromptText::data($this->linkLines($links))."\n\n"
             .($context instanceof ModuleContext ? $this->moduleContext($context) : $this->overviewContext($context));
     }
 
@@ -132,10 +139,11 @@ final class AiDocumentationWriter implements DocumentationWriter
      *
      * @param  list<string>  $requiredSections  the "## " headings the page must have
      * @param  bool  $checkCommands  whether every shell command of the page must appear in the context
+     * @param  SourceLinks  $links  the only GitHub address the page may link to (see LinkGuard)
      *
      * @throws AiException when Claude could not write the page or the answer is not the page asked for
      */
-    private function write(string $user, array $requiredSections, bool $checkCommands): WrittenPage
+    private function write(string $user, array $requiredSections, bool $checkCommands, SourceLinks $links): WrittenPage
     {
         $result = $this->generator->generate(self::systemPrompt(), $user);
         $markdown = $this->withoutCodeFence(trim($result->text));
@@ -152,6 +160,16 @@ final class AiDocumentationWriter implements DocumentationWriter
 
         if ($checkCommands && ($invented = $this->commandNotInContext($markdown, $user)) !== null) {
             throw new UnusableAiPage($result, "The page written by Claude has a command that the repository does not give: {$invented}");
+        }
+
+        // Links and images to anywhere but this repository become plain text; a page full of them was
+        // probably written from a hostile README, so the template writes it instead.
+        $guard = new LinkGuard;
+        $removed = 0;
+        $markdown = $guard->clean($markdown, $links, $removed);
+
+        if ($removed > self::MAX_REMOVED_LINKS || $guard->unsafeAddresses($markdown, $links) !== []) {
+            throw new UnusableAiPage($result, 'The page written by Claude links to addresses outside the repository.');
         }
 
         return WrittenPage::fromAi($markdown."\n", $result);
@@ -216,7 +234,7 @@ final class AiDocumentationWriter implements DocumentationWriter
     private function moduleContext(ModuleContext $context): string
     {
         $lines = [
-            '<context>',
+            PromptTag::open('context'),
             "Repository: {$context->repository}",
             "Module: {$context->path} ({$context->fileCount} files, {$context->lineCount} lines)",
         ];
@@ -261,18 +279,18 @@ final class AiDocumentationWriter implements DocumentationWriter
 
         foreach ($context->excerpts as $excerpt) {
             $complete = $excerpt['end_line'] === $excerpt['total_lines'] ? 'yes' : "no, the file has {$excerpt['total_lines']} lines";
-            $lines[] = "<file path=\"{$excerpt['path']}\" lines=\"{$excerpt['start_line']}-{$excerpt['end_line']}\" complete=\"{$complete}\">";
+            $lines[] = PromptTag::open('file', ['path' => $excerpt['path'], 'lines' => "{$excerpt['start_line']}-{$excerpt['end_line']}", 'complete' => $complete]);
             $lines[] = $excerpt['content'];
-            $lines[] = '</file>';
+            $lines[] = PromptTag::close('file');
         }
 
         $lines[] = '';
         $lines[] = 'Omitted files (no source code above; only their names, sizes and symbols are known):';
         $lines = [...$lines, ...$this->listOrNone(array_map(fn (array $file): string => "- {$file['path']} ({$file['lines']} lines): {$file['reason']}", $context->omittedFiles))];
         $lines = [...$lines, ...$this->notListed($context->omittedFileCount - count($context->omittedFiles), 'omitted files')];
-        $lines[] = '</context>';
+        $lines[] = PromptTag::close('context');
 
-        return implode("\n", $lines);
+        return PromptText::lines($lines);
     }
 
     /**
@@ -281,7 +299,7 @@ final class AiDocumentationWriter implements DocumentationWriter
     private function overviewContext(OverviewContext $context): string
     {
         $lines = [
-            '<context>',
+            PromptTag::open('context'),
             "Repository: {$context->repository}",
             "Project name: {$context->name}",
             "Analyzed files: {$context->fileCount}, lines: {$context->lineCount}",
@@ -300,18 +318,18 @@ final class AiDocumentationWriter implements DocumentationWriter
             $lines[] = 'README problem statement: '.($context->readme['problem'] ?? '(none: the README has no section that explains the problem)');
             $lines[] = 'Commands from the README\'s setup sections (exactly as written):';
             $lines = [...$lines, ...$this->listOrNone(array_map(fn (string $command): string => "- {$command}", $context->readme['setup_commands'] ?? []))];
-            $lines[] = "<readme path=\"{$context->readme['path']}\" truncated=\"".($context->readme['truncated'] ? 'yes' : 'no').'">';
+            $lines[] = PromptTag::open('readme', ['path' => $context->readme['path'], 'truncated' => $context->readme['truncated'] ? 'yes' : 'no']);
             $lines[] = $context->readme['excerpt'];
-            $lines[] = '</readme>';
+            $lines[] = PromptTag::close('readme');
         }
 
         $lines[] = '';
         $lines[] = 'Package manifests of the root folder:';
 
         foreach ($context->manifests as $manifest) {
-            $lines[] = "<manifest path=\"{$manifest['path']}\" kind=\"{$manifest['kind']}\">";
+            $lines[] = PromptTag::open('manifest', ['path' => $manifest['path'], 'kind' => $manifest['kind']]);
             $lines[] = json_encode($manifest['summary'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-            $lines[] = '</manifest>';
+            $lines[] = PromptTag::close('manifest');
         }
 
         if ($context->manifests === []) {
@@ -350,9 +368,9 @@ final class AiDocumentationWriter implements DocumentationWriter
             ? 'Test setup: none found.'
             : 'Test setup: '.(implode(', ', array_map(fn (array $framework): string => "{$framework['name']} ({$framework['source']})", $context->tests['frameworks'])) ?: 'no framework found').", {$context->tests['test_files']} test files.";
         $lines[] = $context->license === null ? 'License: none found.' : "License: {$context->license['name']} (from {$context->license['source']})";
-        $lines[] = '</context>';
+        $lines[] = PromptTag::close('context');
 
-        return implode("\n", $lines);
+        return PromptText::lines($lines);
     }
 
     /**

@@ -4,14 +4,19 @@ namespace App\Assistant;
 
 use App\Ai\AiDisabled;
 use App\Ai\AiException;
+use App\Ai\PromptText;
 use App\Ai\TextGenerator;
+use App\Documentation\LinkGuard;
+use App\Documentation\SourceLinks;
 use App\Models\CodeChunk;
 use App\Models\Repository;
 use App\Search\CodeSearch;
 use App\Search\MentionedPaths;
 use App\Search\SearchTerms;
 use App\Support\ContentLanguage;
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -94,6 +99,16 @@ final class AnswerQuestion
     public const AI_FAILED_NOTICE_SUFFIX = 'Until then, these are the code fragments found.';
 
     /**
+     * The note shown above the fragments when the answer of Claude linked to other sites.
+     */
+    public const AI_UNSAFE_NOTICE = 'The written answer pointed to addresses outside this repository, so it is not shown. These are the code fragments found.';
+
+    /**
+     * The note shown above the fragments when every place for an AI answer is taken (see aiSlot()).
+     */
+    public const BUSY_NOTICE = 'The assistant is writing other answers right now, so these are the code fragments found. Try again in a minute for an answer written with AI.';
+
+    /**
      * How many candidates the search returns before at most 2 per file are kept.
      */
     private const CANDIDATES = self::MAX_FRAGMENTS * 4;
@@ -125,11 +140,6 @@ final class AnswerQuestion
         PROMPT;
 
     /**
-     * The tags of the user message; the same text inside the data is neutralized (see escapeTags()).
-     */
-    private const TAGS = ['overview', 'fragments', 'fragment', 'conversation', 'message', 'question'];
-
-    /**
      * Create a new action.
      */
     public function __construct(
@@ -148,23 +158,34 @@ final class AnswerQuestion
     /**
      * Answer the question.
      *
-     * @param  list<array{role: string, content: string}>  $history  the earlier messages, oldest first ("user" or "assistant")
+     * @param  list<array{role: string, content: string}>  $history  the visitor's earlier questions, oldest first (role "user")
      * @return array{answer_markdown: string, citations: list<array{index: int, path: string, start_line: int, end_line: int, symbol_name: string|null, url: string|null, cited: bool, snippet: string}>, mode: 'ai'|'retrieval', notice: string|null, usage: array{input_tokens: int, output_tokens: int, cost_usd_equivalent: float|null, model: string, driver: string}|null}
      */
     public function handle(Repository $repository, string $question, array $history = []): array
     {
-        $history = array_slice($history, -self::MAX_HISTORY_MESSAGES);
+        // Only the visitor's own questions: an "assistant" message would come from the browser too, so it
+        // could put words in Claude's mouth (AskAssistantRequest already refuses them).
+        $history = array_slice(array_values(array_filter($history, fn (array $message): bool => $message['role'] === 'user')), -self::MAX_HISTORY_MESSAGES);
         $fragments = $this->relevantChunks($repository, $question, $history);
         $overview = $this->overview($repository);
 
+        // Without a fragment and without an overview there is nothing to answer from, so Claude is not
+        // asked (a question of random letters must not cost a call).
         if ($fragments->isEmpty() && $overview === null) {
             return $this->retrievalAnswer($repository, $fragments, notice: null);
+        }
+
+        $slot = $this->aiSlot();
+
+        if ($slot === null) {
+            return $this->retrievalAnswer($repository, $fragments, self::BUSY_NOTICE);
         }
 
         try {
             $result = $this->generator->generate(
                 self::systemPrompt(),
                 $this->userMessage($repository, $question, $history, $fragments, $overview),
+                config('gitchronicle.limits.assistant.ai_timeout'),
             );
         } catch (AiException $exception) {
             $notice = $exception instanceof AiDisabled
@@ -172,9 +193,19 @@ final class AnswerQuestion
                 : $exception->getMessage().' '.self::AI_FAILED_NOTICE_SUFFIX;
 
             return $this->retrievalAnswer($repository, $fragments, $notice);
+        } finally {
+            $slot->release();
         }
 
-        $answer = trim($result->text);
+        // Links and images to other sites become plain text; if one still gets through, the answer is not shown.
+        $guard = new LinkGuard;
+        $links = SourceLinks::for($repository);
+        $answer = $guard->clean(trim($result->text), $links);
+
+        if ($guard->unsafeAddresses($answer, $links) !== []) {
+            return $this->retrievalAnswer($repository, $fragments, self::AI_UNSAFE_NOTICE);
+        }
+
         $citedNumbers = $this->citedNumbers($answer);
 
         Log::info('The assistant answered a question.', [
@@ -199,6 +230,29 @@ final class AnswerQuestion
                 'driver' => $result->driver,
             ],
         ];
+    }
+
+    /**
+     * One of the places for an AI answer (config gitchronicle.limits.assistant.ai_slots), or null when
+     * all are taken. The answer is written inside the web request, so without this many visitors could
+     * keep every PHP worker waiting for Claude and the whole site would stop answering.
+     *
+     * A place is a cache lock that expires by itself a little after the AI timeout, so a request that
+     * crashed never keeps it.
+     */
+    private function aiSlot(): ?Lock
+    {
+        $seconds = config('gitchronicle.limits.assistant.ai_timeout') + 30;
+
+        foreach (range(1, max(1, config('gitchronicle.limits.assistant.ai_slots'))) as $number) {
+            $lock = Cache::lock("assistant-ai-slot:{$number}", $seconds);
+
+            if ($lock->get()) {
+                return $lock;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -313,29 +367,29 @@ final class AnswerQuestion
         $parts = ["Repository: {$repository->owner}/{$repository->name}".($repository->last_sha ? ' (commit '.substr($repository->last_sha, 0, 7).')' : '')];
 
         if ($overview !== null) {
-            $parts[] = "<overview>\n".$this->escapeTags($overview)."\n</overview>";
+            $parts[] = "<overview>\n".PromptText::data($overview)."\n</overview>";
         }
 
         $parts[] = "<fragments>\n".$fragments->map(fn (CodeChunk $chunk, int $index): string => sprintf(
             "<fragment number=\"%d\" path=\"%s\" lines=\"%d-%d\"%s>\n%s\n</fragment>",
             $index + 1,
-            $chunk->repositoryFile->path,
+            PromptText::attribute($chunk->repositoryFile->path),
             $chunk->start_line,
             $chunk->end_line,
-            $chunk->symbol_name === null ? '' : " symbol=\"{$chunk->symbol_name}\"",
-            $this->escapeTags($this->numberedLines($chunk)),
+            $chunk->symbol_name === null ? '' : ' symbol="'.PromptText::attribute($chunk->symbol_name).'"',
+            PromptText::data($this->numberedLines($chunk)),
         ))->implode("\n")."\n</fragments>";
 
         if ($history !== []) {
             $parts[] = "<conversation>\n".collect($history)->map(fn (array $message): string => sprintf(
                 "<message role=\"%s\">\n%s\n</message>",
-                $message['role'] === 'assistant' ? 'assistant' : 'user',
+                'user',
                 // The citation numbers of earlier answers point to earlier fragments, not to these ones.
-                $this->escapeTags(Str::limit(trim((string) preg_replace('/\[\d+(?:\s*,\s*\d+)*\]/', '', $message['content'])), self::MAX_HISTORY_CHARACTERS)),
+                PromptText::data(Str::limit(trim((string) preg_replace('/\[\d+(?:\s*,\s*\d+)*\]/', '', $message['content'])), self::MAX_HISTORY_CHARACTERS)),
             ))->implode("\n")."\n</conversation>";
         }
 
-        $parts[] = "<question>\n".$this->escapeTags($question)."\n</question>";
+        $parts[] = "<question>\n".PromptText::data($question)."\n</question>";
 
         return implode("\n\n", $parts);
     }
@@ -355,15 +409,6 @@ final class AnswerQuestion
     }
 
     /**
-     * Neutralize the closing tags of the user message inside the data ("</fragment>" → "<\/fragment>"),
-     * so a file cannot end its fragment early and pretend the rest is something else.
-     */
-    private function escapeTags(string $text): string
-    {
-        return (string) preg_replace('~</('.implode('|', self::TAGS).')~i', '<\/$1', $text);
-    }
-
-    /**
      * The answer without AI: the fragments themselves, each with its first lines.
      *
      * @param  Collection<int, CodeChunk>  $fragments
@@ -380,8 +425,8 @@ final class AnswerQuestion
             $lines = explode("\n", $chunk->content);
             $preview = implode("\n", array_slice($lines, 0, self::PREVIEW_LINES));
             $fence = $this->fenceFor($preview);
-            $title = "**[{$number}]** `{$chunk->repositoryFile->path}`, lines {$chunk->start_line}–{$chunk->end_line}"
-                .($chunk->symbol_name === null ? '' : " · `{$chunk->symbol_name}`");
+            $title = "**[{$number}]** ".$this->inlineCode($chunk->repositoryFile->path).", lines {$chunk->start_line}–{$chunk->end_line}"
+                .($chunk->symbol_name === null ? '' : ' · '.$this->inlineCode($chunk->symbol_name));
             $hiddenLines = count($lines) - self::PREVIEW_LINES;
 
             return $title."\n\n".$fence.$this->languageOf($chunk->repositoryFile->path)."\n".$preview."\n".$fence
@@ -407,6 +452,23 @@ final class AnswerQuestion
         $longestRun = max([0, ...array_map(strlen(...), $runs[0])]);
 
         return str_repeat('`', max(3, $longestRun + 1));
+    }
+
+    /**
+     * A file path or a symbol name as Markdown inline code that the text itself cannot close: the
+     * backticks around it are one more than the longest run of backticks inside, with a space between
+     * them and a backtick at either end (Markdown removes that space). Line breaks and other control
+     * characters become spaces, so a file name can never start a new paragraph either. Without this,
+     * a path like pkg/q` ![x](https://…) `z.py would add its own image or link to the answer.
+     */
+    private function inlineCode(string $text): string
+    {
+        $text = (string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', $text);
+        $padding = str_starts_with($text, '`') || str_ends_with($text, '`') ? ' ' : '';
+        preg_match_all('/`+/', $text, $runs);
+        $fence = str_repeat('`', max([0, ...array_map(strlen(...), $runs[0])]) + 1);
+
+        return $fence.$padding.$text.$padding.$fence;
     }
 
     /**

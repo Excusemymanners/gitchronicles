@@ -53,7 +53,7 @@ final class ClaudeApiGenerator implements TextGenerator
      *
      * @throws AiException when the API fails or the answer cannot be used
      */
-    public function generate(string $system, string $user): AiResult
+    public function generate(string $system, string $user, ?int $timeoutSeconds = null): AiResult
     {
         try {
             $message = $this->client->beta->messages->create(
@@ -64,6 +64,7 @@ final class ClaudeApiGenerator implements TextGenerator
                 outputConfig: ['effort' => $this->effort],
                 system: [['type' => 'text', 'text' => $system, 'cacheControl' => ['type' => 'ephemeral']]],
                 betas: [self::FALLBACK_BETA],
+                requestOptions: $timeoutSeconds === null ? null : ['timeout' => (float) $timeoutSeconds],
             );
         } catch (APIException $exception) {
             throw $this->exceptionFor($exception);

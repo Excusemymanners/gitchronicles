@@ -11,7 +11,7 @@ final class NullTextGenerator implements TextGenerator
     /**
      * @throws AiDisabled always
      */
-    public function generate(string $system, string $user): AiResult
+    public function generate(string $system, string $user, ?int $timeoutSeconds = null): AiResult
     {
         throw new AiDisabled;
     }

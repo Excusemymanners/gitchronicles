@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
  * like #quot; for characters that would end or change the label. So:
  *
  * - newlines and other control characters become spaces (a label is built line by line);
- * - #, ", <, >, & and ` are written as entity codes (#35; #quot; #lt; #gt; #amp; #96;),
+ * - #, ", <, >, &, ` and \ are written as entity codes (#35; #quot; #lt; #gt; #amp; #96; #92;),
  *   so the text can never close the label, start an HTML tag or a Markdown string;
  * - brackets, braces, diacritics and emoji stay as they are: inside quotes they are plain text.
  *
@@ -34,7 +34,10 @@ final class MermaidText
         $text = Str::limit(trim($text), $maxLength, '…');
 
         // strtr() replaces every character once, so the "#" of a new entity code is not escaped again.
+        // The backslash too: in the `id@{ label: "…" }` form Mermaid reads the label as a YAML string, where
+        // \x3c would turn back into "<" after this escaping (security audit XSS-INJECTION-001).
         return strtr($text, [
+            '\\' => '#92;',
             '#' => '#35;',
             '"' => '#quot;',
             '<' => '#lt;',

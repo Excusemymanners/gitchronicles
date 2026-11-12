@@ -9,7 +9,7 @@
         Tema se alege aici, înainte ca browserul să deseneze ceva, ca pagina să nu clipească în alb:
         întunecată, dacă utilizatorul nu a ales „luminoasă” (cheia e aceeași în resources/js/lib/theme.ts).
     --}}
-    <script>
+    <script nonce="{{ Vite::cspNonce() }}">
         (function () {
             var theme = null;
             try {

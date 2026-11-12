@@ -27,6 +27,11 @@ return [
     'min' => [
         'string' => 'Câmpul :attribute trebuie să aibă cel puțin :min caractere.',
     ],
+    'password' => [
+        'letters' => 'Câmpul :attribute trebuie să conțină cel puțin o literă.',
+        'numbers' => 'Câmpul :attribute trebuie să conțină cel puțin o cifră.',
+        'uncompromised' => 'Această :attribute a apărut într-o scurgere de date. Alege alta.',
+    ],
     'regex' => 'Formatul câmpului :attribute nu este valid.',
     'required' => 'Câmpul :attribute este obligatoriu.',
     'string' => 'Câmpul :attribute trebuie să fie un text.',

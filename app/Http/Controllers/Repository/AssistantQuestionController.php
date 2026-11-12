@@ -15,8 +15,8 @@ use Illuminate\Http\JsonResponse;
  *     {answer_markdown, citations: [{index, path, start_line, end_line, symbol_name, url, cited}],
  *      mode: "ai" | "retrieval", notice, usage}
  *
- * Public, like every repository page, and limited to 20 questions per hour for each IP address
- * (the "assistant" rate limiter in AppServiceProvider).
+ * Public, like every repository page, and limited per IP address and for the whole site
+ * (the "assistant" rate limiter in AppServiceProvider, numbers in config/gitchronicle.php).
  */
 class AssistantQuestionController extends Controller
 {

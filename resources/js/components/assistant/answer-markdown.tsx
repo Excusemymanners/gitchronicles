@@ -45,6 +45,20 @@ export default function AnswerMarkdown({ markdown, citations }: Props) {
                 </a>
             );
         },
+        // An image written by the model is never loaded (its address could carry the visitor's words to another
+        // server): it becomes a link, like in the documentation pages.
+        img: ({ src, alt }) =>
+            typeof src === 'string' ? (
+                <a
+                    href={src}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-sm font-medium text-accent underline decoration-accent/40 underline-offset-2 hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                    {alt ? translate('docs.imageNamed', { alt }) : translate('docs.image')}
+                    <span className="sr-only"> {translate('common.opensInNewTab')}</span>
+                </a>
+            ) : null,
         p: ({ children }) => <p className="leading-7 text-ink">{children}</p>,
         ul: ({ children }) => <ul className="list-disc space-y-2 pl-5 marker:text-ink-subtle">{children}</ul>,
         ol: ({ children }) => <ol className="list-decimal space-y-2 pl-5 marker:text-ink-subtle">{children}</ol>,

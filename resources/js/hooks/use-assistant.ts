@@ -17,7 +17,7 @@ export type AssistantMessage =
     | { id: number; role: 'user'; content: string }
     | { id: number; role: 'assistant'; reply: AssistantReply };
 
-type HistoryEntry = { role: 'user' | 'assistant'; content: string };
+type HistoryEntry = { role: 'user'; content: string };
 
 type Payload = { question: string; history: HistoryEntry[] };
 
@@ -29,7 +29,7 @@ type FailedQuestion = { message: string; payload: Payload };
  * (nu se salvează nicăieri; la reîncărcarea paginii începe din nou).
  *
  * Fiecare întrebare pleacă cu useHttp (o cerere JSON obișnuită, nu o vizită Inertia, cu tokenul CSRF
- * din cookie-ul XSRF-TOKEN), împreună cu ultimele 6 mesaje, ca asistentul să înțeleagă întrebările
+ * din cookie-ul XSRF-TOKEN), împreună cu ultimele 6 întrebări ale vizitatorului, ca asistentul să înțeleagă întrebările
  * de continuare. Hook-ul nu desenează nimic: AssistantBar și AssistantThread îl primesc ca prop,
  * așa că pot fi puse oriunde (pagina „Asistent” sau bara de jos a oricărei pagini).
  */
@@ -72,7 +72,11 @@ export function useAssistant(repositoryId: number) {
                 return false;
             }
 
-            const history = messages.slice(-MAX_HISTORY_MESSAGES).map(historyEntry);
+            // Doar întrebările vizitatorului: serverul nu acceptă răspunsuri trimise din browser.
+            const history = messages
+                .filter((message) => message.role === 'user')
+                .slice(-MAX_HISTORY_MESSAGES)
+                .map((message) => ({ role: 'user' as const, content: message.content.slice(0, MAX_HISTORY_CHARACTERS) }));
 
             setMessages((current) => [...current, { id: nextId.current++, role: 'user', content: trimmed }]);
             send({ question: trimmed, history });
@@ -116,18 +120,16 @@ export function useAssistant(repositoryId: number) {
 /** Ce întoarce useAssistant: îl primesc AssistantBar și AssistantThread. */
 export type Assistant = ReturnType<typeof useAssistant>;
 
-/** Un mesaj în forma cerută de server pentru istoric. */
-function historyEntry(message: AssistantMessage): HistoryEntry {
-    if (message.role === 'user') {
-        return { role: 'user', content: message.content };
-    }
-
-    return { role: 'assistant', content: message.reply.answer_markdown.slice(0, MAX_HISTORY_CHARACTERS) };
-}
-
 /** Mesajul pentru un răspuns cu eroare de la server, pe înțelesul oricui. */
 function messageForStatus(response: HttpResponse): string {
     if (response.status === 429) {
+        // Limita întregului site vine cu mesajul ei; limita vizitatorului, fără mesaj.
+        const message = serverMessage(response);
+
+        if (message !== null) {
+            return message;
+        }
+
         const seconds = Number(response.headers['retry-after']);
         const minutes = Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds / 60) : null;
 

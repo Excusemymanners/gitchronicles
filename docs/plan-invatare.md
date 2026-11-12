@@ -114,6 +114,19 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - [ ] `composer audit` și `npm audit` rulate automat (GitHub Actions + Dependabot).
 - [ ] Niciodată `php artisan serve` sau `npm run dev` spre internet: sunt doar pentru laptop.
 
+**Lista de întărire la deploy (din auditul de securitate; codul de mai jos e deja în aplicație, rămâne configurarea serverului):**
+- [ ] `.env` de pe server scris de mână, nu copiat de pe laptop, cu `chmod 600`; cheie nouă `php artisan key:generate`; blocul „PRODUCȚIE” din `.env.example` ca model. Fără linii `ANTHROPIC_API_KEY` nefolosite. Baza de date și directorul ei: mod 660, proprietar utilizatorul PHP.
+- [ ] `composer install --no-dev --optimize-autoloader`, `npm ci && npm run build`, apoi `php artisan config:cache route:cache view:cache`. După deploy: `/_inertia/devtools/entries` și `/_boost/browser-logs` dau 404, iar o eroare forțată nu arată nicio urmă de cod. Aplicația oprește DevTools și Boost în afara mediului `local`, dar `APP_ENV=production` și `APP_DEBUG=false` rămân obligatorii.
+- [ ] `composer audit` curat înainte de fiecare deploy (`composer update "symfony/*" --with-dependencies`, fără schimbări în `composer.json`). La nginx: ori redirecționează `/index.php/...` spre calea curată, ori scrie regulile de cale ca expresii regulate care acoperă și prefixul `/index.php`.
+- [ ] nginx sau Caddy + PHP-FPM, rădăcina `public/`, `expose_php = Off`. O întrebare către asistent poate ține un worker FPM până la `ASSISTANT_AI_TIMEOUT` (60 s): dimensionează pool-ul și lasă `ASSISTANT_AI_SLOTS` mic.
+- [ ] Numai HTTPS: redirect de la HTTP, `SESSION_SECURE_COOKIE=true`; aplicația trimite singură `Strict-Transport-Security` pe cererile HTTPS (`HSTS_SECONDS`) și Content-Security-Policy cu nonce.
+- [ ] Dacă ceva stă în fața PHP (nginx invers, Cloudflare, ingress Kubernetes): `TRUSTED_PROXIES` cu adresa exactă a proxy-ului (niciodată `*`), iar proxy-ul suprascrie `X-Forwarded-For`. Cu FastCGI direct lasă-l gol. `TRUSTED_HOSTS` cu domeniul real. După deploy: adresa din tabela `sessions` este cea reală a vizitatorului.
+- [ ] Înregistrarea: decizia proprietarului. Public: `REGISTRATION_OPEN=false` (conturile se fac de mână) sau acceptă că mesajul „adresa e deja folosită” arată dacă un email are cont (nu se rezolvă fără verificarea emailului).
+- [ ] AI pe server: `AI_DRIVER=none` pentru cererile web sau `claude-code` cu login-ul făcut doar de utilizatorul dedicat (fișierul `~/.claude/.credentials.json` cu mod 600, HOME în afara rădăcinii web); verifică dacă termenii abonamentului permit un site public. Bugetul zilnic (`AI_DAILY_CALLS`) și limitele globale ale asistentului rămân mici.
+- [ ] Workerii de coadă sub systemd sau supervisor, ca utilizator fără privilegii: `queue:work --tries=1 --max-time=3600`, cu timp de oprire peste cea mai lungă lucrare. `DB_QUEUE_RETRY_AFTER` (1260 s) rămâne peste cea mai lungă lucrare (randarea video, 1200 s).
+- [ ] SQLite în producție: `journal_mode=WAL`, `busy_timeout=5000`; `php artisan cache:prune-expired` rulează zilnic prin Scheduler (curăță cheile expirate).
+- [ ] Date personale păstrate (de scris în lucrare): emailul și numele contului, parola (hash), adresa IP și user agent-ul din tabela `sessions`; cheile limitării de login sunt hash-uri, nu emailuri. Autorii commit-urilor se păstrează doar ca nume, fără email. Utilizatorii nu își pot șterge contul.
+
 ## Faza 5 — Analiza codului
 - **Învăț:** tree-sitter (parsarea codului) și grafuri de dependențe.
 - **Fac:** un serviciu mic în Python care extrage din cod fișierele, clasele, funcțiile și importurile. Laravel le salvează în baza de date și construiește graful de dependențe.
@@ -495,6 +508,7 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 ## Faza 10 — Experimente, deploy, lucrarea
 - Compar actualizarea incrementală cu reindexarea completă pe 3–5 proiecte open-source.
 - Fac deploy pe un VPS cu k3s.
+- Parcurg lista de întărire de la Faza 4 (secțiunea „Lista de întărire la deploy”) înainte de a deschide aplicația spre internet.
 - Scriu lucrarea, pornind de la notițele din fiecare fază.
 
 ## Bonusuri — ianuarie, doar dacă rămâne timp

@@ -17,6 +17,7 @@ return [
     'too_slow' => 'Claude a răspuns prea greu, așa că am oprit cererea. Încearcă din nou mai târziu.',
     'too_long' => 'Răspunsul lui Claude a fost prea lung și s-a oprit la jumătate.',
     'refused' => 'Claude a refuzat să scrie acest text.',
+    'budget_reached' => 'Bugetul zilnic de AI a fost atins — aceste pagini au fost scrise din șabloane; regenerează mâine sau mărește AI_DAILY_CALLS.',
     'disabled' => 'Generarea cu AI este oprită pe acest server.',
 
 ];

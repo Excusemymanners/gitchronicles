@@ -14,6 +14,8 @@ return [
 
     'not_indexed' => 'Codul acestui repository nu a fost pregătit încă pentru asistent. Încearcă după ce se termină procesarea.',
 
+    'busy' => 'Asistentul a primit foarte multe întrebări de la toți vizitatorii. Încearcă din nou mai târziu.',
+
     'validation' => [
         'question_required' => 'Scrie o întrebare.',
         'question_min' => 'Întrebarea trebuie să aibă cel puțin 3 caractere.',

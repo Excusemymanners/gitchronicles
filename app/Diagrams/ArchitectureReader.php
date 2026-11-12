@@ -5,6 +5,8 @@ namespace App\Diagrams;
 use App\Ai\AiDisabled;
 use App\Ai\AiException;
 use App\Ai\AiResult;
+use App\Ai\PromptTag;
+use App\Ai\PromptText;
 use App\Ai\TextGenerator;
 use App\Enums\DiagramType;
 use App\Models\Diagram;
@@ -227,7 +229,7 @@ final class ArchitectureReader
             $sections[] = implode("\n", $lines);
         }
 
-        return implode("\n\n", $sections);
+        return PromptTag::open('context')->text."\n".PromptText::data(implode("\n\n", $sections))."\n".PromptTag::close('context')->text;
     }
 
     /**

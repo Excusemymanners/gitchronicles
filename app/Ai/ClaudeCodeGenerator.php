@@ -29,7 +29,7 @@ use Illuminate\Support\Str;
 final class ClaudeCodeGenerator implements TextGenerator
 {
     /**
-     * After this many seconds the CLI is stopped.
+     * After this many seconds the CLI is stopped, unless the caller asks for less (see TextGenerator).
      */
     public const TIMEOUT_SECONDS = 300;
 
@@ -47,19 +47,20 @@ final class ClaudeCodeGenerator implements TextGenerator
      *
      * @throws AiException when the CLI fails, times out or reports an error
      */
-    public function generate(string $system, string $user): AiResult
+    public function generate(string $system, string $user, ?int $timeoutSeconds = null): AiResult
     {
+        $timeout = $timeoutSeconds ?? self::TIMEOUT_SECONDS;
         $workingDirectory = sys_get_temp_dir().'/gitchronicle-ai-'.Str::random(16);
         File::ensureDirectoryExists($workingDirectory);
 
         try {
             $result = Process::path($workingDirectory)
-                ->timeout(self::TIMEOUT_SECONDS)
-                ->env(['ANTHROPIC_API_KEY' => false, 'ANTHROPIC_AUTH_TOKEN' => false])
+                ->timeout($timeout)
+                ->env($this->childEnvironment())
                 ->input($user)
                 ->run($this->command($system));
         } catch (ProcessTimedOutException) {
-            Log::warning('Claude Code timed out.', ['timeout_seconds' => self::TIMEOUT_SECONDS]);
+            Log::warning('Claude Code timed out.', ['timeout_seconds' => $timeout]);
 
             throw new AiException(AiException::TOO_SLOW_MESSAGE, retryable: true);
         } finally {
@@ -98,6 +99,34 @@ final class ClaudeCodeGenerator implements TextGenerator
             model: $this->model,
             driver: 'claude-code',
         );
+    }
+
+    /**
+     * Environment variables the Claude CLI still gets: where its login and settings live, a place to work and
+     * the usual network settings. Every other variable of the web server (APP_KEY, database, mail, cloud and
+     * Redis credentials, ANTHROPIC_* and CLAUDE_*) is removed from the child process (security audit AI-LAYER-09).
+     *
+     * @var list<string>
+     */
+    private const KEPT_ENVIRONMENT = [
+        'HOME', 'USER', 'LOGNAME', 'PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TZ',
+        'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'CLAUDE_CONFIG_DIR',
+        'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy',
+        'SSL_CERT_FILE', 'SSL_CERT_DIR', 'NODE_EXTRA_CA_CERTS',
+    ];
+
+    /**
+     * The environment of the CLI process: false removes a variable (Symfony Process), so everything the web
+     * process has is removed except the allowlist, and the CLI is told not to update itself.
+     *
+     * @return array<string, string|false>
+     */
+    public function childEnvironment(): array
+    {
+        $names = array_unique([...array_keys(getenv()), ...array_keys($_ENV)]);
+        $environment = array_fill_keys(array_diff([...$names, 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'], self::KEPT_ENVIRONMENT), false);
+
+        return $environment + ['DISABLE_AUTOUPDATER' => '1'];
     }
 
     /**

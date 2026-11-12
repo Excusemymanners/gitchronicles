@@ -18,6 +18,7 @@ class MermaidTextTest extends TestCase
             'an HTML tag stays text' => ['<img src=x onerror=alert(1)>', '#lt;img src=x onerror=alert(1)#gt;'],
             'ampersand and hash become entity codes' => ['A & B #1', 'A #amp; B #35;1'],
             'a backtick cannot start a Markdown string' => ['`cod`', '#96;cod#96;'],
+            'a backslash is neutralized so a YAML label cannot rebuild a tag' => ['a\\b', 'a#92;b'],
             'brackets and braces stay as they are' => ['[x] (y) {z}', '[x] (y) {z}'],
             'diacritics and emoji stay as they are' => ['Logica aplicației 🚀', 'Logica aplicației 🚀'],
             'newlines and tabs become one space' => ["linia 1\n\tlinia 2", 'linia 1 linia 2'],
@@ -28,6 +29,14 @@ class MermaidTextTest extends TestCase
     public function test_escapes_text_for_a_quoted_label(string $text, string $escaped): void
     {
         $this->assertSame($escaped, MermaidText::escape($text));
+    }
+
+    public function test_the_yaml_escape_payload_of_the_audit_cannot_rebuild_html_in_a_label(): void
+    {
+        $escaped = MermaidText::escape('\\x3ca href=https:\\x2f\\x2fevil.example\\x2fphish\\x3eCLICK-INJ\\x3c\\x2fa\\x3e');
+
+        $this->assertStringNotContainsString('\\', $escaped);
+        $this->assertStringStartsWith('#92;x3ca href=', $escaped);
     }
 
     public function test_an_entity_code_is_written_once_and_not_escaped_again(): void

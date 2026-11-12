@@ -98,7 +98,7 @@ class FactsCollectorTest extends TestCase
         $this->assertNull($facts->description);
         $this->assertNull($facts->license);
         $this->assertSame([], $facts->sources);
-        $this->assertSame('', $facts->aiContext());
+        $this->assertSame([], $facts->aiContext());
         $this->assertSame([], $facts->languages);
         $this->assertSame([], $facts->modules);
         $this->assertNull($facts->history);

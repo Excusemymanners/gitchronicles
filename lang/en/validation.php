@@ -24,6 +24,11 @@ return [
     'min' => [
         'string' => 'The :attribute must be at least :min characters.',
     ],
+    'password' => [
+        'letters' => 'The :attribute must contain at least one letter.',
+        'numbers' => 'The :attribute must contain at least one number.',
+        'uncompromised' => 'This :attribute appeared in a data leak. Choose a different one.',
+    ],
     'regex' => 'The :attribute format is invalid.',
     'required' => 'The :attribute field is required.',
     'string' => 'The :attribute must be text.',

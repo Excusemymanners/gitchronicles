@@ -21,6 +21,38 @@ class ClaudeCodeGeneratorTest extends TestCase
 
     private const USER_TEXT = 'Codul modulului app/Jobs: ...';
 
+    public function test_the_child_process_gets_only_an_allowlist_of_environment_variables(): void
+    {
+        $secrets = ['APP_KEY' => 'base64:secret', 'DB_PASSWORD' => 'hunter2', 'AWS_SECRET_ACCESS_KEY' => 'aws', 'CLAUDE_CODE_USE_BEDROCK' => '1', 'ANTHROPIC_BASE_URL' => 'https://evil.example'];
+
+        foreach ($secrets as $name => $value) {
+            putenv("{$name}={$value}");
+        }
+
+        try {
+            $ranProcess = null;
+            Process::fake(function (PendingProcess $process) use (&$ranProcess) {
+                $ranProcess = $process;
+
+                return Process::result(File::get(base_path('tests/Fixtures/ai/claude-code-success.json')));
+            });
+
+            $this->generator()->generate(self::SYSTEM_PROMPT, self::USER_TEXT);
+        } finally {
+            foreach (array_keys($secrets) as $name) {
+                putenv($name);
+            }
+        }
+
+        foreach (array_keys($secrets) as $name) {
+            $this->assertFalse($ranProcess->environment[$name] ?? null, "{$name} must be removed from the child environment.");
+        }
+
+        foreach (['HOME', 'PATH'] as $kept) {
+            $this->assertArrayNotHasKey($kept, $ranProcess->environment, "{$kept} must be inherited.");
+        }
+    }
+
     public function test_runs_the_cli_once_with_the_text_on_stdin_and_returns_its_answer_and_usage(): void
     {
         $ranProcess = null;
@@ -57,11 +89,27 @@ class ClaudeCodeGeneratorTest extends TestCase
             '--system-prompt', self::SYSTEM_PROMPT,
         ], $ranProcess->command);
         $this->assertSame(self::USER_TEXT, $ranProcess->input);
-        $this->assertSame(['ANTHROPIC_API_KEY' => false, 'ANTHROPIC_AUTH_TOKEN' => false], $ranProcess->environment);
+        $this->assertFalse($ranProcess->environment['ANTHROPIC_API_KEY']);
+        $this->assertFalse($ranProcess->environment['ANTHROPIC_AUTH_TOKEN']);
+        $this->assertSame('1', $ranProcess->environment['DISABLE_AUTOUPDATER']);
         $this->assertSame(ClaudeCodeGenerator::TIMEOUT_SECONDS, $ranProcess->timeout);
         $this->assertTrue($directoryWasEmpty, 'The CLI must run in an empty folder.');
         $this->assertStringStartsNotWith(base_path(), $ranProcess->path);
         $this->assertDirectoryDoesNotExist($ranProcess->path);
+    }
+
+    public function test_the_caller_can_ask_for_a_shorter_timeout(): void
+    {
+        $ranProcess = null;
+        Process::fake(function (PendingProcess $process) use (&$ranProcess) {
+            $ranProcess = $process;
+
+            return Process::result(File::get(base_path('tests/Fixtures/ai/claude-code-success.json')));
+        });
+
+        $this->generator()->generate(self::SYSTEM_PROMPT, self::USER_TEXT, 60);
+
+        $this->assertSame(60, $ranProcess->timeout);
     }
 
     public function test_a_used_up_subscription_fails_with_a_retryable_limit_message(): void

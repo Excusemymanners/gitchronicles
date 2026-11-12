@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Actions\AddRepository;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -76,6 +77,23 @@ class AuthenticationTest extends TestCase
 
         $response->assertSessionHasErrors('email');
         $this->assertGuest();
+    }
+
+    public function test_one_address_cannot_try_more_than_ten_logins_a_minute_whatever_the_email(): void
+    {
+        for ($attempt = 1; $attempt <= 10; $attempt++) {
+            $this->post('/login', ['email' => "someone{$attempt}@example.com", 'password' => 'wrong-password']);
+        }
+
+        $this->post('/login', ['email' => 'someone11@example.com', 'password' => 'wrong-password'])->assertTooManyRequests();
+    }
+
+    public function test_the_failed_attempts_are_counted_under_a_hash_not_under_the_email_and_the_address(): void
+    {
+        $this->post('/login', ['email' => 'Victim@Example.com', 'password' => 'wrong-password']);
+
+        $this->assertSame(1, RateLimiter::attempts(hash('sha256', 'victim@example.com|127.0.0.1')));
+        $this->assertSame(0, RateLimiter::attempts('victim@example.com|127.0.0.1'));
     }
 
     public function test_successful_login_resets_the_failed_attempts(): void
