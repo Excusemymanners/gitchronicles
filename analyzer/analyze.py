@@ -269,8 +269,8 @@ def write_cache(cache_path: Path, parsed_files: dict) -> None:
 
 def analyze_repository(root: Path, paths: list[str], cache: dict) -> tuple[dict, dict]:
     """Analyze every file. Returns the result to print and what was parsed (the next run's cache)."""
-    resolver = ImportResolver(root, set(paths))
     parsers = {}
+    resolver = ImportResolver(root, set(paths), lambda path: read_rust_reexports(root, path, parsers))
     files = []
     errors = []
     parsed_files = {}
@@ -788,6 +788,55 @@ def rust_use_paths(node, prefix: list[str]) -> list[list[str]]:
     return []
 
 
+def rust_reexport_entries(node, prefix: list[str]) -> list[tuple[list[str], str | None, bool]]:
+    """What one `use` argument exports, as (full path, name it is visible under, is a glob):
+    `a::b` is (["a", "b"], "b", False), `a::b as c` is (["a", "b"], "c", False), `a::*` is (["a"], None, True)."""
+    kind = node.type
+
+    if kind in ("identifier", "crate", "self", "super"):
+        if kind == "self" and prefix:
+            return [(prefix, prefix[-1], False)]
+        return [(prefix + [text(node)], text(node), False)]
+    if kind == "scoped_identifier":
+        entries = rust_use_paths(node, prefix)
+        return [(path, path[-1], False) for path in entries if path]
+    if kind == "use_as_clause":
+        alias = node.child_by_field_name("alias")
+        return [(path, text(alias) if alias is not None else path[-1], False) for path in rust_use_paths(node.child_by_field_name("path"), prefix) if path]
+    if kind == "use_wildcard":
+        return [(path, None, True) for path in rust_use_paths(node, prefix) if path]
+    if kind == "scoped_use_list":
+        path_node = node.child_by_field_name("path")
+        head = rust_use_paths(path_node, prefix)[0] if path_node is not None else prefix
+        return rust_reexport_entries(node.child_by_field_name("list"), head)
+    if kind == "use_list":
+        return [entry for child in node.named_children for entry in rust_reexport_entries(child, prefix)]
+
+    return []
+
+
+def read_rust_reexports(root: Path, path: str, parsers: dict) -> list[tuple[list[str], str | None, bool]]:
+    """The `pub use` declarations of one Rust file, read when an import has to pass through the file.
+    Anything that cannot be read or parsed simply has no re-exports."""
+    try:
+        source = read_clone_file(root, path, LIMITS["max_file_bytes"])
+        if "rust" not in parsers:
+            parsers["rust"] = language_pack.get_parser("rust")
+        tree = parse_with_time_limit(parsers["rust"], source)
+    except Exception:
+        return []
+
+    entries = []
+    for node in walk(tree.root_node):
+        if node.type != "use_declaration" or not any(child.type == "visibility_modifier" for child in node.children):
+            continue
+        argument = node.child_by_field_name("argument")
+        if argument is not None:
+            entries.extend(rust_reexport_entries(argument, []))
+
+    return entries
+
+
 def unique_imports(imports: list[tuple[str, list[str]]]) -> list[tuple[str, list[str]]]:
     """The same import written twice in a file (for example `import type` and `import`) counts once."""
     seen = {}
@@ -796,6 +845,9 @@ def unique_imports(imports: list[tuple[str, list[str]]]) -> list[tuple[str, list
 
     return list(seen.items())
 
+
+# How many `pub use` re-exports one import may pass through (a cycle of re-exports stops here).
+RUST_REEXPORT_DEPTH = 8
 
 class ImportResolver:
     """Finds the repository file an import points to, using each language's own rules:
@@ -809,13 +861,17 @@ class ImportResolver:
     - Shell: a literal relative path (next to the script, or from the repository root) or a path after the
       script's own folder (`$DIR/x.sh`); a path built from another variable is never guessed (external);
     - Rust: `mod x;` (x.rs or x/mod.rs), `crate::`, `self::`, `super::` paths through the module files of the
-      crate, and the crates of the repository (workspace members and `path =` dependencies) by name.
+      crate, and the crates of the repository (workspace members and `path =` dependencies) by name; a path
+      that goes through a `pub use` re-export (named, renamed, grouped or glob) ends in the file that defines it.
 
     "external" is true for an import that clearly comes from outside the repository (a library).
     """
 
-    def __init__(self, root: Path, paths: set[str]):
+    def __init__(self, root: Path, paths: set[str], rust_reexports=None):
         self.paths = paths
+        self.rust_reexports = rust_reexports or (lambda path: [])
+        self.rust_reexport_cache = {}
+        self.rust_reexport_depth = 0  # how many re-exports the resolution in progress has already followed
         self.psr4 = self.read_psr4(root)
         self.js_aliases = self.read_js_aliases(root)
         self.go_module = self.read_go_module(root)
@@ -975,17 +1031,59 @@ class ImportResolver:
         return (self.walk_rust_modules(start, folder, rest) if start is not None and folder is not None else None), False
 
     def walk_rust_modules(self, start: str, folder: str, segments: list[str]) -> str:
-        """Follow the path through module files from `start`; the walk stops at the first name that is
-        not a module file (an item of the module reached so far) and returns the last module reached."""
+        """Follow the path through module files from `start` (and through `pub use` re-exports); the walk stops at
+        the first name that is neither a module nor a re-export (an item of the module reached so far) and returns
+        the last module reached."""
         current = start
 
         for segment in segments:
-            found = self.first_existing([normalize(posixpath.join(folder, segment + ".rs")), normalize(posixpath.join(folder, segment, "mod.rs"))])
+            found = self.find_rust_child(current, segment, self.rust_reexport_depth)
             if found is None:
                 break
-            current, folder = found, self.rust_child_folder(found)
+            current = found
 
         return current
+
+    def find_rust_child(self, module: str, segment: str, depth: int) -> str | None:
+        """The file a name inside `module` stands for: a module file next to it, otherwise the target of a named
+        re-export of that name, otherwise what a glob re-export (`pub use a::*;`) brings in. `depth` counts the
+        re-exports followed, so a cycle of re-exports ends instead of looping."""
+        folder = self.rust_child_folder(module)
+        found = self.first_existing([normalize(posixpath.join(folder, segment + ".rs")), normalize(posixpath.join(folder, segment, "mod.rs"))])
+        if found is not None:
+            return found
+        if depth >= RUST_REEXPORT_DEPTH:
+            return None
+
+        if module not in self.rust_reexport_cache:
+            self.rust_reexport_cache[module] = self.rust_reexports(module)
+        entries = self.rust_reexport_cache[module]
+
+        for path, name, is_glob in entries:
+            if not is_glob and name == segment:
+                target = self.rust_reexport_target(module, path, depth)
+                if target is not None and target != module:
+                    return target
+
+        for path, name, is_glob in entries:
+            if is_glob:
+                target = self.rust_reexport_target(module, path, depth)
+                if target is not None and target != module:
+                    inner = self.find_rust_child(target, segment, depth + 1)
+                    if inner is not None:
+                        return inner
+
+        return None
+
+    def rust_reexport_target(self, module: str, path: list[str], depth: int) -> str | None:
+        """The file a re-exported path leads to, read from the file that re-exports it."""
+        self.rust_reexport_depth = depth + 1
+        try:
+            resolved, external = self.resolve_rust(module, "::".join(path))
+        finally:
+            self.rust_reexport_depth = depth
+
+        return None if external else resolved
 
     def rust_child_folder(self, module: str) -> str:
         """The folder where the `mod x;` declared in this file are: next to a mod.rs, lib.rs, main.rs or

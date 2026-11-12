@@ -202,6 +202,8 @@ return [
     |   rules (scanners/update-rules.sh) on or off; rules_version_file is where that script records the date;
     | - timeouts (seconds), max_output_bytes and max_findings (per tool): a hostile repository cannot keep
     |   a worker busy forever, fill its memory or flood the database; what the cap leaves out is counted.
+    |   An answer past max_output_bytes (CONSULTING_MAX_OUTPUT_MB, 8 MB) is never decoded: the tool is stopped
+    |   and the report shows it as not finished ("output_too_large"), while the other tools still count.
     |
     */
 
@@ -218,7 +220,9 @@ return [
             'osv-scanner' => 120,
             'scc' => 60,
         ],
-        'max_output_bytes' => 50 * 1024 * 1024,
+        // json_decode needs several times the size of a JSON text in memory, so the limit is far below PHP's
+        // 128 MB (Semgrep has no option that caps the number of findings, so the size is capped here).
+        'max_output_bytes' => (int) env('CONSULTING_MAX_OUTPUT_MB', 8) * 1024 * 1024,
         'max_findings' => 500,
         'stale_after_days' => (int) env('CONSULTING_STALE_AFTER_DAYS', 7),
         'rules_update_schedule' => (bool) env('CONSULTING_RULES_UPDATE_SCHEDULE', true),

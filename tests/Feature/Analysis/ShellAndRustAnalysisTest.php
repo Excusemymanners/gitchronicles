@@ -88,6 +88,8 @@ class ShellAndRustAnalysisTest extends TestCase
             ['crate::net::server', 'app/src/net/server.rs', false],
             ['crate::net::server::Server', 'app/src/net/server.rs', false],
             ['store_engine::store::Store', 'engine/src/store/mod.rs', false],
+            ['store_engine::cache::Cache', 'engine/src/store/cache.rs', false],
+            ['store_engine::codec::Codec', 'engine/src/parts/codec.rs', false],
             ['serde::Serialize', null, true],
             ['std::io', null, true],
         ], $this->importsOf($repository, 'app/src/main.rs'));
@@ -101,6 +103,18 @@ class ShellAndRustAnalysisTest extends TestCase
             ['mod server', 'app/src/net/server.rs', false],
         ], $this->importsOf($repository, 'app/src/net/mod.rs'));
         $this->assertSame([['mod cache', 'engine/src/store/cache.rs', false], ['cache::Cache', 'engine/src/store/cache.rs', false]], $this->importsOf($repository, 'engine/src/store/mod.rs'));
+    }
+
+    public function test_a_named_and_a_glob_re_export_lead_to_the_file_that_defines_the_item(): void
+    {
+        $repository = $this->analyzeFixture('analyzer-rust-project');
+
+        $this->assertSame([
+            ['mod store', 'engine/src/store/mod.rs', false],
+            ['mod parts', 'engine/src/parts/mod.rs', false],
+            ['store::cache', 'engine/src/store/cache.rs', false],
+            ['parts', 'engine/src/parts/mod.rs', false],
+        ], $this->importsOf($repository, 'engine/src/lib.rs'));
     }
 
     public function test_a_use_inside_an_inline_test_module_does_not_import_anything(): void

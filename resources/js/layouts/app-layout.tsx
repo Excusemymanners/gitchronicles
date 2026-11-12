@@ -29,7 +29,7 @@ const navLinkClasses = `rounded-md px-2.5 py-1.5 font-medium text-ink-muted hove
  */
 export default function AppLayout({ children }: Props) {
     const { props, url } = usePage();
-    const { auth } = props;
+    const { auth, registration_open } = props;
     const { t } = useI18n();
 
     // „Sari la conținut” mută focusul pe conținut fără să schimbe adresa paginii.
@@ -80,14 +80,18 @@ export default function AppLayout({ children }: Props) {
                                     <span className="sm:hidden">{t('nav.logInShort')}</span>
                                     <span className="max-sm:hidden">{t('nav.logIn')}</span>
                                 </Link>
-                                {/* Pe telefon rămâne doar „Autentificare”: pagina ei duce și la contul nou. */}
-                                <Link
-                                    href="/register"
-                                    aria-current={url.startsWith('/register') ? 'page' : undefined}
-                                    className={`pressable rounded-md bg-surface px-3 py-1.5 font-medium text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2 max-sm:hidden ${focusRing}`}
-                                >
-                                    {t('nav.signUp')}
-                                </Link>
+                                {registration_open && (
+                                    <>
+                                        {/* Pe telefon rămâne doar „Autentificare”: pagina ei duce și la contul nou. */}
+                                        <Link
+                                            href="/register"
+                                            aria-current={url.startsWith('/register') ? 'page' : undefined}
+                                            className={`pressable rounded-md bg-surface px-3 py-1.5 font-medium text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2 max-sm:hidden ${focusRing}`}
+                                        >
+                                            {t('nav.signUp')}
+                                        </Link>
+                                    </>
+                                )}
                             </>
                         )}
                     </nav>

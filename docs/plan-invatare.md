@@ -676,6 +676,12 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Întrebările de start ale asistentului erau scrise în cod, în engleză; acum vin din `lang/` și urmează limba interfeței.
   - Pagina 404 a unui URL fără rută nu trecea prin grupul `web`, deci ignora limba aleasă; `SetLocale` rulează acum și global.
 
+- 2026-11-13 — Finisaje după zilele de calitate și securitate. Decizii și motivele lor:
+  - Când `REGISTRATION_OPEN` e fals, formularul refuza deja, dar legăturile „Cont nou” rămâneau pe pagină și duceau la un 404. Steagul e acum prop partajat (ca limba), iar bara de navigare și pagina de autentificare ascund legăturile; ruta rămâne 404. O legătură care duce la o pagină închisă strică încrederea mai mult decât lipsa ei.
+  - Importurile Rust prin `pub use` ajungeau în `lib.rs`, deci diagrama arăta un fișier-ușă în loc de cel care definește modulul. Rezolvatorul citește acum, doar când un import trece printr-un fișier, declarațiile lui `pub use` (nume, nume cu `as`, grupuri, glob) și le urmează cu o adâncime maximă de 8, ca un ciclu `a` ↔ `b` să nu buclească. Citirea la cerere evită să schimbăm formatul memoriei de analiză, care ar fi lăsat intrări vechi fără re-exporturi.
+  - Răspunsul JSON al lui Semgrep se decodează în memorie și ocupă de câteva ori mărimea lui, deci limita de 50 MB depășea cei 128 MB ai PHP. Semgrep nu are opțiune pentru numărul de rezultate, așa că limitez mărimea (8 MB, `CONSULTING_MAX_OUTPUT_MB`); peste ea unealta apare în raport ca neterminată, cu motivul spus, iar celelalte unelte contează în continuare.
+  - README-ul are acum starea reală: shell și Rust, diagrame pentru proiecte mici, documentația în ordinea problemă → soluție → pornire, trecerea prin interfață și limitele de securitate cu numele lor din configurare.
+
 ---
 
 ## Start: Faza 0

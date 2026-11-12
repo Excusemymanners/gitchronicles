@@ -14,7 +14,7 @@ type Props = {
     /** Formularul. */
     children: ReactNode;
     /** Rândul de sub formular: legătura către cealaltă pagină (cont nou sau autentificare). */
-    footer: ReactNode;
+    footer?: ReactNode;
 };
 
 /**
@@ -39,7 +39,7 @@ export default function AuthShell({ title, lead, pendingRepository, pendingText,
 
                 <div className="mt-8">{children}</div>
 
-                <p className="mt-6 text-sm text-ink-muted">{footer}</p>
+                {footer && <p className="mt-6 text-sm text-ink-muted">{footer}</p>}
             </div>
 
             <aside aria-labelledby="after-heading" className="rounded-xl border border-line bg-surface p-6 shadow-card max-lg:hidden xl:p-8">

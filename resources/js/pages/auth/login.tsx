@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import AuthShell from '@/components/auth/auth-shell';
 import PrimaryButton from '@/components/primary-button';
 import TextField from '@/components/text-field';
@@ -15,6 +15,7 @@ const linkClasses =
 
 export default function Login({ pending_repository }: Props) {
     const { t } = useI18n();
+    const { registration_open } = usePage().props;
 
     return (
         <AppLayout>
@@ -26,12 +27,14 @@ export default function Login({ pending_repository }: Props) {
                 pendingRepository={pending_repository}
                 pendingText={t('auth.pending.login')}
                 footer={
-                    <>
-                        {t('auth.login.noAccount')}{' '}
-                        <Link href="/register" className={linkClasses}>
-                            {t('auth.login.createOne')}
-                        </Link>
-                    </>
+                    registration_open ? (
+                        <>
+                            {t('auth.login.noAccount')}{' '}
+                            <Link href="/register" className={linkClasses}>
+                                {t('auth.login.createOne')}
+                            </Link>
+                        </>
+                    ) : undefined
                 }
             >
                 {/*

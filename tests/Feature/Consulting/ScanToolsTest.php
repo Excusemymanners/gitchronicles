@@ -213,6 +213,17 @@ class ScanToolsTest extends TestCase
         $this->assertSame([ScanToolStatus::Failed, ScanToolException::OUTPUT_TOO_LARGE, 1], [$run->status, $run->error, $run->errorValue]);
     }
 
+    public function test_the_default_cap_refuses_an_answer_too_big_to_decode_and_the_report_still_finishes(): void
+    {
+        $this->assertSame(8 * 1024 * 1024, config('gitchronicle.consulting.max_output_bytes'));
+        $this->fakeConsultingTools(answers: ['semgrep' => str_repeat('x', 8 * 1024 * 1024 + 1)]);
+
+        $run = app(Semgrep::class)->run($this->clonePath);
+
+        $this->assertSame([ScanToolStatus::Failed, ScanToolException::OUTPUT_TOO_LARGE, 8], [$run->status, $run->error, $run->errorValue]);
+        $this->assertSame([], $run->findings);
+    }
+
     public function test_only_the_most_serious_findings_are_kept_and_the_rest_are_counted(): void
     {
         config(['gitchronicle.consulting.max_findings' => 5]);

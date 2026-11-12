@@ -124,6 +124,16 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseEmpty('users');
     }
 
+    public function test_the_registration_flag_is_shared_with_every_page(): void
+    {
+        $this->get('/login')->assertInertia(fn (Assert $page) => $page->where('registration_open', true));
+
+        config(['gitchronicle.auth.registration_open' => false]);
+
+        $this->get('/login')->assertInertia(fn (Assert $page) => $page->where('registration_open', false));
+        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('registration_open', false));
+    }
+
     /**
      * @return array{name: string, email: string, password: string, password_confirmation: string}
      */

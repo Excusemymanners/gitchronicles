@@ -229,6 +229,8 @@ declare module '@inertiajs/core' {
             auth: {
                 user: User | null;
             };
+            /** false când serverul a închis înregistrarea: paginile ascund legăturile spre /register. */
+            registration_open: boolean;
             /** Limba aleasă de server pentru această cerere ('en' sau 'ro'); lib/i18n.ts o urmează. */
             locale: string;
             /** Limbile comutatorului, fiecare cu numele în limba ei: { en: 'English', ro: 'Română' }. */
