@@ -14,6 +14,34 @@ const ro: Dictionary = {
         other: 'Altele',
         unknown: 'necunoscut',
     },
+    frontDoor: {
+        title: 'Documentează acest repository',
+        lead: '{repository} nu este încă în GitChronicle. Adaugă-l și îi scriem documentația, îi desenăm diagramele și îi urmărim istoricul.',
+        openOnGitHub: 'Vezi pe GitHub',
+        facts: {
+            stars: 'Stele',
+            forks: 'Fork-uri',
+            language: 'Limbaj principal',
+            license: 'Licență',
+            lastPush: 'Ultimul push',
+            defaultBranch: 'Ramura principală',
+        },
+        action: 'Documentează acest repository',
+        submitting: 'Se adaugă…',
+        hintUser: 'Pornim imediat, iar pagina următoare arată progresul.',
+        hintGuest: 'Adăugarea cere un cont. Intră în cont sau creează unul și îl adăugăm imediat după.',
+        willDoTitle: 'Ce urmează',
+        unavailable: {
+            title: 'GitHub nu a răspuns',
+            text: 'Nu am putut încărca acum de pe GitHub detaliile acestui repository, așa că nu afișăm niciunul. Îl poți adăuga oricum: citim totul din codul lui.',
+        },
+        notFound: {
+            title: 'Nu am găsit {repository}',
+            text: 'GitHub spune că repository-ul nu există sau este privat. GitChronicle documentează doar repository-uri publice, așa că verifică scrierea linkului.',
+            home: 'Înapoi la prima pagină',
+            discover: 'Vezi Descoperă',
+        },
+    },
     nav: {
         skipToContent: 'Sari la conținut',
         homeSuffix: ', prima pagină',
@@ -134,6 +162,7 @@ const ro: Dictionary = {
             submitting: 'Se adaugă…',
             hintUser: 'Dacă repository-ul a fost deja adăugat, îi deschidem direct pagina.',
             hintGuest: 'Poți răsfoi totul fără cont. Pentru un repository nou îți cerem să intri în cont, apoi îl adăugăm automat.',
+            replaceHost: 'Sau înlocuiește github.com cu {host} în orice link de repository.',
         },
         card: {
             failed: 'Procesarea s-a oprit cu o eroare.',

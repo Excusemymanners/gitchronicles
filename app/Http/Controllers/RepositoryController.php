@@ -45,6 +45,8 @@ class RepositoryController extends Controller
 
         return Inertia::render('home', [
             'repositories' => RepositoryCardResource::cards($repositories),
+            // The host of the app's URL, for the hint „replace github.com with {host}” under the add form.
+            'app_host' => parse_url(config('app.url'), PHP_URL_HOST).(($port = parse_url(config('app.url'), PHP_URL_PORT)) ? ":{$port}" : ''),
         ]);
     }
 

@@ -13,8 +13,8 @@ import { useI18n } from '@/hooks/use-i18n';
  * Câmpul și butonul stau în aceeași ramă, ca o singură comandă; rama primește conturul de focus al câmpului.
  */
 export default function AddRepositoryForm() {
-    const { auth } = usePage().props;
-    const { t } = useI18n();
+    const { auth, app_host } = usePage<{ app_host: string }>().props;
+    const { t, rich } = useI18n();
 
     return (
         <Form action="/repositories" method="post" resetOnSuccess noValidate>
@@ -61,6 +61,11 @@ export default function AddRepositoryForm() {
 
                     <p id="url-hint" className="mt-3 text-sm text-ink-subtle">
                         {auth.user ? t('home.form.hintUser') : t('home.form.hintGuest')}
+                    </p>
+
+                    {/* Scurtătura: schimbi github.com cu adresa aplicației în orice link (vezi FrontDoorController). */}
+                    <p className="mt-1 text-sm text-ink-subtle">
+                        {rich('home.form.replaceHost', { host: <strong className="font-medium text-ink-muted">{app_host}</strong> })}
                     </p>
                 </>
             )}

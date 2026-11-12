@@ -92,6 +92,9 @@ class AppServiceProvider extends ServiceProvider
      * because every new repository and every „Reîncearcă” starts a clone job.
      * Adding and retrying share the same 10 requests (same limiter, same key).
      *
+     * "front-door": at most 30 visits per minute for each IP address to {host}/owner/name, because an unknown
+     * repository costs one call to the GitHub API (answers are cached for 10 minutes).
+     *
      * "assistant": at most 20 questions per hour for each IP address, logged in or not
      * (the assistant is public), because every question can start a call to Claude.
      *
@@ -105,6 +108,10 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('repositories', function (Request $request) {
             return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('front-door', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
         });
 
         RateLimiter::for('assistant', function (Request $request) {

@@ -16,6 +16,34 @@ const en = {
         other: 'Other',
         unknown: 'unknown',
     },
+    frontDoor: {
+        title: 'Document this repository',
+        lead: '{repository} is not in GitChronicle yet. Add it and we write its documentation, draw its diagrams and follow its history.',
+        openOnGitHub: 'View on GitHub',
+        facts: {
+            stars: 'Stars',
+            forks: 'Forks',
+            language: 'Main language',
+            license: 'License',
+            lastPush: 'Last push',
+            defaultBranch: 'Default branch',
+        },
+        action: 'Document this repository',
+        submitting: 'Adding…',
+        hintUser: 'We start right away, and the next page shows the progress.',
+        hintGuest: 'Adding needs an account. Log in or sign up and we add it right after.',
+        willDoTitle: 'What happens next',
+        unavailable: {
+            title: 'GitHub did not answer',
+            text: 'We could not load the details of this repository from GitHub right now, so we show none. You can still add it: we read everything from the code itself.',
+        },
+        notFound: {
+            title: 'We could not find {repository}',
+            text: 'GitHub says this repository does not exist, or it is private. GitChronicle documents public repositories only, so check the spelling of the link.',
+            home: 'Back to home',
+            discover: 'Browse Discover',
+        },
+    },
     nav: {
         skipToContent: 'Skip to content',
         homeSuffix: ', home page',
@@ -136,6 +164,7 @@ const en = {
             submitting: 'Adding…',
             hintUser: 'If the repository is already here, we simply open its page.',
             hintGuest: 'Browsing needs no account. To add a new repository you log in first, and we add it right after.',
+            replaceHost: 'Or replace github.com with {host} in any repository link.',
         },
         card: {
             failed: 'Processing stopped with an error.',

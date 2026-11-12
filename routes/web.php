@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DiscoverController;
+use App\Http\Controllers\FrontDoorController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Repository\AssistantController;
 use App\Http\Controllers\Repository\AssistantQuestionController;
@@ -99,4 +100,16 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+});
+
+// The front door: github.com/owner/name becomes {our host}/owner/name. It is registered LAST and its
+// owner constraint excludes FrontDoorController::RESERVED_SEGMENTS, so it can never shadow another route.
+// "/github.com/owner/name" (a whole link pasted after the host) and extra segments ("/tree/main/src") reach the same page.
+Route::middleware('throttle:front-door')->group(function () {
+    Route::get('/github.com/{owner}/{name}/{rest?}', FrontDoorController::class)
+        ->where(['owner' => FrontDoorController::ownerPattern(), 'name' => FrontDoorController::NAME_PATTERN, 'rest' => '.*']);
+
+    Route::get('/{owner}/{name}/{rest?}', FrontDoorController::class)
+        ->where(['owner' => FrontDoorController::ownerPattern(), 'name' => FrontDoorController::NAME_PATTERN, 'rest' => '.*'])
+        ->name('front-door');
 });

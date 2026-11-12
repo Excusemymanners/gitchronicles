@@ -60,6 +60,14 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
 - 2026-11-10 — Lecție: în `app.blade.php` lipsea `@fonts`, deci fonturile din `vite.config.js` nu se încărcau deloc (nici Instrument Sans, din Faza 1); pagina folosea fontul sistemului.
 - 2026-11-10 — **Faza 2 gata.** Test cap-coadă în Chrome (Playwright): ca vizitator lipesc `github.com/Octocat/Hello-World.git`, sunt trimis la login („adăugăm automat…”), îmi fac cont și ajung direct pe pagina `octocat/hello-world`, fără erori în pagină.
 - 2026-11-10 — Logo nou (desenat de mine): iconiță bleumarin în care pana scrie o linie cu două commit-uri, iar linia se continuă într-un cerc ca un cadran de ceas (timpul, istoria). E folosit ca imagine (`public/logo.png`, `logo-256.png`, `favicon.ico`, `apple-touch-icon.png`).
+- 2026-11-12 — „Ușa din față”: schimbi `github.com` cu adresa aplicației într-un link de repository (`/laravel/framework`). Decizii și motivele lor:
+  - Ruta `GET /{owner}/{name}` e înregistrată ultima în `routes/web.php`, iar proprietarul nu poate fi un prim segment rezervat (`FrontDoorController::RESERVED_SEGMENTS`, ținute într-o singură constantă): așa nu acoperă niciodată o rută existentă. Un test pică dacă apare o rută nouă fără să fie rezervată.
+  - Numele și proprietarul respectă regulile GitHub (aceleași ca în `GitHubUrl`); se acceptă `.git` la final, segmentele în plus (`/tree/main/src`) și `/github.com/proprietar/nume`, fiindcă așa se lipesc linkurile în practică. Potrivirea cu repository-urile noastre ignoră majusculele, pentru că `GitHubUrl` scrie totul cu litere mici.
+  - Repository cunoscut → redirect 302 la pagina lui existentă; nu am schimbat rutele sau linkurile de până acum.
+  - Repository necunoscut → o pagină cu faptele reale de la GitHub și o singură acțiune, care trimite la fluxul de adăugare existent (`POST /repositories`): utilizatorul autentificat îl adaugă, vizitatorul trece întâi prin login și repository-ul se adaugă singur după aceea. Un `GET` nu creează nimic: adăugarea rămâne în spatele contului, fiindcă e controlul costurilor.
+  - Faptele vin din `GitHubClient`-ul de la Discover (același User-Agent generic, același token opțional, aceeași grijă pentru limita de cereri), nu dintr-un al treilea client. Răspunsul, și „nu există”, stau 10 minute în cache; o eroare a GitHub doar 1 minut și fără fapte: pagina o spune, nu inventează nimic. Un repository privat se tratează ca inexistent, ca să nu arătăm ce vede un token.
+  - Ruta are limită de 30 de vizite pe minut pe IP, iar paginile au `noindex` (antet și meta), ca să nu ajungă un index al tuturor repository-urilor de pe GitHub.
+  - Pe prima pagină, o propoziție sub formular spune trucul, cu hostul din `APP_URL`.
 
 ## Faza 3 — Joburi: clonarea
 - **Învăț:** cozi și joburi în Laravel, rularea comenzilor git din PHP, testarea joburilor, containere Podman.
