@@ -1,5 +1,6 @@
 import { Form, Link } from '@inertiajs/react';
 import { AppLogoMark } from '@/components/app-logo';
+import LanguageSwitch from '@/components/language-switch';
 import DeleteRepositoryButton from '@/components/delete-repository-button';
 import LastUpdateLine from '@/components/repository/last-update';
 import StatusBadge from '@/components/status-badge';
@@ -138,6 +139,7 @@ export default function WorkspaceTopBar({
                     </div>
                 )}
 
+                <LanguageSwitch />
                 <ThemeToggle />
             </div>
         </header>

@@ -3,7 +3,9 @@ import { useRef } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import AppLogo from '@/components/app-logo';
 import FlashMessage from '@/components/flash-message';
+import LanguageSwitch from '@/components/language-switch';
 import ThemeToggle from '@/components/theme-toggle';
+import { useI18n } from '@/hooks/use-i18n';
 
 type Props = {
     children: ReactNode;
@@ -18,7 +20,7 @@ const navLinkClasses = `rounded-md px-2.5 py-1.5 font-medium text-ink-muted hove
 
 /**
  * Rama paginilor din afara unui repository (prima pagină, autentificare, cont nou): antetul cu navigarea
- * (alta pentru vizitatori și pentru utilizatorii autentificați) și comutatorul de temă, conținutul paginii,
+ * (alta pentru vizitatori și pentru utilizatorii autentificați), comutatoarele de limbă și de temă, conținutul paginii,
  * subsolul și mesajul flash de la server.
  *
  * Antetul are aceeași înălțime ca bara spațiului de lucru (56 px) și rămâne sus la derulare.
@@ -28,6 +30,7 @@ const navLinkClasses = `rounded-md px-2.5 py-1.5 font-medium text-ink-muted hove
 export default function AppLayout({ children }: Props) {
     const { props, url } = usePage();
     const { auth } = props;
+    const { t } = useI18n();
 
     // „Sari la conținut” mută focusul pe conținut fără să schimbe adresa paginii.
     const mainRef = useRef<HTMLElement>(null);
@@ -44,7 +47,7 @@ export default function AppLayout({ children }: Props) {
                 onClick={skipToContent}
                 className="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm font-medium text-accent focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:outline-2 focus:outline-accent"
             >
-                Sari la conținut
+                {t('nav.skipToContent')}
             </a>
 
             <header
@@ -54,28 +57,28 @@ export default function AppLayout({ children }: Props) {
                 <div className={`flex h-14 items-center gap-1 sm:gap-2 ${pageContainer}`}>
                     <Link href="/" className={`mr-auto rounded-md text-ink ${focusRing}`}>
                         <AppLogo />
-                        <span className="sr-only">, prima pagină</span>
+                        <span className="sr-only">{t('nav.homeSuffix')}</span>
                     </Link>
 
-                    <nav aria-label="Navigare principală" className="flex items-center gap-1 text-sm">
+                    <nav aria-label={t('nav.main')} className="flex items-center gap-1 text-sm">
                         {/* Clasamentul „Descoperă” e public, așa că apare pentru toată lumea. */}
                         <Link href="/discover" aria-current={url.startsWith('/discover') ? 'page' : undefined} className={navLinkClasses}>
-                            Descoperă
+                            {t('nav.discover')}
                         </Link>
                         {auth.user ? (
                             <>
                                 <span className="max-w-40 truncate px-2 text-ink-subtle max-sm:hidden">{auth.user.name}</span>
-                                {auth.user.is_admin && <span className="rounded-sm bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-ink-muted max-sm:hidden">admin</span>}
+                                {auth.user.is_admin && <span className="rounded-sm bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-ink-muted max-sm:hidden">{t('nav.adminTag')}</span>}
                                 <Link href="/logout" method="post" as="button" className={`cursor-pointer ${navLinkClasses}`}>
-                                    Ieșire
+                                    {t('nav.logOut')}
                                 </Link>
                             </>
                         ) : (
                             <>
-                                {/* Pe telefon bara e îngustă: „Autentificare” se scurtează la „Intră”, ca să încapă și „Descoperă”. */}
+                                {/* Pe telefon bara e îngustă: „Autentificare” se scurtează la „Intră” (în engleză rămâne „Log in”). */}
                                 <Link href="/login" aria-current={url.startsWith('/login') ? 'page' : undefined} className={navLinkClasses}>
-                                    <span className="sm:hidden">Intră</span>
-                                    <span className="max-sm:hidden">Autentificare</span>
+                                    <span className="sm:hidden">{t('nav.logInShort')}</span>
+                                    <span className="max-sm:hidden">{t('nav.logIn')}</span>
                                 </Link>
                                 {/* Pe telefon rămâne doar „Autentificare”: pagina ei duce și la contul nou. */}
                                 <Link
@@ -83,13 +86,14 @@ export default function AppLayout({ children }: Props) {
                                     aria-current={url.startsWith('/register') ? 'page' : undefined}
                                     className={`pressable rounded-md bg-surface px-3 py-1.5 font-medium text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2 max-sm:hidden ${focusRing}`}
                                 >
-                                    Cont nou
+                                    {t('nav.signUp')}
                                 </Link>
                             </>
                         )}
                     </nav>
 
-                    {/* Comutatorul nu e o legătură de navigare, așa că stă lângă <nav>, nu în el. */}
+                    {/* Comutatoarele nu sunt legături de navigare, așa că stau lângă <nav>, nu în el. */}
+                    <LanguageSwitch />
                     <ThemeToggle />
                 </div>
             </header>
@@ -107,10 +111,9 @@ export default function AppLayout({ children }: Props) {
             <footer className="border-t border-line">
                 <div className={`flex flex-col gap-1 py-6 text-[0.8125rem] text-ink-subtle sm:flex-row sm:items-center sm:justify-between ${pageContainer}`}>
                     <p>
-                        <span className="font-brand font-bold text-ink-muted">GitChronicle</span> scrie documentația din codul și din istoricul git
-                        al fiecărui repository.
+                        <span className="font-brand font-bold text-ink-muted">{t('common.appName')}</span> {t('footer.tagline')}
                     </p>
-                    <p>Proiect de licență, 2026–2027</p>
+                    <p>{t('footer.thesis')}</p>
                 </div>
             </footer>
 

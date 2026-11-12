@@ -71,9 +71,9 @@ final class AddRepository
         $repository = $this->handle($request->user(), $url);
 
         if ($repository->wasRecentlyCreated) {
-            Inertia::flash('success', "Am adăugat {$repository->owner}/{$repository->name}.");
+            Inertia::flash('success', __('repositories.flash.added_pending', ['repository' => "{$repository->owner}/{$repository->name}"]));
         } else {
-            Inertia::flash('info', 'Repository-ul era deja adăugat.');
+            Inertia::flash('info', __('repositories.flash.already_added'));
         }
 
         return $repository;

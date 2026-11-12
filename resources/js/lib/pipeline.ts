@@ -1,57 +1,43 @@
+import type en from '@/lang/en';
 import type { RepositoryStatus } from '@/types';
 
 /**
  * Un pas al procesării unui repository. Pașii sunt cei din ProcessRepository::STAGES (Laravel), în ordinea
  * în care rulează; `during` e statusul pe care îl are repository-ul cât timp rulează pasul.
+ * Numele și descrierea pasului sunt în dicționare, la „pipeline.stages.{key}” (label, description).
  */
 export type PipelineStage = {
-    key: string;
-    label: string;
-    description: string;
+    key: keyof typeof en.pipeline.stages;
     during: RepositoryStatus;
 };
 
 export const PIPELINE_STAGES: PipelineStage[] = [
     {
         key: 'clone',
-        label: 'Clonare',
-        description: 'Aducem repository-ul de pe GitHub, cu tot istoricul lui.',
         during: 'cloning',
     },
     {
         key: 'analyze',
-        label: 'Analiza codului',
-        description: 'Citim fiecare fișier: limbaje, module, clase și funcții, cine importă pe cine.',
         during: 'analyzing',
     },
     {
         key: 'history',
-        label: 'Istoricul git',
-        description: 'Importăm commit-urile: autori, fișiere atinse, linii adăugate și șterse.',
         during: 'analyzing',
     },
     {
         key: 'docs',
-        label: 'Documentație',
-        description: 'Scriem „Despre proiect”, câte o pagină pentru modulele principale și un README.',
         during: 'documenting',
     },
     {
         key: 'diagrams',
-        label: 'Diagrame',
-        description: 'Desenăm arhitectura: straturi, C4 și fluxurile principale.',
         during: 'documenting',
     },
     {
         key: 'index',
-        label: 'Index pentru asistent',
-        description: 'Împărțim codul în fragmente căutabile, ca răspunsurile să citeze linii exacte.',
         during: 'documenting',
     },
     {
         key: 'ready',
-        label: 'Gata',
-        description: 'La un commit nou refacem doar ce s-a schimbat, nu tot proiectul.',
         during: 'ready',
     },
 ];

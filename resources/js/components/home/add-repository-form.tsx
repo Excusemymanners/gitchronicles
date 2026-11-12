@@ -1,25 +1,27 @@
 import { Form, usePage } from '@inertiajs/react';
 import PrimaryButton from '@/components/primary-button';
 import { GitHubIcon } from '@/components/workspace/icons';
+import { useI18n } from '@/hooks/use-i18n';
 
 /**
  * Formularul principal al primei pagini: lipești linkul unui repository public de pe GitHub.
  * Oricine îl poate trimite; serverul decide ce urmează. Dacă repository-ul există deja, îi deschide pagina.
  * Un vizitator fără cont ajunge la autentificare, iar după ce intră în cont repository-ul se adaugă automat.
  * resetOnSuccess golește câmpul după un răspuns reușit; noValidate lasă validarea pe seama serverului,
- * care răspunde în română.
+ * care răspunde în limba aleasă.
  *
  * Câmpul și butonul stau în aceeași ramă, ca o singură comandă; rama primește conturul de focus al câmpului.
  */
 export default function AddRepositoryForm() {
     const { auth } = usePage().props;
+    const { t } = useI18n();
 
     return (
         <Form action="/repositories" method="post" resetOnSuccess noValidate>
             {({ errors, processing }) => (
                 <>
                     <label htmlFor="url" className="text-sm font-medium text-ink">
-                        Linkul unui repository public de pe GitHub
+                        {t('home.form.label')}
                     </label>
 
                     <div
@@ -36,7 +38,7 @@ export default function AddRepositoryForm() {
                                 name="url"
                                 type="url"
                                 inputMode="url"
-                                placeholder="https://github.com/proprietar/nume"
+                                placeholder={t('home.form.placeholder')}
                                 autoComplete="off"
                                 autoCapitalize="none"
                                 spellCheck={false}
@@ -47,7 +49,7 @@ export default function AddRepositoryForm() {
                             />
                         </div>
                         <PrimaryButton size="lg" disabled={processing}>
-                            {processing ? 'Se adaugă…' : 'Adaugă repository'}
+                            {processing ? t('home.form.submitting') : t('home.form.submit')}
                         </PrimaryButton>
                     </div>
 
@@ -58,9 +60,7 @@ export default function AddRepositoryForm() {
                     )}
 
                     <p id="url-hint" className="mt-3 text-sm text-ink-subtle">
-                        {auth.user
-                            ? 'Dacă repository-ul a fost deja adăugat, îi deschidem direct pagina.'
-                            : 'Poți răsfoi totul fără cont. Pentru un repository nou îți cerem să intri în cont, apoi îl adăugăm automat.'}
+                        {auth.user ? t('home.form.hintUser') : t('home.form.hintGuest')}
                     </p>
                 </>
             )}

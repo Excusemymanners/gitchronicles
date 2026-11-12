@@ -228,6 +228,10 @@ declare module '@inertiajs/core' {
             auth: {
                 user: User | null;
             };
+            /** Limba aleasă de server pentru această cerere ('en' sau 'ro'); lib/i18n.ts o urmează. */
+            locale: string;
+            /** Limbile comutatorului, fiecare cu numele în limba ei: { en: 'English', ro: 'Română' }. */
+            locales: Record<string, string>;
         };
         /** Un mesaj de succes (verde), de informare (indigo) sau de eroare (roșu). */
         flashDataType: {

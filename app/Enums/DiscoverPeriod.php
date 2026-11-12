@@ -5,7 +5,8 @@ namespace App\Enums;
 /**
  * The periods of the „Descoperă” leaderboard: the growth of a repository is the number of stars it gained
  * between the snapshot of the ranking day and the snapshot taken exactly this many days before.
- * The value is what the page sends in the query string (?period=7d).
+ * The value is what the page sends in the query string (?period=7d); the page names it in the visitor's
+ * language (resources/js/lang, "discover.periods").
  */
 enum DiscoverPeriod: string
 {
@@ -31,18 +32,6 @@ enum DiscoverPeriod: string
             self::Day => 1,
             self::Week => 7,
             self::Month => 30,
-        };
-    }
-
-    /**
-     * The Romanian name of the period, for the filter and the sentences on the page.
-     */
-    public function label(): string
-    {
-        return match ($this) {
-            self::Day => '24 de ore',
-            self::Week => '7 zile',
-            self::Month => '30 de zile',
         };
     }
 }

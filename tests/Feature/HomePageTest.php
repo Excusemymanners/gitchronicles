@@ -28,7 +28,7 @@ class HomePageTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('home')
-            ->has('mesaj')
+            ->has('repositories')
         );
     }
 

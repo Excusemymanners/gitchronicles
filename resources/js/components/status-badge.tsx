@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n';
 import type { RepositoryStatus } from '@/types';
 
 /*
@@ -30,18 +31,23 @@ const dotClasses: Record<RepositoryStatus, string> = {
 
 type Props = {
     status: RepositoryStatus;
-    /** Textul afișat (status_label de la server). */
-    label: string;
+    /**
+     * Nu mai e folosit: eticheta își scrie singură textul, din dicționar („statuses.ready”).
+     * Rămâne opțional cât timp bara spațiului de lucru încă trimite status_label (a doua etapă îl scoate).
+     */
+    label?: string;
 };
 
-/** Eticheta rotunjită cu statusul unui repository, colorată după status. */
-export default function StatusBadge({ status, label }: Props) {
+/** Eticheta rotunjită cu statusul unui repository, colorată după status, cu numele statusului în limba aleasă. */
+export default function StatusBadge({ status }: Props) {
+    const { t } = useI18n();
+
     return (
         <span
             className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${badgeClasses[status]}`}
         >
             <span aria-hidden="true" className={`size-1.5 rounded-full ${dotClasses[status]}`} />
-            {label}
+            {t(`statuses.${status}`)}
         </span>
     );
 }

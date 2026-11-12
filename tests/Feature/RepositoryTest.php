@@ -157,7 +157,7 @@ class RepositoryTest extends TestCase
 
         $response->assertRedirect('/login');
         $response->assertSessionHas(AddRepository::PENDING_URL_SESSION_KEY, 'https://github.com/laravel/framework');
-        $response->assertInertiaFlash('info', 'Intră în cont ca să adăugăm laravel/framework.');
+        $response->assertInertiaFlash('info', 'Log in and we will add laravel/framework.');
         $this->assertDatabaseEmpty('repositories');
     }
 
@@ -194,7 +194,7 @@ class RepositoryTest extends TestCase
         $response = $this->post('/repositories', ['url' => 'https://github.com/laravel/framework']);
 
         $response->assertRedirect("/repositories/{$repository->id}");
-        $response->assertInertiaFlash('info', 'Repository-ul era deja adăugat.');
+        $response->assertInertiaFlash('info', 'This repository was already added.');
         $response->assertSessionMissing(AddRepository::PENDING_URL_SESSION_KEY);
         $this->assertDatabaseCount('repositories', 1);
     }
@@ -238,7 +238,7 @@ class RepositoryTest extends TestCase
 
         $repository = Repository::sole();
         $response->assertRedirect("/repositories/{$repository->id}");
-        $response->assertInertiaFlash('success', 'Repository adăugat.');
+        $response->assertInertiaFlash('success', 'Repository added.');
         $this->assertDatabaseHas('repositories', [
             'id' => $repository->id,
             'user_id' => $user->id,
@@ -261,7 +261,7 @@ class RepositoryTest extends TestCase
 
         $repository = Repository::sole();
         $response->assertRedirect("/repositories/{$repository->id}");
-        $response->assertInertiaFlash('success', 'Am adăugat laravel/framework.');
+        $response->assertInertiaFlash('success', 'Added laravel/framework.');
         $response->assertSessionMissing(AddRepository::PENDING_URL_SESSION_KEY);
         $this->assertDatabaseHas('repositories', [
             'id' => $repository->id,
@@ -287,7 +287,7 @@ class RepositoryTest extends TestCase
         $user = User::where('email', 'ana@example.com')->sole();
         $repository = Repository::sole();
         $response->assertRedirect("/repositories/{$repository->id}");
-        $response->assertInertiaFlash('success', 'Am adăugat laravel/framework.');
+        $response->assertInertiaFlash('success', 'Added laravel/framework.');
         $response->assertSessionMissing(AddRepository::PENDING_URL_SESSION_KEY);
         $this->assertDatabaseHas('repositories', [
             'id' => $repository->id,
@@ -309,7 +309,7 @@ class RepositoryTest extends TestCase
             ->post('/login', ['email' => $user->email, 'password' => 'password']);
 
         $response->assertRedirect("/repositories/{$repository->id}");
-        $response->assertInertiaFlash('info', 'Repository-ul era deja adăugat.');
+        $response->assertInertiaFlash('info', 'This repository was already added.');
         $response->assertSessionMissing(AddRepository::PENDING_URL_SESSION_KEY);
         $this->assertDatabaseCount('repositories', 1);
         $this->assertDatabaseHas('repositories', ['id' => $repository->id, 'user_id' => $adder->id]);
@@ -378,7 +378,7 @@ class RepositoryTest extends TestCase
         $response = $this->actingAs($user)->delete("/repositories/{$repository->id}");
 
         $response->assertRedirect('/');
-        $response->assertInertiaFlash('success', 'Repository șters.');
+        $response->assertInertiaFlash('success', 'Repository deleted.');
         $this->assertModelMissing($repository);
     }
 
@@ -467,7 +467,7 @@ class RepositoryTest extends TestCase
         $response = $this->actingAs($user)->post("/repositories/{$repository->id}/retry");
 
         $response->assertRedirect("/repositories/{$repository->id}");
-        $response->assertInertiaFlash('success', 'Am pornit din nou procesarea.');
+        $response->assertInertiaFlash('success', 'Processing started again.');
         $this->assertDatabaseHas('repositories', [
             'id' => $repository->id,
             'status' => 'pending',

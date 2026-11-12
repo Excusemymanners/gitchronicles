@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DiscoverController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Repository\AssistantController;
 use App\Http\Controllers\Repository\AssistantQuestionController;
 use App\Http\Controllers\Repository\ConsultingController;
@@ -22,6 +23,9 @@ Route::get('/', [RepositoryController::class, 'index'])->name('home');
 
 // „Descoperă” (bonus): the public ranking of the GitHub repositories that gain stars the fastest.
 Route::get('/discover', DiscoverController::class)->name('discover');
+
+// The language switch (header): saves the chosen language in a cookie, for guests and users alike.
+Route::post('/locale', LocaleController::class)->name('locale.update');
 
 // Browsing is public. "store" is public too: the controller sends guests to log in
 // before it creates anything. Only "destroy" needs an account.

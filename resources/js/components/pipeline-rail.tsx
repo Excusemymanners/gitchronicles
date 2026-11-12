@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { useI18n } from '@/hooks/use-i18n';
 import { PIPELINE_STAGES, stageStates } from '@/lib/pipeline';
 import type { StageState } from '@/lib/pipeline';
 import type { RepositoryStatus } from '@/types';
@@ -33,6 +34,8 @@ function seriesIndex(index: number): CSSProperties {
 }
 
 export default function PipelineRail({ status, variant = 'detailed', animated = false, className = '' }: Props) {
+    const { t } = useI18n();
+
     // Fără status, toți pașii arată la fel: sunt o explicație, nu un progres.
     const states: StageState[] = status ? stageStates(status) : PIPELINE_STAGES.map(() => 'done');
 
@@ -75,11 +78,11 @@ export default function PipelineRail({ status, variant = 'detailed', animated = 
                             aria-current={state === 'active' ? 'step' : undefined}
                         >
                             <p className={`text-sm font-medium ${state === 'todo' ? 'text-ink-muted' : 'text-ink'}`}>
-                                {stage.label}
-                                {status && state === 'done' && <span className="sr-only"> (făcut)</span>}
-                                {status && state === 'active' && <span className="sr-only"> (în lucru)</span>}
+                                {t(`pipeline.stages.${stage.key}.label`)}
+                                {status && state === 'done' && <span className="sr-only"> {t('pipeline.done')}</span>}
+                                {status && state === 'active' && <span className="sr-only"> {t('pipeline.inProgress')}</span>}
                             </p>
-                            <p className="mt-0.5 text-[0.8125rem] leading-5 text-ink-muted">{stage.description}</p>
+                            <p className="mt-0.5 text-[0.8125rem] leading-5 text-ink-muted">{t(`pipeline.stages.${stage.key}.description`)}</p>
                         </div>
                     </li>
                 );

@@ -1,8 +1,5 @@
-/** O perioadă a clasamentului: valoarea din adresă (?period=7d) și numele ei în română. */
-export type DiscoverPeriodOption = {
-    value: '24h' | '7d' | '30d';
-    label: string;
-};
+/** O perioadă a clasamentului, ca în adresă (?period=7d); numele ei e în dicționar, la „discover.periods”. */
+export type DiscoverPeriodOption = '24h' | '7d' | '30d';
 
 /** Un repository din clasament (DiscoverController::entry în Laravel). Toate cifrele vin din notările zilnice. */
 export type DiscoverEntry = {

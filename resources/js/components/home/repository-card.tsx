@@ -4,7 +4,8 @@ import LanguageBar from '@/components/home/language-bar';
 import { AssistantIcon, DiagramIcon, DocumentIcon, VideoIcon } from '@/components/icons';
 import PipelineRail from '@/components/pipeline-rail';
 import StatusBadge from '@/components/status-badge';
-import { countLabel, formatDate, formatRelative, shortSha } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import { formatDate, formatRelative, shortSha } from '@/lib/format';
 import type { RepositoryCard as RepositoryCardData } from '@/types/home';
 
 type Props = {
@@ -26,6 +27,7 @@ export default function RepositoryCard({ repository }: Props) {
     const { facts } = repository;
     const href = `/repositories/${repository.id}`;
     const isReady = repository.status === 'ready' || repository.status === 'updating';
+    const { t, plural } = useI18n();
 
     return (
         <li className="relative flex flex-col rounded-lg border border-line bg-surface p-5 shadow-card transition-colors hover:border-line-strong has-[h3_a:active]:bg-surface-2 sm:p-6">
@@ -44,21 +46,21 @@ export default function RepositoryCard({ repository }: Props) {
                 </h3>
 
                 {/* „Gata” e starea obișnuită, așa că nu o mai anunțăm; eticheta apare doar pentru celelalte. */}
-                {repository.status !== 'ready' && <StatusBadge status={repository.status} label={repository.status_label} />}
+                {repository.status !== 'ready' && <StatusBadge status={repository.status} />}
             </div>
 
             {repository.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-ink-muted">{repository.description}</p>}
 
             {repository.status === 'failed' && (
                 <p className="mt-4 line-clamp-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">
-                    {repository.error ?? 'Procesarea s-a oprit cu o eroare.'}
+                    {repository.error ?? t('home.card.failed')}
                 </p>
             )}
 
             {repository.is_processing && !isReady && (
                 <div className="mt-5">
                     <PipelineRail status={repository.status} variant="compact" />
-                    <p className="mt-3 text-[0.8125rem] text-ink-muted">Cardul se actualizează singur până la „Gata”.</p>
+                    <p className="mt-3 text-[0.8125rem] text-ink-muted">{t('home.card.updatesItself')}</p>
                 </div>
             )}
 
@@ -71,9 +73,9 @@ export default function RepositoryCard({ repository }: Props) {
                     )}
 
                     <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[0.8125rem] text-ink-muted">
-                        <Fact label={countLabel(facts.file_count, 'fișier', 'fișiere')} />
-                        <Fact label={countLabel(facts.module_count, 'modul', 'module')} />
-                        {facts.commit_count > 0 && <Fact label={countLabel(facts.commit_count, 'commit', 'commit-uri')} />}
+                        <Fact label={plural('files', facts.file_count)} />
+                        <Fact label={plural('modules', facts.module_count)} />
+                        {facts.commit_count > 0 && <Fact label={plural('commits', facts.commit_count)} />}
                     </ul>
 
                     {/* mt-auto ține subsolul jos, ca două carduri alăturate să se termine la fel. */}
@@ -83,13 +85,13 @@ export default function RepositoryCard({ repository }: Props) {
 
                             {repository.last_sha && (
                                 <p className="text-[0.8125rem] text-ink-subtle">
-                                    <span className="sr-only">Ultimul commit procesat: </span>
+                                    <span className="sr-only">{t('home.card.lastCommit')} </span>
                                     <code title={repository.last_sha} className="font-mono text-[0.75rem] text-ink-muted">
                                         {shortSha(repository.last_sha)}
                                     </code>
                                     {facts.processed_at && (
                                         <>
-                                            , procesat{' '}
+                                            , {t('home.card.processed')}{' '}
                                             <time dateTime={facts.processed_at} title={formatDate(facts.processed_at)}>
                                                 {formatRelative(facts.processed_at)}
                                             </time>
@@ -105,7 +107,7 @@ export default function RepositoryCard({ repository }: Props) {
     );
 }
 
-/** Un număr din analiză cu substantivul lui („94 de fișiere”): numărul iese în evidență, restul rămâne discret. */
+/** Un număr din analiză cu substantivul lui („94 files”, „94 de fișiere”): numărul iese în evidență, restul rămâne discret. */
 function Fact({ label }: { label: string }) {
     const [count, ...noun] = label.split(' ');
 
@@ -123,23 +125,36 @@ type ChaptersProps = {
 
 /** Legături directe către capitolele care există deja pentru repository. */
 function Chapters({ repositoryId, facts }: ChaptersProps) {
+    const { t, plural } = useI18n();
     const base = `/repositories/${repositoryId}`;
     const hasChapters = facts.document_count > 0 || facts.diagram_count > 0 || facts.has_assistant || facts.has_video;
 
     if (!hasChapters) {
-        return <p className="text-[0.8125rem] text-ink-subtle">Deocamdată are doar structura codului.</p>;
+        return <p className="text-[0.8125rem] text-ink-subtle">{t('home.card.onlyStructure')}</p>;
     }
 
     return (
         <ul className="flex flex-wrap gap-1.5">
             {facts.document_count > 0 && (
-                <ChapterLink href={`${base}/docs`} icon={<DocumentIcon />} label="Documentație" count={facts.document_count} noun="pagini" />
+                <ChapterLink
+                    href={`${base}/docs`}
+                    icon={<DocumentIcon />}
+                    label={t('home.card.docs')}
+                    count={facts.document_count}
+                    countText={plural('pages', facts.document_count)}
+                />
             )}
             {facts.diagram_count > 0 && (
-                <ChapterLink href={`${base}/diagrams`} icon={<DiagramIcon />} label="Diagrame" count={facts.diagram_count} noun="diagrame" />
+                <ChapterLink
+                    href={`${base}/diagrams`}
+                    icon={<DiagramIcon />}
+                    label={t('home.card.diagrams')}
+                    count={facts.diagram_count}
+                    countText={plural('diagrams', facts.diagram_count)}
+                />
             )}
-            {facts.has_assistant && <ChapterLink href={`${base}/assistant`} icon={<AssistantIcon />} label="Asistent" />}
-            {facts.has_video && <ChapterLink href={`${base}/media`} icon={<VideoIcon />} label="Video" />}
+            {facts.has_assistant && <ChapterLink href={`${base}/assistant`} icon={<AssistantIcon />} label={t('home.card.assistant')} />}
+            {facts.has_video && <ChapterLink href={`${base}/media`} icon={<VideoIcon />} label={t('home.card.video')} />}
         </ul>
     );
 }
@@ -150,11 +165,11 @@ type ChapterLinkProps = {
     label: string;
     /** Câte pagini sau diagrame are capitolul; lipsește unde nu are sens un număr. */
     count?: number;
-    /** Ce numără `count`, pentru cititoarele de ecran („25 pagini”). */
-    noun?: string;
+    /** Numărul cu substantivul lui, pentru cititoarele de ecran („25 pages”, „25 de pagini”). */
+    countText?: string;
 };
 
-function ChapterLink({ href, icon, label, count, noun }: ChapterLinkProps) {
+function ChapterLink({ href, icon, label, count, countText }: ChapterLinkProps) {
     return (
         <li>
             <Link
@@ -165,8 +180,8 @@ function ChapterLink({ href, icon, label, count, noun }: ChapterLinkProps) {
                 {label}
                 {count !== undefined && (
                     <span className="tabular-nums text-ink-subtle">
-                        {count}
-                        <span className="sr-only"> {noun}</span>
+                        <span aria-hidden="true">{count}</span>
+                        <span className="sr-only">{countText}</span>
                     </span>
                 )}
             </Link>

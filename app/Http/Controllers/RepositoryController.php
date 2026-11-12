@@ -25,6 +25,7 @@ use Inertia\Response;
 
 /**
  * The public catalog of repositories: anyone may browse it, only logged-in users add to it.
+ * Its messages are in lang/{en,ro}/repositories.php, in the language SetLocale chose.
  */
 class RepositoryController extends Controller
 {
@@ -43,7 +44,6 @@ class RepositoryController extends Controller
             ->get();
 
         return Inertia::render('home', [
-            'mesaj' => 'Documentație vie pentru repository-urile tale',
             'repositories' => RepositoryCardResource::cards($repositories),
         ]);
     }
@@ -65,7 +65,7 @@ class RepositoryController extends Controller
         $existingRepository = Repository::firstWhere('url', $url);
 
         if ($existingRepository !== null) {
-            Inertia::flash('info', 'Repository-ul era deja adăugat.');
+            Inertia::flash('info', __('repositories.flash.already_added'));
 
             return redirect()->route('repositories.show', $existingRepository);
         }
@@ -74,14 +74,14 @@ class RepositoryController extends Controller
             $request->session()->put(AddRepository::PENDING_URL_SESSION_KEY, $url);
 
             $parts = GitHubUrl::parse($url);
-            Inertia::flash('info', "Intră în cont ca să adăugăm {$parts['owner']}/{$parts['name']}.");
+            Inertia::flash('info', __('repositories.flash.log_in_to_add', ['repository' => "{$parts['owner']}/{$parts['name']}"]));
 
             return redirect()->route('login');
         }
 
         $repository = $addRepository->handle($request->user(), $url);
 
-        Inertia::flash('success', 'Repository adăugat.');
+        Inertia::flash('success', __('repositories.flash.added'));
 
         return redirect()->route('repositories.show', $repository);
     }
@@ -137,7 +137,7 @@ class RepositoryController extends Controller
 
         $reprocessRepository->handle($repository);
 
-        Inertia::flash('success', 'Am pornit din nou procesarea.');
+        Inertia::flash('success', __('repositories.flash.retry_started'));
 
         return redirect()->route('repositories.show', $repository);
     }
@@ -153,7 +153,7 @@ class RepositoryController extends Controller
 
         $updateRepository->handle($repository, ProcessingTrigger::Manual);
 
-        Inertia::flash('success', 'Verificăm dacă sunt commit-uri noi pe GitHub.');
+        Inertia::flash('success', __('repositories.flash.checking_updates'));
 
         return redirect()->back(fallback: route('repositories.show', $repository));
     }
@@ -184,7 +184,7 @@ class RepositoryController extends Controller
 
         $repository->delete();
 
-        Inertia::flash('success', 'Repository șters.');
+        Inertia::flash('success', __('repositories.flash.deleted'));
 
         return redirect()->route('home');
     }

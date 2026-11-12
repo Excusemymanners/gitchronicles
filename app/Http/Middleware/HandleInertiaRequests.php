@@ -33,6 +33,10 @@ class HandleInertiaRequests extends Middleware
      * (never the password hash or the remember token). is_admin only shows the „admin” tag in the header:
      * what a user may do always comes from the policy (the "can_…" props of each page).
      *
+     * "locale" is the language SetLocale chose for this request and "locales" the languages of the
+     * switch, each in its own language ({"en": "English", "ro": "Română"}). The front end reads
+     * "locale" to pick its dictionary (resources/js/lib/i18n.ts).
+     *
      * @see https://inertiajs.com/shared-data
      *
      * @return array<string, mixed>
@@ -47,6 +51,8 @@ class HandleInertiaRequests extends Middleware
                     'is_admin' => (bool) $request->user()->is_admin,
                 ],
             ],
+            'locale' => app()->getLocale(),
+            'locales' => config('app.supported_locales'),
         ];
     }
 }

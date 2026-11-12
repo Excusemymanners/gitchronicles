@@ -1,15 +1,17 @@
+import { useI18n } from '@/hooks/use-i18n';
 import { withViewTransition } from '@/lib/motion';
 import { setTheme, useTheme } from '@/lib/theme';
 
 /**
  * Butonul din antet care schimbă tema. Iconița și eticheta arată tema în care treci:
- * în tema întunecată apare soarele („Temă luminoasă”), în cea luminoasă luna („Temă întunecată”).
+ * în tema întunecată apare soarele („Switch to light theme”), în cea luminoasă luna („Switch to dark theme”).
  * Schimbarea se face cu o trecere lină a întregii pagini (withViewTransition), nu dintr-odată.
  */
 export default function ThemeToggle() {
     const theme = useTheme();
+    const { t } = useI18n();
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    const label = nextTheme === 'light' ? 'Temă luminoasă' : 'Temă întunecată';
+    const label = nextTheme === 'light' ? t('theme.toLight') : t('theme.toDark');
 
     return (
         <button

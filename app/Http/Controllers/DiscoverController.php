@@ -53,7 +53,8 @@ class DiscoverController extends Controller
         return Inertia::render('discover', [
             'filters' => ['period' => $period->value, 'language' => $language],
             'default_period' => DiscoverPeriod::default()->value,
-            'periods' => array_map(fn (DiscoverPeriod $option): array => ['value' => $option->value, 'label' => $option->label()], DiscoverPeriod::cases()),
+            // Only the values ('24h', '7d', '30d'): the page writes their names in the visitor's language.
+            'periods' => array_column(DiscoverPeriod::cases(), 'value'),
             'languages' => $leaderboard->languages(),
             'ranking' => [
                 'day' => $ranking->day,

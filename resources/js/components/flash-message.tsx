@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { CloseIcon } from '@/components/icons';
+import { useI18n } from '@/hooks/use-i18n';
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
@@ -43,7 +44,8 @@ const placementClasses: Record<NonNullable<Props['placement']>, string> = {
 };
 
 /**
- * Mesajul trimis de server cu Inertia::flash('success' | 'info' | 'error', '…') înainte de un redirect.
+ * Mesajul trimis de server cu Inertia::flash('success' | 'info' | 'error', __('…')) înainte de un redirect,
+ * deja în limba aleasă (serverul îl traduce).
  * Fiecare răspuns nou de la server aduce un obiect `flash` nou. Când el conține un mesaj, îl păstrăm
  * în state și îl ascundem singuri după 5 secunde (sau la „×”). Un răspuns fără mesaj nu îl ascunde:
  * altfel reîmprospătarea automată a paginii (la 2 secunde, cât se procesează un repository)
@@ -51,6 +53,7 @@ const placementClasses: Record<NonNullable<Props['placement']>, string> = {
  */
 export default function FlashMessage({ placement = 'bottom' }: Props) {
     const { flash } = usePage();
+    const { t } = useI18n();
     const [visibleFlash, setVisibleFlash] = useState<VisibleFlash | null>(null);
 
     useEffect(() => {
@@ -92,7 +95,7 @@ export default function FlashMessage({ placement = 'bottom' }: Props) {
                     <button
                         type="button"
                         onClick={() => setVisibleFlash(null)}
-                        aria-label="Închide mesajul"
+                        aria-label={t('flash.dismiss')}
                         className={`pressable -my-1 -mr-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-subtle hover:bg-surface-2 hover:text-ink ${focusRing}`}
                     >
                         <CloseIcon />

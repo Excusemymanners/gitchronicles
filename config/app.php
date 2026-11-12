@@ -86,6 +86,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Interface Languages
+    |--------------------------------------------------------------------------
+    |
+    | The languages a visitor can choose in the language switch, each written
+    | in its own language. SetLocale picks one of them for every web request:
+    | the saved choice, else the best match for the browser's languages, else
+    | "fallback_locale" (English). "locale" above only matters outside a web
+    | request (console, queue).
+    |
+    | Adding a language takes three steps: an entry here, a lang/{code} folder
+    | (a translated copy of lang/en) and a front-end dictionary
+    | (resources/js/lang/{code}.ts, registered in resources/js/lang/index.ts).
+    |
+    */
+
+    'supported_locales' => [
+        'en' => 'English',
+        'ro' => 'Română',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------
     |

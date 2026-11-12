@@ -34,11 +34,7 @@ class DiscoverPageTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('discover')
                 ->where('filters', ['period' => '7d', 'language' => null])
-                ->where('periods', [
-                    ['value' => '24h', 'label' => '24 de ore'],
-                    ['value' => '7d', 'label' => '7 zile'],
-                    ['value' => '30d', 'label' => '30 de zile'],
-                ])
+                ->where('periods', ['24h', '7d', '30d'])
                 ->where('ranking.day', null)
                 ->where('ranking.total', 0)
                 ->where('entries', [])

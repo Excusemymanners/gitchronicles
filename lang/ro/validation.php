@@ -7,8 +7,10 @@ return [
     | Validation Language Lines
     |--------------------------------------------------------------------------
     |
-    | Only the rules this application uses. A rule missing from this file falls
-    | back to Laravel's English message (fallback_locale = en).
+    | Only the rules this application uses, with the same keys as
+    | lang/en/validation.php (tests/Feature/TranslationFilesTest.php checks
+    | it). A rule missing from this file falls back to the English message
+    | (fallback_locale = en).
     |
     | Romanian needs "de" after numbers from 20 up: "255 de caractere", but
     | "8 caractere". The max/min messages fit the limits used here (max:255, min:8).
@@ -44,6 +46,7 @@ return [
         'email' => 'email',
         'password' => 'parolă',
         'url' => 'link',
+        'locale' => 'limbă',
     ],
 
 ];

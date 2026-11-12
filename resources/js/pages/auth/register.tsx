@@ -2,6 +2,7 @@ import { Form, Head, Link } from '@inertiajs/react';
 import AuthShell from '@/components/auth/auth-shell';
 import PrimaryButton from '@/components/primary-button';
 import TextField from '@/components/text-field';
+import { useI18n } from '@/hooks/use-i18n';
 import AppLayout from '@/layouts/app-layout';
 
 type Props = {
@@ -13,20 +14,22 @@ const linkClasses =
     'rounded-sm font-medium text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 export default function Register({ pending_repository }: Props) {
+    const { t } = useI18n();
+
     return (
         <AppLayout>
-            <Head title="Cont nou" />
+            <Head title={t('auth.register.title')} />
 
             <AuthShell
-                title="Creează un cont"
-                lead="Cu un cont poți adăuga repository-uri publice de pe GitHub și le poți șterge pe cele adăugate de tine."
+                title={t('auth.register.heading')}
+                lead={t('auth.register.lead')}
                 pendingRepository={pending_repository}
-                pendingText="După ce îți creezi contul, adăugăm automat"
+                pendingText={t('auth.pending.register')}
                 footer={
                     <>
-                        Ai deja cont?{' '}
+                        {t('auth.register.haveAccount')}{' '}
                         <Link href="/login" className={linkClasses}>
-                            Intră în cont
+                            {t('auth.register.logIn')}
                         </Link>
                     </>
                 }
@@ -41,18 +44,18 @@ export default function Register({ pending_repository }: Props) {
                 >
                     {({ errors, processing }) => (
                         <>
-                            <TextField label="Nume" name="name" autoComplete="name" autoFocus error={errors.name} />
-                            <TextField label="Email" name="email" type="email" autoComplete="email" error={errors.email} />
+                            <TextField label={t('auth.fields.name')} name="name" autoComplete="name" autoFocus error={errors.name} />
+                            <TextField label={t('auth.fields.email')} name="email" type="email" autoComplete="email" error={errors.email} />
                             <TextField
-                                label="Parolă"
+                                label={t('auth.fields.password')}
                                 name="password"
                                 type="password"
                                 autoComplete="new-password"
-                                hint="Cel puțin 8 caractere."
+                                hint={t('auth.fields.passwordHint')}
                                 error={errors.password}
                             />
                             <TextField
-                                label="Confirmă parola"
+                                label={t('auth.fields.passwordConfirmation')}
                                 name="password_confirmation"
                                 type="password"
                                 autoComplete="new-password"
@@ -60,7 +63,7 @@ export default function Register({ pending_repository }: Props) {
                             />
 
                             <PrimaryButton size="lg" disabled={processing}>
-                                {processing ? 'Se creează contul…' : 'Creează cont'}
+                                {processing ? t('auth.register.submitting') : t('auth.register.submit')}
                             </PrimaryButton>
                         </>
                     )}

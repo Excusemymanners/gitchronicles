@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,9 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // SetLocale runs first, so the shared props, the validation messages and the page all use the chosen language.
         $middleware->web(append: [
+            SetLocale::class,
             HandleInertiaRequests::class,
         ]);
+
+        // The language cookie is plain text: it is not a secret and SetLocale checks its value on every request.
+        $middleware->encryptCookies(except: [SetLocale::COOKIE]);
 
         // Guests on "auth" routes go to route('login') (Laravel's default once that route exists).
         // Logged-in users on "guest" routes (/login, /register) go to the home page.

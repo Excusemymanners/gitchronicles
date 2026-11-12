@@ -54,7 +54,7 @@ class StoreRepositoryRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'url.regex' => 'Introdu un link de GitHub de forma https://github.com/proprietar/nume.',
+            'url.regex' => __('repositories.invalid_url'),
         ];
     }
 }

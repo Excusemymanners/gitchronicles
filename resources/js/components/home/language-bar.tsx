@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n';
 import { formatPercent } from '@/lib/format';
 import type { LanguageShare } from '@/types/home';
 
@@ -19,6 +20,7 @@ const segmentClasses = ['bg-accent', 'bg-accent/60', 'bg-accent/30'];
 export default function LanguageBar({ languages }: Props) {
     const namedShare = languages.reduce((sum, language) => sum + language.share, 0);
     const otherShare = Math.max(0, 1 - namedShare);
+    const { t } = useI18n();
 
     return (
         <div>
@@ -41,7 +43,7 @@ export default function LanguageBar({ languages }: Props) {
                 {otherShare > 0.005 && (
                     <li className="flex items-center gap-1.5">
                         <span aria-hidden="true" className="size-2 rounded-full bg-line-strong" />
-                        <span>Altele</span>
+                        <span>{t('common.other')}</span>
                         <span className="tabular-nums">{formatPercent(otherShare)}</span>
                     </li>
                 )}

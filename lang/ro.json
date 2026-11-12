@@ -1,0 +1,11 @@
+{
+    "Forbidden": "Acces interzis",
+    "Not Found": "Pagina nu există",
+    "Page Expired": "Pagina a expirat",
+    "Payment Required": "Plată necesară",
+    "Server Error": "Eroare de server",
+    "Service Unavailable": "Serviciu indisponibil",
+    "This action is unauthorized.": "Nu ai voie să faci asta.",
+    "Too Many Requests": "Prea multe cereri",
+    "Unauthorized": "Neautorizat"
+}

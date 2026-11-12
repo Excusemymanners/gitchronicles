@@ -2,6 +2,7 @@ import { Form, Head, Link } from '@inertiajs/react';
 import AuthShell from '@/components/auth/auth-shell';
 import PrimaryButton from '@/components/primary-button';
 import TextField from '@/components/text-field';
+import { useI18n } from '@/hooks/use-i18n';
 import AppLayout from '@/layouts/app-layout';
 
 type Props = {
@@ -13,20 +14,22 @@ const linkClasses =
     'rounded-sm font-medium text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 export default function Login({ pending_repository }: Props) {
+    const { t } = useI18n();
+
     return (
         <AppLayout>
-            <Head title="Autentificare" />
+            <Head title={t('auth.login.title')} />
 
             <AuthShell
-                title="Intră în cont"
-                lead="Contul e necesar doar ca să adaugi repository-uri. Documentația, diagramele și asistentul se pot folosi fără el."
+                title={t('auth.login.heading')}
+                lead={t('auth.login.lead')}
                 pendingRepository={pending_repository}
-                pendingText="După ce intri în cont, adăugăm automat"
+                pendingText={t('auth.pending.login')}
                 footer={
                     <>
-                        Nu ai cont?{' '}
+                        {t('auth.login.noAccount')}{' '}
                         <Link href="/register" className={linkClasses}>
-                            Creează unul
+                            {t('auth.login.createOne')}
                         </Link>
                     </>
                 }
@@ -34,13 +37,19 @@ export default function Login({ pending_repository }: Props) {
                 {/*
                   <Form> trimite câmpurile prin Inertia (POST /login), fără reîncărcarea paginii.
                   resetOnError golește parola după o încercare eșuată; emailul rămâne completat.
-                  noValidate: validarea o face serverul, cu mesaje în română.
+                  noValidate: validarea o face serverul, cu mesaje în limba aleasă.
                 */}
                 <Form action="/login" method="post" resetOnError={['password']} noValidate className="flex flex-col gap-5">
                     {({ errors, processing }) => (
                         <>
-                            <TextField label="Email" name="email" type="email" autoComplete="username" autoFocus error={errors.email} />
-                            <TextField label="Parolă" name="password" type="password" autoComplete="current-password" error={errors.password} />
+                            <TextField label={t('auth.fields.email')} name="email" type="email" autoComplete="username" autoFocus error={errors.email} />
+                            <TextField
+                                label={t('auth.fields.password')}
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                error={errors.password}
+                            />
 
                             <div className="flex items-center gap-2">
                                 <input
@@ -51,12 +60,12 @@ export default function Login({ pending_repository }: Props) {
                                     className="size-4 cursor-pointer accent-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                                 />
                                 <label htmlFor="remember" className="cursor-pointer text-sm text-ink-muted">
-                                    Ține-mă minte pe acest dispozitiv
+                                    {t('auth.fields.remember')}
                                 </label>
                             </div>
 
                             <PrimaryButton size="lg" disabled={processing}>
-                                {processing ? 'Se verifică…' : 'Intră în cont'}
+                                {processing ? t('auth.login.submitting') : t('auth.login.submit')}
                             </PrimaryButton>
                         </>
                     )}
