@@ -61,6 +61,16 @@ final class ArchitectureDiagramBuilder
     public const MAX_COMPONENTS = 15;
 
     /**
+     * A repository with fewer modules with code than this gets its components diagram at file level.
+     */
+    public const MIN_MODULES_FOR_MODULE_COMPONENTS = 3;
+
+    /**
+     * The file-level components diagram shows the biggest this many files.
+     */
+    public const MAX_COMPONENT_FILES = 20;
+
+    /**
      * The component view draws the strongest this many dependencies.
      */
     public const MAX_COMPONENT_EDGES = 25;
@@ -129,7 +139,7 @@ final class ArchitectureDiagramBuilder
         return array_values(array_filter([
             $this->layersView($repository, $modules, $dependencies, $excluded),
             $this->containerView($repository, $report),
-            $this->componentView($repository, $modules, $dependencies),
+            $this->componentsDiagram($repository, $modules, $dependencies),
             $this->contextView($repository, $report),
         ]));
     }
@@ -359,6 +369,117 @@ final class ArchitectureDiagramBuilder
             'caption' => 'The parts that run separately and their technologies, found in '.$this->sourcesSentence($report).'; an arrow points from the caller to what it calls.',
             'technologies' => array_map(fn (Technology $technology): array => $technology->toArray(), $report->all()),
             'hidden_projects' => $hiddenProjects,
+        ]);
+    }
+
+    /**
+     * The components diagram: of modules, or, when the repository has fewer than three modules with code
+     * (everything sits in one or two folders, or in the root), of files, when that shows more than the
+     * modules would (more files than modules) and there are at least two files to connect.
+     *
+     * @param  Collection<int, Module>  $modules
+     * @param  list<array{from: int, to: int, weight: int}>  $dependencies
+     * @return array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}|null
+     */
+    private function componentsDiagram(Repository $repository, Collection $modules, array $dependencies): ?array
+    {
+        if ($modules->count() < self::MIN_MODULES_FOR_MODULE_COMPONENTS) {
+            $diagram = $this->fileComponentView($repository, $modules->count());
+
+            if ($diagram !== null) {
+                return $diagram;
+            }
+        }
+
+        return $this->componentView($repository, $modules, $dependencies);
+    }
+
+    /**
+     * "Components" at file level, for a small or flat repository: the biggest files (up to 20) with their
+     * main symbols, inside the system boundary, and the imports between them as arrows. The findings and
+     * the evidence mean the same as for modules, over files. Null when the files are no more than the
+     * modules (the module diagram already shows each of them).
+     *
+     * @return array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}|null
+     */
+    private function fileComponentView(Repository $repository, int $moduleCount): ?array
+    {
+        $files = $this->overview->applicationFiles($repository);
+
+        if ($files->count() < 2 || $files->count() <= $moduleCount) {
+            return null;
+        }
+
+        $dependencies = $this->overview->dependenciesBetweenFiles($repository, $files);
+        $shown = $this->biggest($files, self::MAX_COMPONENT_FILES);
+        $ids = $this->nodeIds($shown, 'f');
+        $symbolNames = $this->overview->mainSymbolNames($shown, self::MAX_CLASS_NAMES);
+        $omitted = $files->count() - $shown->count();
+
+        // A file is called by its name; when two get the same name, by their whole path.
+        $names = $shown->mapWithKeys(fn (Module $file): array => [$file->id => basename($file->path)]);
+        $repeatedNames = $names->duplicates()->all();
+
+        $chart = new Flowchart('TB');
+        $chart->startGroup('system', '<b>'.MermaidText::escape($repository->name).'</b> · code files', 'boundary');
+
+        foreach ($shown as $file) {
+            $shortName = in_array($names[$file->id], $repeatedNames, true) ? $file->path : $names[$file->id];
+            $folder = dirname($file->path);
+            $details = array_values(array_filter([
+                $shortName === $file->path || $folder === '.' ? null : $folder,
+                ...($symbolNames[$file->id] ?? []),
+            ]));
+
+            $chart->node($ids[$file->id], MermaidText::label($shortName, $details), 'component');
+        }
+
+        if ($omitted > 0) {
+            $chart->node('more', MermaidText::escape('+ '.$this->countLabel($omitted, 'more file', 'more files')), 'more');
+        }
+
+        $drawnEdges = $this->drawDependencies($chart, $dependencies, $ids, self::MAX_COMPONENT_EDGES);
+
+        $connected = array_unique(array_merge([], ...$drawnEdges));
+        $unconnected = array_values(array_diff([...array_values($ids), ...($omitted > 0 ? ['more'] : [])], $connected));
+        $this->gridLinks($chart, $unconnected);
+
+        if ($unconnected !== [] && $drawnEdges !== []) {
+            $chart->invisibleLink($unconnected[array_key_last($unconnected)], $drawnEdges[0][0]);
+        }
+
+        $chart->endGroup();
+        $this->defineC4Styles($chart);
+
+        $nodeToFile = array_flip($ids);
+        $drawnFiles = array_map(fn (array $edge): array => [$nodeToFile[$edge[0]], $nodeToFile[$edge[1]]], $drawnEdges);
+        $weights = [];
+
+        foreach ($dependencies as $dependency) {
+            $weights[$dependency['from'].':'.$dependency['to']] = $dependency['weight'];
+        }
+
+        $drawnImports = array_sum(array_map(fn (array $edge): int => $weights[$edge[0].':'.$edge[1]], $drawnFiles));
+        $possibleEdges = count(array_filter($dependencies, fn (array $dependency): bool => isset($ids[$dependency['from']], $ids[$dependency['to']])));
+
+        $caption = ($omitted > 0
+            ? "The {$shown->count()} biggest of the {$files->count()} files with code, with their main symbols"
+            : 'The files with code, with their main symbols')
+            .match (true) {
+                $drawnEdges === [] => '; they do not import each other.',
+                count($drawnEdges) < $possibleEdges => ', and the '.(count($drawnEdges) === 1 ? 'strongest dependency' : count($drawnEdges).' strongest dependencies').'; an arrow points from the importing file to the imported one.',
+                default => '; an arrow means that a file imports code from another.',
+            };
+
+        return $this->diagram(DiagramType::Component, $chart, [
+            'title' => 'Components',
+            'caption' => $caption,
+            'level' => 'files',
+            'omitted_modules' => $omitted,
+            'nodes' => $this->nodePaths($shown, $ids),
+            'classes' => $this->classesByNode($symbolNames, $ids),
+            'findings' => $this->facts->findings($repository, $files, $shown, $dependencies, $drawnImports, null, true),
+            'evidence' => $this->facts->edgeEvidence($repository, $files, $dependencies, $drawnFiles, $ids, true),
         ]);
     }
 

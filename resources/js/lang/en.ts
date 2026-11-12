@@ -505,6 +505,28 @@ const en = {
                 noLoop: 'No module depends on itself through the others.',
                 busiest: 'Most of the work is in {module}, which appears in {commits}.',
             },
+            files: {
+                core: 'Other files depend on these the most.',
+                coordinators: 'These import the most other files.',
+                cycles: { part: '{path} (part of a group of {count} files)', none: 'None among the files shown.' },
+                isolated: 'No import in or out between the files shown: {modules}.',
+                coverage: {
+                    shown: 'The diagram shows {modules} of {total}, which hold {share} of the lines of code.',
+                    undrawn: 'Not drawn as arrows: {imports} of the {total} imports between files.',
+                },
+                busiest: 'These files appear in the most commits.',
+                imported: 'imported by {count}',
+                importing: 'imports {count}',
+                composed: {
+                    components: '{modules} are shown. The {arrows} arrows between them stand for {imports}.',
+                    biggest: 'These are the biggest ones.',
+                    core: '{module} is the most depended on: {importers} import it.',
+                    coordinator: '{module} depends on the most others: it imports {others}.',
+                    loop: 'Some files depend on each other in a circle: {path}.',
+                    noLoop: 'No file depends on itself through the others.',
+                    busiest: 'Most of the work is in {module}, which appears in {commits}.',
+                },
+            },
             evidence: {
                 summary: 'Evidence: {arrows} backed by {imports}',
                 note: 'Every arrow stands for real imports found in the code. The links open the importing file on GitHub, at the commit this diagram was drawn from.',

@@ -17,6 +17,11 @@ use Illuminate\Support\Facades\DB;
  *
  * Only codes, module paths and numbers are stored (in the diagram's meta); the interface words them,
  * in the language of the visitor. A fact that does not apply is left out, never written as zero.
+ *
+ * A small or flat repository gets its components diagram at file level (see CodeOverview::applicationFiles()):
+ * the same facts are then computed over files, each file standing in a Module object whose id is the
+ * file's id and whose path is the file's path. The findings then say "unit": "files", and the page
+ * words them with "files" instead of "modules".
  */
 final class ArchitectureFacts
 {
@@ -53,9 +58,10 @@ final class ArchitectureFacts
      * @param  list<array{from: int, to: int, weight: int}>  $dependencies  between all the application modules
      * @param  int  $drawnImports  the imports the diagram draws as arrows
      * @param  array<int, string>|null  $layerOf  module id => layer key, for the layers view only
+     * @param  bool  $fileLevel  the "modules" are files (see the class comment)
      * @return array<string, mixed>
      */
-    public function findings(Repository $repository, Collection $allModules, Collection $shown, array $dependencies, int $drawnImports, ?array $layerOf = null): array
+    public function findings(Repository $repository, Collection $allModules, Collection $shown, array $dependencies, int $drawnImports, ?array $layerOf = null, bool $fileLevel = false): array
     {
         $paths = $allModules->pluck('path', 'id')->all();
         $shownIds = $shown->pluck('id')->all();
@@ -102,10 +108,14 @@ final class ArchitectureFacts
             'undrawn_imports' => max(0, $totalImports - $drawnImports),
         ];
 
-        $busiest = $this->busiestModules($repository, $shown);
+        $busiest = $this->busiestModules($repository, $shown, $fileLevel);
 
         if ($busiest !== []) {
             $findings['busiest'] = $busiest;
+        }
+
+        if ($fileLevel) {
+            $findings['unit'] = 'files';
         }
 
         return $findings;
@@ -119,9 +129,10 @@ final class ArchitectureFacts
      * @param  list<array{int, int}>  $drawn  the arrows drawn, as [from module id, to module id]
      * @param  Collection<int, Module>  $allModules
      * @param  array<int, string>  $nodeIds  module id => node id
+     * @param  bool  $fileLevel  the "modules" are files: the only example of an arrow is the pair of files itself
      * @return list<array{from: string, to: string, from_label: string, to_label: string, imports: int, examples: list<array{from: string, to: string}>, nodes: list<string>}>
      */
-    public function edgeEvidence(Repository $repository, Collection $allModules, array $dependencies, array $drawn, array $nodeIds): array
+    public function edgeEvidence(Repository $repository, Collection $allModules, array $dependencies, array $drawn, array $nodeIds, bool $fileLevel = false): array
     {
         $paths = $allModules->pluck('path', 'id')->all();
         $weights = [];
@@ -131,7 +142,7 @@ final class ArchitectureFacts
         }
 
         $drawn = array_slice($drawn, 0, self::MAX_ARROWS);
-        $examples = $this->examples($repository, array_map(fn (array $pair): string => $pair[0].':'.$pair[1], $drawn));
+        $examples = $fileLevel ? [] : $this->examples($repository, array_map(fn (array $pair): string => $pair[0].':'.$pair[1], $drawn));
         $evidence = [];
 
         foreach ($drawn as [$from, $to]) {
@@ -141,7 +152,7 @@ final class ArchitectureFacts
                 'from_label' => $paths[$from],
                 'to_label' => $paths[$to],
                 'imports' => $weights["{$from}:{$to}"],
-                'examples' => $examples["{$from}:{$to}"] ?? [],
+                'examples' => $fileLevel ? [['from' => $paths[$from], 'to' => $paths[$to]]] : ($examples["{$from}:{$to}"] ?? []),
                 'nodes' => [$nodeIds[$from], $nodeIds[$to]],
             ];
         }
@@ -256,17 +267,19 @@ final class ArchitectureFacts
      * repository has no stored history.
      *
      * @param  Collection<int, Module>  $shown
+     * @param  bool  $fileLevel  the shown items are files: count the commits of each file itself
      * @return list<array{module: string, commits: int}>
      */
-    private function busiestModules(Repository $repository, Collection $shown): array
+    private function busiestModules(Repository $repository, Collection $shown, bool $fileLevel = false): array
     {
+        $groupColumn = $fileLevel ? 'repository_files.id' : 'repository_files.module_id';
         $counts = DB::table('commit_files')
             ->join('commits', 'commits.id', '=', 'commit_files.commit_id')
             ->join('repository_files', fn ($join) => $join->on('repository_files.path', '=', 'commit_files.path')->on('repository_files.repository_id', '=', 'commits.repository_id'))
             ->where('commits.repository_id', $repository->id)
-            ->whereIn('repository_files.module_id', $shown->pluck('id'))
-            ->groupBy('repository_files.module_id')
-            ->selectRaw('repository_files.module_id as module_id, count(distinct commit_files.commit_id) as commits')
+            ->whereIn($groupColumn, $shown->pluck('id'))
+            ->groupBy($groupColumn)
+            ->selectRaw("{$groupColumn} as module_id, count(distinct commit_files.commit_id) as commits")
             ->pluck('commits', 'module_id');
 
         $paths = $shown->pluck('path', 'id');

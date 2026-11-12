@@ -1,8 +1,9 @@
 """GitChronicle code analyzer: reads the files of a cloned repository with tree-sitter.
 
 For every file it reports the language, the number of lines and, for PHP, JavaScript,
-TypeScript, Python, Go and Java, the symbols (classes, functions, ...) and the imports,
-each import resolved to a file of the repository when it points to one.
+TypeScript, Python, Go, Java, Shell and Rust, the symbols (classes, functions, ...) and the imports,
+each import resolved to a file of the repository when it points to one. A file without a known
+extension gets its language from its shebang line (`#!/usr/bin/env bash`).
 
     python analyze.py /path/to/clone --files-from list.txt    # one path per line ("-" = stdin)
     python analyze.py /path/to/clone --files-from list.txt --cache parsed.json
@@ -33,6 +34,7 @@ import os
 import posixpath
 import re
 import sys
+import tomllib
 from pathlib import Path
 
 import tree_sitter_language_pack as language_pack
@@ -41,7 +43,7 @@ import tree_sitter_language_pack as language_pack
 GRAMMARS_DIR = Path(__file__).resolve().parent / ".venv" / "grammars"
 
 # The tree-sitter grammars we use: one for each language whose symbols and imports we read.
-GRAMMARS = ["php", "javascript", "typescript", "tsx", "python", "go", "java"]
+GRAMMARS = ["php", "javascript", "typescript", "tsx", "python", "go", "java", "bash", "rust"]
 
 # File extension -> (language name shown in the app, grammar). Without a grammar we count lines only.
 LANGUAGES = {
@@ -73,9 +75,11 @@ LANGUAGES = {
     ".svg": ("SVG", None),
     ".toml": ("TOML", None),
     ".sql": ("SQL", None),
-    ".sh": ("Shell", None),
+    ".sh": ("Shell", "bash"),
+    ".bash": ("Shell", "bash"),
+    ".zsh": ("Shell", "bash"),
     ".rb": ("Ruby", None),
-    ".rs": ("Rust", None),
+    ".rs": ("Rust", "rust"),
     ".c": ("C", None),
     ".h": ("C", None),
     ".cpp": ("C++", None),
@@ -89,6 +93,22 @@ LANGUAGES_BY_NAME = {
     "Dockerfile": ("Dockerfile", None),
     "Containerfile": ("Dockerfile", None),
     "Makefile": ("Makefile", None),
+}
+
+# The interpreter named in a shebang line -> (language, grammar), for files without a known extension.
+# Versions are cut before the lookup: python3.12 -> python.
+SHEBANG_LANGUAGES = {
+    "sh": ("Shell", "bash"),
+    "bash": ("Shell", "bash"),
+    "zsh": ("Shell", "bash"),
+    "dash": ("Shell", "bash"),
+    "ksh": ("Shell", "bash"),
+    "python": ("Python", "python"),
+    "node": ("JavaScript", "javascript"),
+    "nodejs": ("JavaScript", "javascript"),
+    "ruby": ("Ruby", None),
+    "perl": ("Perl", None),
+    "php": ("PHP", "php"),
 }
 
 # Syntax tree node -> symbol kind, for each grammar.
@@ -125,6 +145,14 @@ SYMBOL_NODES = {
         "method_declaration": "method",
         "constructor_declaration": "method",
     },
+}
+SYMBOL_NODES["bash"] = {"function_definition": "function"}
+SYMBOL_NODES["rust"] = {
+    "function_item": "function",
+    "struct_item": "struct",
+    "enum_item": "enum",
+    "trait_item": "trait",
+    "type_item": "type",
 }
 SYMBOL_NODES["typescript"] = {
     **SYMBOL_NODES["javascript"],
@@ -236,16 +264,19 @@ def analyze_repository(root: Path, paths: list[str], cache: dict) -> tuple[dict,
         parsed_count += 0 if was_cached else 1
 
         # The imports are resolved at every run: an import may point to a file added or deleted since.
+        resolved_imports = [
+            {"raw": raw, **resolver.resolve(parsed["grammar"], path, raw, names)}
+            for raw, names in parsed["imports"]
+        ]
+
         files.append({
             "path": path,
             "language": parsed["language"],
             "lines": parsed["lines"],
             "cached": was_cached,
             "symbols": parsed["symbols"],
-            "imports": [
-                {"raw": raw, **resolver.resolve(parsed["grammar"], path, raw, names)}
-                for raw, names in parsed["imports"]
-            ],
+            # A file never imports itself (`use crate::Item` in lib.rs, `use self::x` ...): nothing to show.
+            "imports": [item for item in resolved_imports if item["resolved_path"] != path],
         })
 
     return {"files": files, "errors": errors, "parsed": parsed_count}, parsed_files
@@ -266,7 +297,7 @@ def parse_file(root: Path, path: str, parsers: dict, remembered: dict | None) ->
     if remembered is not None and remembered.get("hash") == content_hash:
         return remembered, True
 
-    language, grammar = detect_language(path)
+    language, grammar = detect_language(path, source)
     parsed = {"hash": content_hash, "language": language, "grammar": grammar, "lines": count_lines(source), "symbols": [], "imports": []}
 
     if grammar is None:
@@ -282,7 +313,8 @@ def parse_file(root: Path, path: str, parsers: dict, remembered: dict | None) ->
     return parsed, False
 
 
-def detect_language(path: str) -> tuple[str | None, str | None]:
+def detect_language(path: str, source: bytes = b"") -> tuple[str | None, str | None]:
+    """The language by the file name; a file with no known extension gets it from its shebang line."""
     name = posixpath.basename(path)
 
     if name.endswith(".blade.php"):
@@ -290,7 +322,27 @@ def detect_language(path: str) -> tuple[str | None, str | None]:
     if name in LANGUAGES_BY_NAME:
         return LANGUAGES_BY_NAME[name]
 
-    return LANGUAGES.get(posixpath.splitext(name)[1].lower(), (None, None))
+    known = LANGUAGES.get(posixpath.splitext(name)[1].lower())
+
+    return known if known is not None else shebang_language(source)
+
+
+def shebang_language(source: bytes) -> tuple[str | None, str | None]:
+    """`#!/bin/bash`, `#!/usr/bin/env python3` or `#!/usr/bin/env -S node --flag` -> the language of the
+    interpreter. The first line only; anything that is not a shebang of a known interpreter gives None."""
+    if not source.startswith(b"#!"):
+        return None, None
+
+    words = source[2:].split(b"\n", 1)[0].decode("utf-8", errors="replace").split()
+    if not words:
+        return None, None
+
+    interpreter = posixpath.basename(words[0])
+    if interpreter == "env":  # skip the options (-S, -i) and the NAME=value pairs of env
+        rest = [word for word in words[1:] if not word.startswith("-") and "=" not in word]
+        interpreter = posixpath.basename(rest[0]) if rest else ""
+
+    return SHEBANG_LANGUAGES.get(re.sub(r"[\d.]+$", "", interpreter), (None, None))
 
 
 def count_lines(source: bytes) -> int:
@@ -328,6 +380,8 @@ def find_symbols(root, grammar: str) -> list[dict]:
             continue
 
         if grammar == "python" and kind == "function" and is_inside_python_class(node):
+            kind = "method"
+        if grammar == "rust" and kind == "function" and is_inside_rust_impl(node):
             kind = "method"
         if grammar == "go" and kind == "type":
             type_node = node.child_by_field_name("type")
@@ -368,6 +422,12 @@ def is_inside_python_class(node) -> bool:
     return parent is not None and parent.type == "block" and parent.parent.type == "class_definition"
 
 
+def is_inside_rust_impl(node) -> bool:
+    """A `fn` in the body of an `impl` or a `trait` is a method."""
+    body = node.parent
+    return body is not None and body.type == "declaration_list" and body.parent is not None and body.parent.type in ("impl_item", "trait_item")
+
+
 def find_imports(root, grammar: str) -> list[tuple[str, list[str]]]:
     """The imports of a file as (raw import, imported names); the names matter only for Python."""
     if grammar == "php":
@@ -380,6 +440,10 @@ def find_imports(root, grammar: str) -> list[tuple[str, list[str]]]:
         return [(text(node.child_by_field_name("path")).strip('"`'), []) for node in walk(root) if node.type == "import_spec"]
     if grammar == "java":
         return java_imports(root)
+    if grammar == "bash":
+        return shell_imports(root)
+    if grammar == "rust":
+        return rust_imports(root)
 
     return []
 
@@ -467,6 +531,194 @@ def java_imports(root) -> list[tuple[str, list[str]]]:
     return imports
 
 
+def shell_imports(root) -> list[tuple[str, list[str]]]:
+    """The scripts a shell script loads or runs, as written: `source x`, `. x`, `./x.sh`, `bash x.sh`,
+    `exec ./x.sh`. Only the first argument is read, and only when it is a plain word or a string."""
+    own_dir_variables = shell_own_directory_variables(root)
+    imports = []
+
+    for node in walk(root):
+        if node.type != "command":
+            continue
+
+        name_node = node.child_by_field_name("name")
+        arguments = [child for child in node.children_by_field_name("argument") if child.type in SHELL_ARGUMENT_NODES]
+        if name_node is None:
+            continue
+        command = text(name_node).lstrip("\\")  # `\.` and `\source` skip aliases: same command
+
+        if command in ("source", "."):
+            if arguments:
+                imports.append(shell_import(shell_word(arguments[0]), own_dir_variables))
+            continue
+
+        target = None
+        if command in SHELL_INTERPRETERS or command == "exec":
+            words = [shell_word(argument) for argument in arguments]
+            if command == "exec" and words and posixpath.basename(words[0]) in SHELL_INTERPRETERS:
+                words = words[1:]
+            target = None if "-c" in words else next((word for word in words if not word.startswith("-")), None)
+        elif "/" in command:
+            target = shell_word(name_node).lstrip("\\")
+
+        if target is not None and looks_like_script_path(target, own_dir_variables):
+            imports.append(shell_import(target, own_dir_variables))
+
+    return imports
+
+
+def shell_import(path: str, own_dir_variables: set[str]) -> tuple[str, list[str]]:
+    """The import as written, plus (in the names) the part after the script's own folder when the path
+    starts with that idiom, so the resolver can look for it next to the importing script."""
+    rest = strip_own_directory(path, own_dir_variables)
+
+    return path, ([] if rest is None else [SCRIPT_DIRECTORY_MARK + rest])
+
+
+# The commands that run a script given as their first argument, and the node types of an argument we read.
+SHELL_INTERPRETERS = ("sh", "bash", "zsh", "dash", "ksh")
+SHELL_ARGUMENT_NODES = ("word", "string", "raw_string", "concatenation", "simple_expansion", "expansion")
+SCRIPT_SUFFIXES = (".sh", ".bash", ".zsh")
+SCRIPT_DIRECTORY_MARK = "@script-dir:"
+
+
+def shell_word(node) -> str:
+    """The text of an argument without its quotes."""
+    value = text(node)
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+        value = value[1:-1]
+
+    return value
+
+
+def looks_like_script_path(path: str, own_dir_variables: set[str]) -> bool:
+    """A command we count as 'runs a script of the repository': a relative path that goes through a folder
+    (./x, a/b, $DIR/x) and ends in a script suffix, or that can be found in the repository at all."""
+    return path.endswith(SCRIPT_SUFFIXES) or path.startswith(("./", "../")) or strip_own_directory(path, own_dir_variables) is not None
+
+
+def shell_own_directory_variables(root) -> set[str]:
+    """The variables that hold the folder of the script itself: DIR=$(dirname "$0"),
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)", ..."""
+    variables = set()
+
+    for node in walk(root):
+        if node.type == "variable_assignment":
+            name = node.child_by_field_name("name")
+            value = node.child_by_field_name("value")
+            if name is not None and value is not None and is_own_directory_expression(text(value)):
+                variables.add(text(name))
+
+    return variables
+
+
+def is_own_directory_expression(expression: str) -> bool:
+    """`$(dirname "$0")`, `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)`, `${0%/*}`: the folder of this script."""
+    if re.search(r"\$\{(0|BASH_SOURCE(\[0\])?)%/\*\}", expression):
+        return True
+
+    return "dirname" in expression and re.search(r"\$0|\$\{0\}|BASH_SOURCE", expression) is not None
+
+
+def strip_own_directory(path: str, own_dir_variables: set[str]) -> str | None:
+    """`$DIR/x.sh`, `${DIR}/x.sh`, `$(dirname "$0")/x.sh`, `${0%/*}/x.sh` -> "x.sh" (the part after the
+    folder of the script itself); None when the path does not start that way."""
+    match = re.match(r"\$\{?(\w+)\}?/(.*)\Z", path, re.DOTALL)
+    if match and match.group(1) in own_dir_variables:
+        return match.group(2)
+
+    match = re.match(r"\$\{(0|BASH_SOURCE(\[0\])?)%/\*\}/(.*)\Z", path, re.DOTALL)
+    if match:
+        return match.group(3)
+
+    if path.startswith("$("):
+        depth = 0
+        for index in range(1, len(path)):  # the first "(" is at 1; stop at its matching ")"
+            depth += (path[index] == "(") - (path[index] == ")")
+            if depth == 0:
+                rest = path[index + 1:]
+                if is_own_directory_expression(path[:index + 1]) and rest.startswith("/"):
+                    return rest[1:]
+                break
+
+    return None
+
+
+def rust_imports(root) -> list[tuple[str, list[str]]]:
+    """`mod name;` as "mod name", and every `use` path flattened into full paths: `use a::{b, c::d as e}` gives
+    "a::b" and "a::c::d"; `use a::b::*` gives "a::b". A `use super::` inside an inline `mod x { }` really
+    points to the file itself, so it is left out; so is `use self::` there."""
+    imports = []
+
+    for node in walk(root):
+        if node.type == "mod_item" and node.child_by_field_name("body") is None:
+            name = node.child_by_field_name("name")
+            if name is not None:
+                imports.append(("mod " + text(name), []))
+        elif node.type == "use_declaration":
+            argument = node.child_by_field_name("argument")
+            inline_depth = sum(1 for ancestor in ancestors(node) if ancestor.type == "mod_item")
+            for path in rust_use_paths(argument, []) if argument is not None else []:
+                path = rust_path_in_inline_module(path, inline_depth)
+                if path:
+                    imports.append(("::".join(path), []))
+
+    return imports
+
+
+def ancestors(node):
+    parent = node.parent
+    while parent is not None:
+        yield parent
+        parent = parent.parent
+
+
+def rust_path_in_inline_module(path: list[str], depth: int) -> list[str]:
+    """The path of a `use` seen from the file, when the `use` sits in `depth` nested inline modules.
+    Returns [] when it points into the inline module itself or to the file (nothing to import)."""
+    if depth == 0:
+        return path
+
+    if path[0] == "self":
+        return []
+    supers = 0
+    while supers < len(path) and path[supers] == "super":
+        supers += 1
+    if supers == 0:
+        return path  # `use std::io;` or `use crate::x;` means the same everywhere
+    if supers <= depth:
+        return []  # super of an inline module: the file itself or an inline module inside it
+
+    return ["super"] * (supers - depth) + path[supers:]
+
+
+def rust_use_paths(node, prefix: list[str]) -> list[list[str]]:
+    """The full paths named by one `use` argument (a tree of paths, groups, renames and globs)."""
+    kind = node.type
+
+    if kind in ("identifier", "crate", "self", "super", "metavariable"):
+        # `self` inside a group (`use a::{self, b}`) names the group's own prefix.
+        return [prefix] if kind == "self" and prefix else [prefix + [text(node)]]
+    if kind == "scoped_identifier":
+        path_node = node.child_by_field_name("path")
+        name_node = node.child_by_field_name("name")
+        head = rust_use_paths(path_node, prefix)[0] if path_node is not None else prefix
+        return [head + [text(name_node)]] if name_node is not None else [head]
+    if kind == "use_as_clause":
+        return rust_use_paths(node.child_by_field_name("path"), prefix)
+    if kind == "use_wildcard":
+        inner = next((child for child in node.children if child.type not in ("::", "*")), None)
+        return rust_use_paths(inner, prefix) if inner is not None else ([prefix] if prefix else [])
+    if kind == "scoped_use_list":
+        path_node = node.child_by_field_name("path")
+        head = rust_use_paths(path_node, prefix)[0] if path_node is not None else prefix
+        return rust_use_paths(node.child_by_field_name("list"), head)
+    if kind == "use_list":
+        return [path for child in node.named_children for path in rust_use_paths(child, prefix)]
+
+    return []
+
+
 def unique_imports(imports: list[tuple[str, list[str]]]) -> list[tuple[str, list[str]]]:
     """The same import written twice in a file (for example `import type` and `import`) counts once."""
     seen = {}
@@ -484,7 +736,11 @@ class ImportResolver:
       and the aliases from tsconfig.json/jsconfig.json ("@/*" -> "resources/js/*");
     - Python: relative modules (.a.b) and modules inside the repository;
     - Go: the packages under the module path of go.mod (a package is a folder: we take its first file);
-    - Java: the package as a folder (com.acme.Foo -> .../com/acme/Foo.java).
+    - Java: the package as a folder (com.acme.Foo -> .../com/acme/Foo.java);
+    - Shell: a literal relative path (next to the script, or from the repository root) or a path after the
+      script's own folder (`$DIR/x.sh`); a path built from another variable is never guessed (external);
+    - Rust: `mod x;` (x.rs or x/mod.rs), `crate::`, `self::`, `super::` paths through the module files of the
+      crate, and the crates of the repository (workspace members and `path =` dependencies) by name.
 
     "external" is true for an import that clearly comes from outside the repository (a library).
     """
@@ -494,6 +750,7 @@ class ImportResolver:
         self.psr4 = self.read_psr4(root)
         self.js_aliases = self.read_js_aliases(root)
         self.go_module = self.read_go_module(root)
+        self.rust_crates, self.rust_roots = self.read_rust_crates(root, paths)
         self.files_by_name = {}
         for path in sorted(paths):
             self.files_by_name.setdefault(posixpath.basename(path), []).append(path)
@@ -507,6 +764,10 @@ class ImportResolver:
             resolved, external = self.resolve_python(importer, raw, names)
         elif grammar == "go":
             resolved, external = self.resolve_go(raw)
+        elif grammar == "bash":
+            resolved, external = self.resolve_shell(importer, raw, names)
+        elif grammar == "rust":
+            resolved, external = self.resolve_rust(importer, raw)
         else:
             resolved, external = self.resolve_java(raw)
 
@@ -601,6 +862,147 @@ class ImportResolver:
 
         return None, True
 
+    def resolve_shell(self, importer: str, path: str, names: list[str]) -> tuple[str | None, bool]:
+        folder = posixpath.dirname(importer)
+        script_relative = next((name[len(SCRIPT_DIRECTORY_MARK):] for name in names if name.startswith(SCRIPT_DIRECTORY_MARK)), None)
+
+        if script_relative is not None:
+            candidates = [normalize(posixpath.join(folder, script_relative))]
+        elif path.startswith(("/", "~")) or re.search(r"[$`*?{}\s]", path):
+            return None, True  # outside the repository, or built from a variable: not guessed
+        else:
+            candidates = [normalize(posixpath.join(folder, path)), normalize(path)]  # next to the script, then from the root
+
+        return self.first_existing(candidates), False
+
+    def resolve_rust(self, importer: str, raw: str) -> tuple[str | None, bool]:
+        base, root = self.rust_base_and_root(importer)
+
+        if raw.startswith("mod "):
+            folder = self.rust_child_folder(importer)
+            name = raw[4:]
+            return self.first_existing([normalize(posixpath.join(folder, name + ".rs")), normalize(posixpath.join(folder, name, "mod.rs"))]), False
+
+        first, *rest = raw.split("::")
+        folder = None
+
+        if first == "crate":
+            start, folder = root, base
+        elif first == "self":
+            start, folder = importer, self.rust_child_folder(importer)
+        elif first == "super":
+            start, rest = importer, [first, *rest]
+            while rest and rest[0] == "super" and start is not None:
+                start, rest = self.rust_parent_module(start), rest[1:]
+            folder = self.rust_child_folder(start) if start is not None else None
+        elif first in self.rust_crates:
+            start = self.rust_crates[first]
+            folder = posixpath.dirname(start) if start is not None else None
+        else:
+            # A module declared in the importing file (`mod a;` then `use a::b;`), otherwise a library.
+            found = self.walk_rust_modules(importer, self.rust_child_folder(importer), [first, *rest])
+            return (found, False) if found != importer else (None, True)
+
+        return (self.walk_rust_modules(start, folder, rest) if start is not None and folder is not None else None), False
+
+    def walk_rust_modules(self, start: str, folder: str, segments: list[str]) -> str:
+        """Follow the path through module files from `start`; the walk stops at the first name that is
+        not a module file (an item of the module reached so far) and returns the last module reached."""
+        current = start
+
+        for segment in segments:
+            found = self.first_existing([normalize(posixpath.join(folder, segment + ".rs")), normalize(posixpath.join(folder, segment, "mod.rs"))])
+            if found is None:
+                break
+            current, folder = found, self.rust_child_folder(found)
+
+        return current
+
+    def rust_child_folder(self, module: str) -> str:
+        """The folder where the `mod x;` declared in this file are: next to a mod.rs, lib.rs, main.rs or
+        any other crate root, inside a folder named like the file for the others (a.rs -> a/)."""
+        if module in self.rust_roots or posixpath.basename(module) == "mod.rs":
+            return posixpath.dirname(module)
+
+        return posixpath.splitext(module)[0]
+
+    def rust_parent_module(self, module: str) -> str | None:
+        """The file that declares this module (`mod x;`), or None for a crate root."""
+        if module in self.rust_roots:
+            return None
+
+        base, root = self.rust_base_and_root(module)
+        folder = posixpath.dirname(module) if posixpath.basename(module) != "mod.rs" else posixpath.dirname(posixpath.dirname(module))
+
+        if folder == base:
+            return root
+
+        return self.first_existing([normalize(posixpath.join(posixpath.dirname(folder), posixpath.basename(folder) + ".rs")), normalize(posixpath.join(folder, "mod.rs"))])
+
+    def rust_base_and_root(self, file: str) -> tuple[str, str | None]:
+        """The folder and the file of the crate root the given file belongs to: the root whose folder is the
+        closest parent of the file (a library root before a program root in the same folder)."""
+        if file in self.rust_roots:
+            return posixpath.dirname(file), file
+
+        covering = [root for root in self.rust_roots if posixpath.dirname(root) == "" or file.startswith(posixpath.dirname(root) + "/")]
+        if covering:
+            best = max(covering, key=lambda root: (len(posixpath.dirname(root)), root.endswith("lib.rs"), root))
+            return posixpath.dirname(best), best
+
+        folders = posixpath.dirname(file).split("/")
+        base = "/".join(folders[: folders.index("src") + 1]) if "src" in folders else posixpath.dirname(file)
+
+        return base, None
+
+    @staticmethod
+    def read_rust_crates(root: Path, paths: set[str]) -> tuple[dict[str, str | None], set[str]]:
+        """The crates of the repository, from its Cargo.toml files: (library name -> library root file or None,
+        every crate root file). A root is lib.rs, main.rs, a file of src/bin, tests, examples, benches,
+        build.rs or a path named in Cargo.toml. Dependencies with `path =` can be renamed (`package =`)."""
+        crates = {}
+        roots = set()
+        aliases = []
+
+        for manifest in sorted(path for path in paths if posixpath.basename(path) == "Cargo.toml"):
+            try:
+                data = tomllib.loads((root / manifest).read_text(encoding="utf-8", errors="replace"))
+            except (OSError, ValueError):
+                continue
+
+            folder = posixpath.dirname(manifest)
+            def at(relative: str) -> str:
+                return normalize(posixpath.join(folder, relative))
+
+            library = data.get("lib") if isinstance(data.get("lib"), dict) else {}
+            lib_root = at(library["path"]) if isinstance(library.get("path"), str) else at("src/lib.rs")
+            lib_root = lib_root if lib_root in paths else None
+
+            declared = [at(target["path"]) for key in ("bin", "example", "test", "bench") for target in (data.get(key) or []) if isinstance(target, dict) and isinstance(target.get("path"), str)]
+            conventional = [path for path in paths if is_conventional_rust_root(path, at)]
+            roots.update(path for path in [lib_root, *declared, *conventional] if path in paths)
+
+            package = data.get("package")
+            name = library.get("name") if isinstance(library.get("name"), str) else (package.get("name") if isinstance(package, dict) else None)
+            if isinstance(name, str) and lib_root is not None:
+                crates[name.replace("-", "_")] = lib_root
+
+            tables = [data.get(key) for key in ("dependencies", "dev-dependencies", "build-dependencies")]
+            workspace = data.get("workspace")
+            tables.append(workspace.get("dependencies") if isinstance(workspace, dict) else None)
+            for table in tables:
+                for key, spec in (table.items() if isinstance(table, dict) else []):
+                    if isinstance(spec, dict) and isinstance(spec.get("path"), str):
+                        aliases.append((key.replace("-", "_"), at(spec["path"]), spec.get("package")))
+
+        # A `path =` dependency is the crate in that folder, whatever name the dependency is given.
+        for alias, dependency_folder, package_name in aliases:
+            target = next((lib for lib in crates.values() if posixpath.dirname(posixpath.dirname(lib)) == dependency_folder or posixpath.dirname(lib) == dependency_folder), None)
+            if target is not None:
+                crates.setdefault(alias, target)
+
+        return crates, roots
+
     @staticmethod
     def read_psr4(root: Path) -> list[tuple[str, list[str]]]:
         composer = read_json(root / "composer.json")
@@ -638,6 +1040,17 @@ class ImportResolver:
         match = re.search(r"^module\s+(\S+)", go_mod.read_text(encoding="utf-8", errors="replace"), re.MULTILINE)
 
         return match.group(1) if match else None
+
+
+def is_conventional_rust_root(path: str, at) -> bool:
+    """Cargo's default crate roots of the package whose folder `at` resolves: src/main.rs, src/bin/x.rs,
+    src/bin/x/main.rs, build.rs and the files directly in tests/, examples/ and benches/."""
+    if path in (at("src/main.rs"), at("build.rs")):
+        return True
+    if posixpath.dirname(path) in (at("src/bin"), at("tests"), at("examples"), at("benches")):
+        return path.endswith(".rs")
+
+    return posixpath.dirname(path).startswith(at("src/bin") + "/") and posixpath.basename(path) == "main.rs" and posixpath.dirname(posixpath.dirname(path)) == at("src/bin")
 
 
 def normalize(path: str) -> str:

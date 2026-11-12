@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Diagram, DiagramEvidence, DiagramFindings } from '@/components/diagrams/types';
 import { ExternalLinkIcon } from '@/components/icons';
 import { useI18n } from '@/hooks/use-i18n';
+import type { TranslationKey } from '@/lang';
 import { formatNumber, formatPercent } from '@/lib/format';
 
 type Props = {
@@ -30,9 +31,10 @@ export default function DiagramMeaning({ diagram, docsBase, activeNode }: Props)
         return null;
     }
 
+    const unit = unitOf(findings);
     const modulePages = new Map(Object.values(diagram.modules).map((module) => [module.path, module.slug]));
     const name = (path: string): ReactNode => <ModuleName key={path} path={path} slug={modulePages.get(path) ?? null} docsBase={docsBase} />;
-    const reading = interpretation?.source === 'ai' && interpretation.reading ? { reading: withNames(interpretation.reading, name), worth: withNames(interpretation.worth ?? '', name) } : findings ? composedReading(i18n, diagram, findings, evidence, name) : null;
+    const reading = interpretation?.source === 'ai' && interpretation.reading ? { reading: withNames(interpretation.reading, name), worth: withNames(interpretation.worth ?? '', name) } : findings ? composedReading(i18n, diagram, findings, evidence, name, unit) : null;
 
     return (
         <div className="flex flex-col gap-4">
@@ -57,12 +59,24 @@ export default function DiagramMeaning({ diagram, docsBase, activeNode }: Props)
                     <p className="mt-2 text-xs text-ink-subtle">{interpretation.source === 'ai' ? t('diagrams.meaning.sourceAi') : t('diagrams.meaning.sourceComposed')}</p>
                 )}
 
-                {findings && <FindingsList findings={findings} name={name} />}
+                {findings && <FindingsList findings={findings} name={name} unit={unit} />}
             </section>
 
             {evidence.length > 0 && <EvidenceTable evidence={evidence} activeNode={activeNode} />}
         </div>
     );
+}
+
+/** What the diagram's boxes are: modules, or files for a small repository (the wording below changes with it). */
+type Unit = 'modules' | 'files';
+
+function unitOf(findings: DiagramFindings | null): Unit {
+    return findings?.unit === 'files' ? 'files' : 'modules';
+}
+
+/** The key of a sentence that names its boxes: the files wording has its own key under `diagrams.meaning.files`. */
+function wording(unit: Unit, key: string): TranslationKey {
+    return (unit === 'files' ? `diagrams.meaning.files.${key}` : `diagrams.meaning.${key}`) as TranslationKey;
 }
 
 /** A module path: a link to its documentation page when it has one, plain code otherwise. */
@@ -107,33 +121,33 @@ function arrowPath(path: string[], name: (path: string) => ReactNode): ReactNode
  * The reading when AI wrote none (AI off, failed or rejected): sentences composed from the findings and the
  * arrows' counts, in the interface language.
  */
-function composedReading(i18n: ReturnType<typeof useI18n>, diagram: Diagram, findings: DiagramFindings, evidence: DiagramEvidence[], name: (path: string) => ReactNode): { reading: ReactNode; worth: ReactNode } {
+function composedReading(i18n: ReturnType<typeof useI18n>, diagram: Diagram, findings: DiagramFindings, evidence: DiagramEvidence[], name: (path: string) => ReactNode, unit: Unit): { reading: ReactNode; worth: ReactNode } {
     const { rich, t, plural } = i18n;
     const imports = evidence.reduce((sum, row) => sum + row.imports, 0);
     const { coverage } = findings;
     const sentences: ReactNode[] = [];
-    const values = { modules: plural('modules', coverage.shown_modules), imports: plural('imports', imports) };
+    const values = { modules: plural(unit, coverage.shown_modules), imports: plural('imports', imports) };
 
     sentences.push(
         diagram.type === 'layers'
             ? rich('diagrams.meaning.composed.layers', { ...values, arrows: plural('arrows', evidence.length) })
-            : rich('diagrams.meaning.composed.components', { ...values, arrows: formatNumber(evidence.length) }),
+            : rich(wording(unit, 'composed.components'), { ...values, arrows: formatNumber(evidence.length) }),
     );
 
     if (coverage.shown_modules < coverage.total_modules) {
-        sentences.push(t('diagrams.meaning.composed.biggest'));
+        sentences.push(t(wording(unit, 'composed.biggest')));
     }
 
     const [core] = findings.core ?? [];
 
     if (core) {
-        sentences.push(rich('diagrams.meaning.composed.core', { module: name(core.module), importers: plural('modules', core.modules) }));
+        sentences.push(rich(wording(unit, 'composed.core'), { module: name(core.module), importers: plural(unit, core.modules) }));
     }
 
     const [coordinator] = findings.coordinators ?? [];
 
     if (coordinator && coordinator.module !== core?.module) {
-        sentences.push(rich('diagrams.meaning.composed.coordinator', { module: name(coordinator.module), others: plural('modules', coordinator.modules) }));
+        sentences.push(rich(wording(unit, 'composed.coordinator'), { module: name(coordinator.module), others: plural(unit, coordinator.modules) }));
     }
 
     const [loop] = findings.cycles ?? [];
@@ -142,13 +156,13 @@ function composedReading(i18n: ReturnType<typeof useI18n>, diagram: Diagram, fin
     let worth: ReactNode = null;
 
     if (loop) {
-        worth = rich('diagrams.meaning.composed.loop', { path: arrowPath([...loop.modules, loop.modules[0]], name) });
+        worth = rich(wording(unit, 'composed.loop'), { path: arrowPath([...loop.modules, loop.modules[0]], name) });
     } else if (pair) {
         worth = rich('diagrams.meaning.composed.upward', { pair: arrowPath([pair.from, pair.to], name) });
     } else if (busiest) {
-        worth = rich('diagrams.meaning.composed.busiest', { module: name(busiest.module), commits: plural('commits', busiest.commits) });
+        worth = rich(wording(unit, 'composed.busiest'), { module: name(busiest.module), commits: plural('commits', busiest.commits) });
     } else if (findings.cycles) {
-        worth = t('diagrams.meaning.composed.noLoop');
+        worth = t(wording(unit, 'composed.noLoop'));
     }
 
     return { reading: joinSentences(sentences), worth };
@@ -165,18 +179,18 @@ function joinSentences(sentences: ReactNode[]): ReactNode {
 }
 
 /** The findings as a short list: a label and what was found, each naming real modules. */
-function FindingsList({ findings, name }: { findings: DiagramFindings; name: (path: string) => ReactNode }) {
+function FindingsList({ findings, name, unit }: { findings: DiagramFindings; name: (path: string) => ReactNode; unit: Unit }) {
     const { t, rich, plural } = useI18n();
     const rows: { key: string; label: string; hint?: string; content: ReactNode }[] = [];
     const modulesWith = (items: { module: string; modules: number }[], detailKey: 'imported' | 'importing') =>
-        commaList(items.map((item) => rich('diagrams.meaning.item', { module: name(item.module), detail: t(`diagrams.meaning.${detailKey}`, { count: plural('modules', item.modules) }) })));
+        commaList(items.map((item) => rich('diagrams.meaning.item', { module: name(item.module), detail: t(wording(unit, detailKey), { count: plural(unit, item.modules) }) })));
 
     if (findings.core?.length) {
-        rows.push({ key: 'core', label: t('diagrams.meaning.labels.core'), hint: t('diagrams.meaning.core'), content: modulesWith(findings.core, 'imported') });
+        rows.push({ key: 'core', label: t('diagrams.meaning.labels.core'), hint: t(wording(unit, 'core')), content: modulesWith(findings.core, 'imported') });
     }
 
     if (findings.coordinators?.length) {
-        rows.push({ key: 'coordinators', label: t('diagrams.meaning.labels.coordinators'), hint: t('diagrams.meaning.coordinators'), content: modulesWith(findings.coordinators, 'importing') });
+        rows.push({ key: 'coordinators', label: t('diagrams.meaning.labels.coordinators'), hint: t(wording(unit, 'coordinators')), content: modulesWith(findings.coordinators, 'importing') });
     }
 
     if (findings.cycles) {
@@ -185,7 +199,7 @@ function FindingsList({ findings, name }: { findings: DiagramFindings; name: (pa
             label: t('diagrams.meaning.labels.cycles'),
             content:
                 findings.cycles.length === 0 ? (
-                    t('diagrams.meaning.cycles.none')
+                    t(wording(unit, 'cycles.none'))
                 ) : (
                     <ul className="flex flex-col gap-1">
                         {findings.cycles.map((cycle) => {
@@ -194,7 +208,7 @@ function FindingsList({ findings, name }: { findings: DiagramFindings; name: (pa
                             return (
                                 <li key={cycle.modules.join('>')}>
                                     {cycle.size > cycle.modules.length
-                                        ? rich('diagrams.meaning.cycles.part', { path, count: formatNumber(cycle.size) })
+                                        ? rich(wording(unit, 'cycles.part'), { path, count: formatNumber(cycle.size) })
                                         : rich('diagrams.meaning.cycles.loop', { path })}
                                 </li>
                             );
@@ -219,7 +233,7 @@ function FindingsList({ findings, name }: { findings: DiagramFindings; name: (pa
     }
 
     if (findings.isolated?.length) {
-        rows.push({ key: 'isolated', label: t('diagrams.meaning.labels.isolated'), content: rich('diagrams.meaning.isolated', { modules: commaList(findings.isolated.map(name)) }) });
+        rows.push({ key: 'isolated', label: t('diagrams.meaning.labels.isolated'), content: rich(wording(unit, 'isolated'), { modules: commaList(findings.isolated.map(name)) }) });
     }
 
     const { coverage } = findings;
@@ -229,7 +243,7 @@ function FindingsList({ findings, name }: { findings: DiagramFindings; name: (pa
         label: t('diagrams.meaning.labels.coverage'),
         content: (
             <>
-                {t('diagrams.meaning.coverage.shown', {
+                {t(wording(unit, 'coverage.shown'), {
                     modules: formatNumber(coverage.shown_modules),
                     total: formatNumber(coverage.total_modules),
                     share: coverage.total_lines > 0 ? formatPercent(coverage.shown_lines / coverage.total_lines) : '–',
@@ -237,7 +251,7 @@ function FindingsList({ findings, name }: { findings: DiagramFindings; name: (pa
                 {coverage.undrawn_imports > 0 && (
                     <>
                         {' '}
-                        {t('diagrams.meaning.coverage.undrawn', { imports: formatNumber(coverage.undrawn_imports), total: formatNumber(coverage.total_imports) })}
+                        {t(wording(unit, 'coverage.undrawn'), { imports: formatNumber(coverage.undrawn_imports), total: formatNumber(coverage.total_imports) })}
                     </>
                 )}
             </>
@@ -248,7 +262,7 @@ function FindingsList({ findings, name }: { findings: DiagramFindings; name: (pa
         rows.push({
             key: 'busiest',
             label: t('diagrams.meaning.labels.busiest'),
-            hint: t('diagrams.meaning.busiest'),
+            hint: t(wording(unit, 'busiest')),
             content: commaList(findings.busiest.map((item) => rich('diagrams.meaning.item', { module: name(item.module), detail: plural('commits', item.commits) }))),
         });
     }

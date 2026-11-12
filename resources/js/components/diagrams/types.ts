@@ -46,6 +46,8 @@ export type DiagramFindings = {
         undrawn_imports: number;
     };
     busiest?: { module: string; commits: number }[];
+    /** 'files' when the diagram's boxes are files (a small repository), absent for modules. */
+    unit?: 'files';
 };
 
 /** One example behind an arrow: the importing file, the file it imports, and their links on GitHub. */

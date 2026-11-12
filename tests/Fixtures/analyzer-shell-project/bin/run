@@ -1,0 +1,6 @@
+#!/bin/sh
+\. "$(dirname "$0")/../lib/colors.sh"
+run_tool() {
+  exec ./scripts/build.sh
+}
+run_tool

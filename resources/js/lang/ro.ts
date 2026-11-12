@@ -503,6 +503,28 @@ const ro: Dictionary = {
                 noLoop: 'Niciun modul nu depinde de sine prin altele.',
                 busiest: 'Cea mai mare parte a lucrului e în {module}, care apare în {commits}.',
             },
+            files: {
+                core: 'Cele mai multe fișiere depind de acestea.',
+                coordinators: 'Acestea importă cele mai multe alte fișiere.',
+                cycles: { part: '{path} (parte dintr-un grup de {count} fișiere)', none: 'Niciuna între fișierele arătate.' },
+                isolated: 'Niciun import spre sau dinspre celelalte fișiere arătate: {modules}.',
+                coverage: {
+                    shown: 'Diagrama arată {modules} din {total}, care cuprind {share} din liniile de cod.',
+                    undrawn: 'Nedesenate ca săgeți: {imports} din cele {total} importuri dintre fișiere.',
+                },
+                busiest: 'Aceste fișiere apar în cele mai multe commituri.',
+                imported: 'importat de {count}',
+                importing: 'importă {count}',
+                composed: {
+                    components: '{modules} sunt arătate. Cele {arrows} săgeți dintre ele reprezintă {imports}.',
+                    biggest: 'Acestea sunt cele mai mari.',
+                    core: 'De {module} depind cele mai multe fișiere: îl importă {importers}.',
+                    coordinator: '{module} depinde de cele mai multe altele: importă {others}.',
+                    loop: 'Unele fișiere depind unele de altele în cerc: {path}.',
+                    noLoop: 'Niciun fișier nu depinde de sine prin altele.',
+                    busiest: 'Cea mai mare parte a lucrului e în {module}, care apare în {commits}.',
+                },
+            },
             evidence: {
                 summary: 'Dovezi: {arrows}, susținute de {imports}',
                 note: 'Fiecare săgeată reprezintă importuri reale găsite în cod. Legăturile deschid pe GitHub fișierul care importă, la commitul din care a fost desenată diagrama.',
