@@ -1,16 +1,76 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import DiagramLegend from '@/components/diagrams/diagram-legend';
 import MermaidDiagram from '@/components/diagrams/mermaid-diagram';
 import TechnologyList from '@/components/diagrams/technology-list';
 import type { Diagram, DiagramSet, DiagramSource } from '@/components/diagrams/types';
 import { useI18n } from '@/hooks/use-i18n';
 import type { TranslationKey } from '@/lang';
+import { ExternalLinkIcon } from '@/components/icons';
 import { shortSha } from '@/lib/format';
 import { translate } from '@/lib/i18n';
 
 type Props = {
     diagrams: DiagramSet;
+    /** Id of the repository: the module pages the diagram boxes open are under /repositories/{id}/docs. */
+    repositoryId: number;
 };
+
+/** The reading line of the sub-navigation: this far below the top of the scroll area. */
+const READING_LINE = 120;
+
+/**
+ * The section being read: the last one whose heading is above a line 120 px below the top of the scroll area.
+ * Positions, not an IntersectionObserver band (same approach as the docs page); recomputed once per frame.
+ */
+function useActiveSection(ids: string[], rootRef: RefObject<HTMLElement | null>): string | null {
+    const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);
+    const key = ids.join('|');
+
+    useEffect(() => {
+        const root = rootRef.current;
+
+        if (!root || ids.length === 0) {
+            return;
+        }
+
+        const scrollArea = root.closest<HTMLElement>('[scroll-region]');
+        const target: HTMLElement | Window = scrollArea ?? window;
+        let frame = 0;
+
+        const update = () => {
+            frame = 0;
+            const line = (scrollArea?.getBoundingClientRect().top ?? 0) + READING_LINE;
+            let current = ids[0];
+
+            ids.forEach((id) => {
+                const element = document.getElementById(id);
+
+                if (element && element.getBoundingClientRect().top <= line) {
+                    current = id;
+                }
+            });
+
+            setActiveId(current);
+        };
+
+        const onScroll = () => {
+            if (frame === 0) {
+                frame = window.requestAnimationFrame(update);
+            }
+        };
+
+        update();
+        target.addEventListener('scroll', onScroll, { passive: true });
+
+        return () => {
+            target.removeEventListener('scroll', onScroll);
+            window.cancelAnimationFrame(frame);
+        };
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return activeId;
+}
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
@@ -55,8 +115,10 @@ function legendFor(diagram: Diagram, items: LegendSpec[]): { label: string; swat
  * „Arhitectura pe straturi” și cele trei vederi C4, de la cea mai detaliată la cea mai generală.
  * O secțiune fără date nu apare; fără nicio diagramă rămâne un mesaj scurt.
  */
-export default function DiagramsContent({ diagrams }: Props) {
+export default function DiagramsContent({ diagrams, repositoryId }: Props) {
     const { t, rich } = useI18n();
+    const rootRef = useRef<HTMLDivElement>(null);
+    const docsBase = `/repositories/${repositoryId}/docs`;
     const { flows, layers, container, component, context } = diagrams;
 
     const sections = [
@@ -66,6 +128,11 @@ export default function DiagramsContent({ diagrams }: Props) {
         component && { id: 'componente', label: t('diagrams.content.sections.component') },
         context && { id: 'context', label: t('diagrams.content.sections.context') },
     ].filter((section): section is { id: string; label: string } => Boolean(section));
+
+    const activeSection = useActiveSection(
+        sections.map((section) => section.id),
+        rootRef,
+    );
 
     if (sections.length === 0) {
         return (
@@ -79,36 +146,40 @@ export default function DiagramsContent({ diagrams }: Props) {
     const sourceSha = (layers ?? container ?? component ?? context ?? flows[0])?.source_sha ?? null;
 
     return (
-        <div className="flex flex-col gap-12">
-            <div className="flex flex-col gap-3">
-                <nav aria-label={t('diagrams.content.nav')}>
-                    <ul className="flex flex-wrap gap-2">
-                        {sections.map((section) => (
-                            <li key={section.id}>
-                                <a
-                                    href={`#${section.id}`}
-                                    className={`inline-block rounded-full border border-line bg-surface px-3 py-1 text-sm font-medium text-ink-muted hover:border-line-strong hover:text-ink ${focusRing}`}
-                                >
-                                    {section.label}
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
-                {sourceSha && (
-                    <p className="text-sm text-ink-subtle">
-                        {rich('diagrams.content.drawnFrom', {
-                            sha: <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ink">{shortSha(sourceSha)}</code>,
-                        })}
-                    </p>
-                )}
-            </div>
+        <div ref={rootRef} className="flex flex-col gap-10">
+            {sourceSha && (
+                <p className="text-sm text-ink-subtle">
+                    {rich('diagrams.content.drawnFrom', {
+                        sha: <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ink">{shortSha(sourceSha)}</code>,
+                    })}
+                </p>
+            )}
+
+            <nav aria-label={t('diagrams.content.nav')} className="sticky top-0 z-10 -mt-4 border-b border-line bg-canvas/95 backdrop-blur-sm">
+                <ul className="flex gap-1 overflow-x-auto">
+                    {sections.map((section) => (
+                        <li key={section.id}>
+                            <a
+                                href={`#${section.id}`}
+                                aria-current={activeSection === section.id ? 'location' : undefined}
+                                className={`relative inline-block px-3 py-2.5 text-sm font-medium whitespace-nowrap hover:text-ink ${focusRing} ${
+                                    activeSection === section.id
+                                        ? 'text-ink after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-accent'
+                                        : 'text-ink-muted'
+                                }`}
+                            >
+                                {section.label}
+                            </a>
+                        </li>
+                    ))}
+                </ul>
+            </nav>
 
             {flows.length > 0 && (
                 <DiagramSection id="cum-functioneaza" title={t('diagrams.content.sections.flow')} description={t('diagrams.content.flowDescription')}>
                     <div className="flex flex-col gap-6">
                         {flows.map((flow) => (
-                            <FlowCard key={flow.key} flow={flow} />
+                            <FlowCard key={flow.key} flow={flow} docsBase={docsBase} />
                         ))}
                     </div>
                 </DiagramSection>
@@ -116,7 +187,7 @@ export default function DiagramsContent({ diagrams }: Props) {
 
             {layers && (
                 <DiagramSection id="straturi" title={t('diagrams.content.layersTitle')} description={layers.caption}>
-                    <MermaidDiagram code={layers.mermaid} title={t('diagrams.content.layersTitle')} />
+                    <MermaidDiagram code={layers.mermaid} title={t('diagrams.content.layersTitle')} modules={layers.modules} docsBase={docsBase} />
                     <DiagramLegend items={legendFor(layers, LEGENDS.layers)} />
                     {layers.excluded.length > 0 && (
                         <div className="text-sm text-ink-muted">
@@ -161,7 +232,7 @@ export default function DiagramsContent({ diagrams }: Props) {
                     level={t('diagrams.content.levels.component')}
                     description={component.caption}
                 >
-                    <MermaidDiagram code={component.mermaid} title={t('diagrams.content.titles.component')} />
+                    <MermaidDiagram code={component.mermaid} title={t('diagrams.content.titles.component')} modules={component.modules} docsBase={docsBase} />
                     <DiagramLegend items={legendFor(component, LEGENDS.component)} />
                 </DiagramSection>
             )}
@@ -193,9 +264,9 @@ type SectionProps = {
 /** O secțiune a paginii: titlul (cu nivelul C4), propoziția care explică diagrama și conținutul. */
 function DiagramSection({ id, title, level, description, children }: SectionProps) {
     return (
-        <section id={id} aria-labelledby={`${id}-heading`} className="scroll-mt-6">
+        <section id={id} aria-labelledby={`${id}-heading`} className="scroll-mt-16">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h2 id={`${id}-heading`} className="text-lg font-semibold tracking-tight text-ink">
+                <h2 id={`${id}-heading`} className="font-display text-heading text-ink">
                     {title}
                 </h2>
                 {level && <span className="text-sm font-medium text-ink-subtle">{level}</span>}
@@ -211,22 +282,22 @@ function DiagramSection({ id, title, level, description, children }: SectionProp
  * Diagrama unui flux e înaltă și îngustă, așa că într-un card destul de lat (container query, nu lățimea
  * ecranului: cardul poate sta și într-un panou mai îngust) textul stă în stânga și diagrama în dreapta.
  */
-function FlowCard({ flow }: { flow: Diagram }) {
+function FlowCard({ flow, docsBase }: { flow: Diagram; docsBase: string }) {
     const { t } = useI18n();
 
     return (
-        <article className="@container rounded-lg border border-line bg-surface p-4 shadow-xs sm:p-6">
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-6 @2xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <article className="rounded-lg border border-line bg-surface p-4 shadow-card sm:p-6">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
                 <div className="flex flex-col gap-4">
                     <div>
-                        <h3 className="text-base font-semibold text-ink">{flow.title}</h3>
-                        {flow.explanation && <p className="mt-2 text-sm leading-6 text-ink-muted">{flow.explanation}</p>}
+                        <h3 className="font-display text-lg font-semibold text-ink">{flow.title}</h3>
+                        {flow.explanation && <p className="mt-2 max-w-[60ch] text-sm leading-6 text-ink-muted">{flow.explanation}</p>}
                     </div>
 
                     {flow.sources.length > 0 && (
                         <div className="text-sm">
                             <p className="font-medium text-ink">{t('diagrams.content.whereInCode')}</p>
-                            <ul className="mt-2 flex flex-col gap-1.5">
+                            <ul className="mt-2 flex flex-wrap gap-2">
                                 {flow.sources.map((source) => (
                                     <li key={`${source.path}:${source.start_line}`} className="min-w-0">
                                         <SourceLink source={source} />
@@ -239,7 +310,7 @@ function FlowCard({ flow }: { flow: Diagram }) {
                     <p className="text-xs text-ink-subtle">{t('diagrams.content.flowNote')}</p>
                 </div>
 
-                <MermaidDiagram code={flow.mermaid} title={flow.title} />
+                <MermaidDiagram code={flow.mermaid} title={flow.title} modules={flow.modules} docsBase={docsBase} />
             </div>
         </article>
     );
@@ -274,23 +345,27 @@ function PathList({ paths }: { paths: string[] }) {
     );
 }
 
-/** Legătura spre liniile unui fișier pe GitHub; fără commit cunoscut, doar calea și liniile. */
+/** A citation chip, like the assistant's: path in monospace, the lines, an external icon; without a commit, no link. */
 function SourceLink({ source }: { source: DiagramSource }) {
     const { t } = useI18n();
-    const label = `${source.path} · L${source.start_line}–L${source.end_line}`;
+    const chip = 'inline-flex max-w-full items-center gap-1.5 rounded-md bg-surface-2 px-2 py-1 font-mono text-xs text-ink ring-1 ring-line ring-inset';
+    const content = (
+        <>
+            <span className="min-w-0 break-all">{source.path}</span>
+            <span className="shrink-0 text-ink-subtle">
+                L{source.start_line}–L{source.end_line}
+            </span>
+        </>
+    );
 
     if (!source.url) {
-        return <code className="font-mono text-xs break-all text-ink">{label}</code>;
+        return <span className={chip}>{content}</span>;
     }
 
     return (
-        <a
-            href={source.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`rounded-sm font-mono text-xs break-all text-accent hover:text-accent-hover hover:underline ${focusRing}`}
-        >
-            {label} <span aria-hidden="true">{'↗\uFE0E'}</span>
+        <a href={source.url} target="_blank" rel="noopener noreferrer" className={`${chip} hover:bg-accent-soft hover:text-accent ${focusRing}`}>
+            {content}
+            <ExternalLinkIcon className="size-3.5 text-ink-subtle" />
             <span className="sr-only"> {t('diagrams.content.onGitHub')}</span>
         </a>
     );

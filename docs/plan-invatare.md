@@ -267,6 +267,13 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Blocurile de cod au buton de copiere, dar nu și colorare sintactică: ar fi cerut o dependență nouă, iar un singur tuș de cerneală e mai calm.
   - Titlul paginii se desparte de restul textului, iar sub el vine o singură linie „cine a scris”; modelul, tokenii și costul stau într-un `<details>` și apar doar când există (date reale, nimic inventat).
   - Bara „Călătorie în timp” e o șină cu un inel pe commit (până la 24, peste rămâne cursorul) și e pliată implicit pe o linie; se deschide singură când e afișată o versiune veche.
+- 2026-11-12 — Diagramele de citit: zoom, deplasare, export și noduri care duc la documentație. Decizii și motivele lor:
+  - Zoom-ul și deplasarea stau într-un singur hook (`usePanZoom`, starea `{ scale, x, y }`), fără bibliotecă: Ctrl + rotița (și ciupirea de pe trackpad, pe care browserul o trimite tot ca Ctrl + rotița) mărește în jurul cursorului, rotița simplă lasă pagina să deruleze. Ascultătorul `wheel` e nativ și nepasiv, pentru că cel din React nu poate opri zoom-ul paginii.
+  - „Potrivește” nu respectă limita de jos a zoom-ului: o diagramă foarte înaltă trebuie să încapă întreagă, iar limita 0,3–4 se aplică doar mărimilor alese de cititor.
+  - Un clic care s-a mișcat sub 4 px e clic, nu tragere: abia peste prag prindem cursorul, ca un clic simplu să ajungă la nodul de sub el și o tragere să nu deschidă pagini.
+  - PNG-ul se desenează din SVG-ul din pagină pe un canvas la 2×, pe culoarea hârtiei; dacă browserul refuză, spunem asta și rămâne SVG-ul.
+  - Nodurile duc la documentație printr-un mic câmp nou, `meta.nodes` (id-ul nodului -> calea modulului), scris de constructorul diagramelor, care e singurul care știe cum a numerotat nodurile (m1, c3, …); resursa îl leagă de slug-ul paginii modulului și lasă deoparte modulele fără pagină, ca o cutie să nu fie legătură spre o pagină inexistentă.
+  - Sub-navigația lipicioasă află secțiunea curentă din poziții (ultimul titlu de deasupra unei linii la 120 px sub marginea zonei derulabile), recalculat o dată pe cadru, ca la pagina de documentație.
 
 ## Faza 7 — Diagrame C4 + prezentare
 - **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.

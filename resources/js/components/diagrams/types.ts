@@ -23,6 +23,9 @@ export type ExcludedGroup = {
     paths: string[];
 };
 
+/** Nodurile unei diagrame care duc la documentația unui modul: id-ul nodului -> modulul și slug-ul paginii lui. */
+export type DiagramModules = Record<string, { path: string; slug: string }>;
+
 /** O diagramă, așa cum o trimite DiagramResource. */
 export type Diagram = {
     type: DiagramType;
@@ -39,6 +42,8 @@ export type Diagram = {
     sources: DiagramSource[];
     /** Commitul din care a fost desenată. */
     source_sha: string | null;
+    /** Nodurile care deschid pagina unui modul (doar straturile și componentele). */
+    modules: DiagramModules;
 };
 
 /** Toate diagramele unui repository, grupate pentru pagină; null = vederea nu are date. */

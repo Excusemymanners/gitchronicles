@@ -44,7 +44,7 @@ export default function RepositoriesDiagrams({ repository, completeness, diagram
 
             {time_travel.changes && <ChangesSince changes={time_travel.changes} />}
 
-            <DiagramsContent diagrams={diagrams} />
+            <DiagramsContent diagrams={diagrams} repositoryId={repository.id} />
         </RepositoryLayout>
     );
 }

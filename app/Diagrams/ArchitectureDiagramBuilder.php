@@ -214,6 +214,7 @@ final class ArchitectureDiagramBuilder
             'title' => 'Layered architecture',
             'caption' => $caption,
             'excluded' => $excluded,
+            'nodes' => $this->nodePaths($shown, $ids),
         ]);
     }
 
@@ -418,6 +419,7 @@ final class ArchitectureDiagramBuilder
             'title' => 'Components',
             'caption' => $caption,
             'omitted_modules' => $omitted,
+            'nodes' => $this->nodePaths($shown, $ids),
         ]);
     }
 
@@ -722,6 +724,18 @@ final class ArchitectureDiagramBuilder
             ->take($limit)
             ->sortBy('path')
             ->values();
+    }
+
+    /**
+     * Which module each drawn node stands for (node id => module path), so the page can link a box to its docs.
+     *
+     * @param  Collection<int, Module>  $modules
+     * @param  array<int, string>  $ids  module id => node id
+     * @return array<string, string>
+     */
+    private function nodePaths(Collection $modules, array $ids): array
+    {
+        return $modules->mapWithKeys(fn (Module $module): array => [$ids[$module->id] => $module->path])->all();
     }
 
     /**
