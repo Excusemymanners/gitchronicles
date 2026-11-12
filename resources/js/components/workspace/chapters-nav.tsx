@@ -2,7 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode, Ref } from 'react';
 import ChapterLink from '@/components/workspace/chapter-link';
 import { ChevronIcon, SearchIcon } from '@/components/workspace/icons';
-import { countLabel, formatNumber } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import { formatNumber } from '@/lib/format';
 import { useActiveChapter } from '@/lib/workspace';
 import type { WorkspaceGroup, WorkspaceModule, WorkspaceModuleFolder } from '@/types';
 
@@ -28,6 +29,7 @@ const activeItemClasses = 'bg-accent-soft font-medium text-accent shadow-[inset_
  * pe folderul de sus, în foldere care se deschid și se închid.
  */
 export default function ChaptersNav({ groups }: Props) {
+    const { t } = useI18n();
     const activeChapter = useActiveChapter();
 
     // Când capitolul deschis se schimbă (de exemplu dintr-un card din dreapta), îl aducem în vedere în cuprins.
@@ -38,7 +40,7 @@ export default function ChaptersNav({ groups }: Props) {
     }, [activeChapter?.href]);
 
     return (
-        <nav aria-label="Capitole" className="flex flex-col gap-6 px-3 pt-5 pb-10">
+        <nav aria-label={t('workspace.chapters')} className="flex flex-col gap-6 px-3 pt-5 pb-10">
             {groups.map((group) => (
                 <ChapterGroup key={group.key} group={group} activeHref={activeChapter?.href ?? null} activeItemRef={activeItemRef} />
             ))}
@@ -139,6 +141,7 @@ type ModuleTreeProps = {
  * modul nu e deschis, cel mai mare folder. Peste FILTER_FROM_MODULE_COUNT module apare un câmp de filtrare.
  */
 function ModuleTree({ folders, activeHref, activeItemRef }: ModuleTreeProps) {
+    const { t, plural } = useI18n();
     const filterId = useId();
     const [query, setQuery] = useState('');
 
@@ -176,7 +179,7 @@ function ModuleTree({ folders, activeHref, activeItemRef }: ModuleTreeProps) {
             href={module.href}
             label={label}
             count={module.file_count}
-            countText={countLabel(module.file_count, 'fișier', 'fișiere')}
+            countText={plural('files', module.file_count)}
             isActive={module.href === activeHref}
             activeItemRef={activeItemRef}
             variant={variant}
@@ -188,7 +191,7 @@ function ModuleTree({ folders, activeHref, activeItemRef }: ModuleTreeProps) {
             {modules.length >= FILTER_FROM_MODULE_COUNT && (
                 <div className="mb-2">
                     <label htmlFor={filterId} className="sr-only">
-                        Filtrează modulele după cale
+                        {t('workspace.filterModulesByPath')}
                     </label>
                     <div className="relative">
                         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ink-subtle" />
@@ -197,7 +200,7 @@ function ModuleTree({ folders, activeHref, activeItemRef }: ModuleTreeProps) {
                             type="search"
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
-                            placeholder="Filtrează modulele"
+                            placeholder={t('workspace.filterModules')}
                             autoComplete="off"
                             className="w-full rounded-lg border border-line-strong bg-canvas py-1.5 pr-2.5 pl-8 text-sm text-ink placeholder:text-ink-subtle focus:outline-2 focus:-outline-offset-1 focus:outline-accent"
                         />
@@ -207,19 +210,19 @@ function ModuleTree({ folders, activeHref, activeItemRef }: ModuleTreeProps) {
                         {normalizedQuery === ''
                             ? ''
                             : matchingModules.length === 0
-                              ? 'Niciun modul nu se potrivește.'
-                              : countLabel(matchingModules.length, 'modul găsit', 'module găsite')}
+                              ? t('workspace.noModuleMatches')
+                              : plural('modulesFound', matchingModules.length)}
                     </p>
                 </div>
             )}
 
             {normalizedQuery !== '' ? (
-                <ul className="flex flex-col gap-0.5">{matchingModules.map((module) => moduleItem(module, moduleLabel(module), 'module'))}</ul>
+                <ul className="flex flex-col gap-0.5">{matchingModules.map((module) => moduleItem(module, moduleLabel(module, t('workspace.root')), 'module'))}</ul>
             ) : (
                 <ul className="flex flex-col gap-0.5">
                     {folders.map((folder) =>
                         folder.modules.length === 1 ? (
-                            moduleItem(folder.modules[0], moduleLabel(folder.modules[0]), 'module')
+                            moduleItem(folder.modules[0], moduleLabel(folder.modules[0], t('workspace.root')), 'module')
                         ) : (
                             <ModuleFolder
                                 key={folder.name}
@@ -238,8 +241,8 @@ function ModuleTree({ folders, activeHref, activeItemRef }: ModuleTreeProps) {
 }
 
 /** Numele unui modul afișat singur (fără folderul lui deasupra): toată calea, iar „/” devine „rădăcină”. */
-function moduleLabel(module: WorkspaceModule): string {
-    return module.path === '/' ? 'rădăcină' : module.path;
+function moduleLabel(module: WorkspaceModule, rootLabel: string): string {
+    return module.path === '/' ? rootLabel : module.path;
 }
 
 type ModuleFolderProps = {
@@ -251,6 +254,7 @@ type ModuleFolderProps = {
 
 /** Un folder din cuprins: butonul lui deschide sau închide lista de module (aria-expanded). */
 function ModuleFolder({ folder, isOpen, onToggle, children }: ModuleFolderProps) {
+    const { t, plural } = useI18n();
     const listId = useId();
 
     return (
@@ -263,11 +267,11 @@ function ModuleFolder({ folder, isOpen, onToggle, children }: ModuleFolderProps)
                 className={`${itemClasses} cursor-pointer font-medium text-ink hover:bg-surface-2`}
             >
                 <ChevronIcon className={`size-3.5 shrink-0 text-ink-subtle motion-safe:transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-                <span className="min-w-0 flex-1 truncate">{folder.name === '/' ? 'rădăcină' : folder.name}</span>
+                <span className="min-w-0 flex-1 truncate">{folder.name === '/' ? t('workspace.root') : folder.name}</span>
                 <span aria-hidden="true" className="shrink-0 text-xs font-normal text-ink-subtle tabular-nums">
                     {formatNumber(folder.file_count)}
                 </span>
-                <span className="sr-only">, {countLabel(folder.file_count, 'fișier', 'fișiere')}</span>
+                <span className="sr-only">, {plural('files', folder.file_count)}</span>
             </button>
 
             {/* O linie verticală sub săgeată leagă modulele de folderul lor, ca într-un explorator de fișiere. */}

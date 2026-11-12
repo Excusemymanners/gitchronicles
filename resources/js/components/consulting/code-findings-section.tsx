@@ -1,8 +1,9 @@
 import ReportSection from '@/components/consulting/report-section';
-import SeverityBadge, { SEVERITIES, SEVERITY_LABELS, SeverityIcon } from '@/components/consulting/severity-badge';
+import SeverityBadge, { SEVERITIES, SeverityIcon } from '@/components/consulting/severity-badge';
 import { ExternalLinkIcon } from '@/components/icons';
 import { ChevronIcon } from '@/components/workspace/icons';
-import { countLabel } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import { translate } from '@/lib/i18n';
 import type { CodeFile, CodeFinding } from '@/types/consulting';
 
 /** Câte fișiere sunt deschise de la început (cele mai grave); celelalte se deschid la clic. */
@@ -15,21 +16,22 @@ const OPEN_FILES = 3;
  * Titlurile și mesajele regulilor sunt în engleză (lang="en"), ca tot ce generează aplicația.
  */
 export default function CodeFindingsSection({ files }: { files: CodeFile[] }) {
+    const { t, plural } = useI18n();
     const findingCount = files.reduce((total, file) => total + file.findings.length, 0);
 
     return (
         <ReportSection
             id="probleme-in-cod"
-            title="Probleme în cod"
+            title={t('consulting.findings.title')}
             description={
                 files.length === 0
                     ? undefined
-                    : `Semgrep a găsit ${countLabel(findingCount, 'problemă', 'probleme')} în ${countLabel(files.length, 'fișier', 'fișiere')}, cu regulile scrise pentru GitChronicle.`
+                    : t('consulting.findings.description', { problems: plural('problems', findingCount), files: plural('files', files.length) })
             }
         >
             {files.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-muted">
-                    Semgrep nu a găsit probleme în cod (sau nu a rulat; vezi „Unelte” mai jos).
+                    {t('consulting.findings.empty')}
                 </p>
             ) : (
                 <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
@@ -39,9 +41,9 @@ export default function CodeFindingsSection({ files }: { files: CodeFile[] }) {
                                 <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
                                     <ChevronIcon className="size-3.5 shrink-0 text-ink-subtle group-open:rotate-90 motion-safe:transition-transform" />
                                     <SeverityIcon severity={file.worst_severity} className="size-3 text-ink-muted" />
-                                    <span className="sr-only">{SEVERITY_LABELS[file.worst_severity]}:</span>
+                                    <span className="sr-only">{t(`severities.${file.worst_severity}`)}:</span>
                                     <code className="min-w-0 flex-1 font-mono text-xs break-all text-ink">{file.path}</code>
-                                    <span className="shrink-0 text-xs text-ink-subtle tabular-nums">{countLabel(file.findings.length, 'problemă', 'probleme')}</span>
+                                    <span className="shrink-0 text-xs text-ink-subtle tabular-nums">{plural('problems', file.findings.length)}</span>
                                 </summary>
                                 <ul className="flex flex-col gap-4 border-t border-line-subtle px-3 py-3 sm:pl-9">
                                     {groupByRule(file.findings).map((group) => (
@@ -74,30 +76,33 @@ function groupByRule(findings: CodeFinding[]): CodeFinding[][] {
 /** Rândurile unei probleme, de exemplu „rândul 12” sau „rândurile 12–15”. */
 function linesLabel(finding: CodeFinding): string {
     if (finding.start_line === null) {
-        return 'fișierul';
+        return translate('consulting.findings.wholeFile');
     }
 
-    return finding.end_line === null || finding.end_line === finding.start_line ? `rândul ${finding.start_line}` : `rândurile ${finding.start_line}–${finding.end_line}`;
+    return finding.end_line === null || finding.end_line === finding.start_line
+        ? translate('consulting.findings.line', { line: finding.start_line })
+        : translate('consulting.findings.lines', { start: finding.start_line, end: finding.end_line });
 }
 
 /** O regulă găsită într-un fișier: gravitatea, titlul, felul, mesajul și legăturile spre fiecare loc pe GitHub. */
 function RuleItem({ findings }: { findings: CodeFinding[] }) {
+    const { t } = useI18n();
     const first = findings[0];
 
     return (
         <li className="text-sm">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <SeverityBadge severity={first.severity} label={first.severity_label} />
+                <SeverityBadge severity={first.severity} />
                 <span lang="en" className="font-medium text-ink">
                     {first.title}
                 </span>
-                <span className="text-xs text-ink-subtle">{first.kind_label}</span>
+                <span className="text-xs text-ink-subtle">{t(`consulting.findings.kind.${first.kind}`)}</span>
                 <code className="font-mono text-xs text-ink-subtle">{first.rule_id}</code>
             </div>
             <p lang="en" className="mt-1 text-ink-muted">
                 {first.message}
             </p>
-            <ul aria-label="Locurile pe GitHub" className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+            <ul aria-label={t('consulting.findings.places')} className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                 {findings.map((finding) => (
                     <li key={finding.id}>
                         <a
@@ -108,7 +113,7 @@ function RuleItem({ findings }: { findings: CodeFinding[] }) {
                         >
                             {linesLabel(finding)}
                             <ExternalLinkIcon className="size-3.5" />
-                            <span className="sr-only"> pe GitHub (se deschide într-o filă nouă)</span>
+                            <span className="sr-only"> {t('consulting.onGitHub')}</span>
                         </a>
                     </li>
                 ))}

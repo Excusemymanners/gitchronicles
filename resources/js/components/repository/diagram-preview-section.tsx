@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import DiagramCard from '@/components/diagrams/diagram-card';
 import type { Diagram } from '@/components/diagrams/types';
+import { useI18n } from '@/hooks/use-i18n';
 import type { RepositoryPageProps } from '@/types';
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
  * cu legătură spre tab-ul „Diagrame”. Fără diagramă secțiunea nu apare deloc: nu afișăm nimic inventat.
  */
 export default function DiagramPreviewSection({ preview }: Props) {
+    const { t } = useI18n();
     const { repository } = usePage<RepositoryPageProps>().props;
 
     if (!preview) {
@@ -22,10 +24,10 @@ export default function DiagramPreviewSection({ preview }: Props) {
     return (
         <section aria-labelledby="diagram-preview-heading">
             <h2 id="diagram-preview-heading" className="text-lg font-semibold tracking-tight">
-                Arhitectura
+                {t('overview.architecture.title')}
             </h2>
             <div className="mt-4">
-                <DiagramCard diagram={preview} href={`/repositories/${repository.id}/diagrams#straturi`} linkLabel="Vezi toate diagramele" size="md" />
+                <DiagramCard diagram={preview} href={`/repositories/${repository.id}/diagrams#straturi`} linkLabel={t('overview.architecture.viewAll')} size="md" />
             </div>
         </section>
     );

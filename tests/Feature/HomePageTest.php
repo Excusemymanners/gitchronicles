@@ -74,7 +74,7 @@ class HomePageTest extends TestCase
                 'full_name' => 'laravel/framework',
                 'description' => null,
                 'status' => 'pending',
-                'status_label' => 'În așteptare',
+                'status_label' => 'Queued',
                 'is_processing' => true,
                 'default_branch' => null,
                 'last_sha' => null,

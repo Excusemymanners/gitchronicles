@@ -69,7 +69,7 @@ class ConsultingPageTest extends TestCase
             ->get("/repositories/{$repository->id}/consulting")
             ->assertInertia(fn (Assert $page) => $page
                 ->where('consulting.status', 'running')
-                ->where('consulting.status_label', 'Se analizează')
+                ->where('consulting.status_label', 'Analyzing')
                 ->where('consulting.is_working', true)
                 ->where('consulting.result', null)
                 ->where('can_run_consulting', false)
@@ -95,7 +95,7 @@ class ConsultingPageTest extends TestCase
                 ->where('consulting.status', 'failed')
                 ->where('consulting.error', 'no_tool_ran')
                 ->where('consulting.result', null)
-                ->where('consulting.tools.0.status_label', 'Timp depășit')
+                ->where('consulting.tools.0.status_label', 'Timed out')
                 ->where('consulting.tools.0.error', 'timed_out')
                 ->where('consulting.tools.0.error_value', 300)
             );
@@ -131,7 +131,7 @@ class ConsultingPageTest extends TestCase
                     'severity_points' => 6,
                     'score' => 18,
                     'worst_severity' => 'high',
-                    'worst_severity_label' => 'Ridicată',
+                    'worst_severity_label' => 'High',
                     'url' => "https://github.com/acme/shop/blob/{$sha}/app/Http/ReportController.php",
                 ])
                 ->where('consulting.result.files.0.path', 'app/Http/ReportController.php')
@@ -139,11 +139,11 @@ class ConsultingPageTest extends TestCase
                 ->where('consulting.result.files.0.findings.0.rule_id', 'laravel-env-outside-config')
                 ->where('consulting.result.files.0.findings.1', [
                     'severity' => 'high',
-                    'severity_label' => 'Ridicată',
+                    'severity_label' => 'High',
                     'original_severity' => 'ERROR',
                     'id' => $shell->id,
                     'kind' => 'vulnerability',
-                    'kind_label' => 'Vulnerabilitate',
+                    'kind_label' => 'Vulnerability',
                     'rule_id' => 'php-shell-command',
                     'title' => 'Comandă de shell dintr-o variabilă',
                     'message' => 'O comandă de shell e construită dintr-o variabilă.',
@@ -154,7 +154,7 @@ class ConsultingPageTest extends TestCase
                 ->where('consulting.result.files.1.path', 'config/app.php')
                 ->where('consulting.result.dependencies', [[
                     'severity' => 'high',
-                    'severity_label' => 'Ridicată',
+                    'severity_label' => 'High',
                     'original_severity' => 'CVSS 7.4',
                     'id' => $lodash->id,
                     'package' => 'lodash',
@@ -169,11 +169,11 @@ class ConsultingPageTest extends TestCase
                 ->where('consulting.result.code_statistics.languages.0.name', 'PHP')
                 ->where('workspace.elements.consulting.counts.high', 0)
                 ->where('workspace.chapters', fn ($groups) => collect($groups)->firstWhere('key', 'consulting')['chapters'] === [
-                    ['label' => 'Raport', 'href' => "/repositories/{$repository->id}/consulting", 'count' => null],
-                    ['label' => 'Zone de risc', 'href' => "/repositories/{$repository->id}/consulting#zone-de-risc", 'count' => null],
-                    ['label' => 'Probleme în cod', 'href' => "/repositories/{$repository->id}/consulting#probleme-in-cod", 'count' => 0],
-                    ['label' => 'Dependențe vulnerabile', 'href' => "/repositories/{$repository->id}/consulting#dependente-vulnerabile", 'count' => 0],
-                    ['label' => 'Statistici despre cod', 'href' => "/repositories/{$repository->id}/consulting#statistici-cod", 'count' => null],
+                    ['label' => 'Report', 'href' => "/repositories/{$repository->id}/consulting", 'count' => null],
+                    ['label' => 'Risk zones', 'href' => "/repositories/{$repository->id}/consulting#zone-de-risc", 'count' => null],
+                    ['label' => 'Code issues', 'href' => "/repositories/{$repository->id}/consulting#probleme-in-cod", 'count' => 0],
+                    ['label' => 'Vulnerable dependencies', 'href' => "/repositories/{$repository->id}/consulting#dependente-vulnerabile", 'count' => 0],
+                    ['label' => 'Code statistics', 'href' => "/repositories/{$repository->id}/consulting#statistici-cod", 'count' => null],
                 ])
             );
     }

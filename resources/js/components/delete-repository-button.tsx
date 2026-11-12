@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
+import { useI18n } from '@/hooks/use-i18n';
 import type { RepositoryItem } from '@/types';
 
 type Props = {
@@ -11,10 +12,11 @@ type Props = {
  * Serverul îl șterge și răspunde cu redirect la pagina principală („/”), care se deschide de sus.
  */
 export default function DeleteRepositoryButton({ repository }: Props) {
+    const { t } = useI18n();
     const [isDeleting, setIsDeleting] = useState(false);
 
     function handleClick() {
-        if (!window.confirm('Ștergi acest repository?')) {
+        if (!window.confirm(t('repository.delete.confirm'))) {
             return;
         }
 
@@ -31,7 +33,7 @@ export default function DeleteRepositoryButton({ repository }: Props) {
             disabled={isDeleting}
             className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-danger-ink shadow-xs ring-1 ring-danger-line ring-inset hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:cursor-not-allowed disabled:opacity-60"
         >
-            {isDeleting ? 'Se șterge…' : 'Șterge'}
+            {isDeleting ? t('repository.delete.deleting') : t('repository.delete.label')}
             {/* Text citit doar de cititoarele de ecran, ca să știe ce repository se șterge. */}
             <span className="sr-only"> {repository.full_name}</span>
         </button>

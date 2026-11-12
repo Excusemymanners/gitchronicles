@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n';
 import { formatNumber } from '@/lib/format';
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
  * și roșu (șterse), în proporția lor. Cititoarele de ecran primesc propoziția întreagă.
  */
 export default function LineChanges({ insertions, deletions }: Props) {
+    const { t, plural } = useI18n();
     const total = insertions + deletions;
     const insertedShare = total === 0 ? 0 : (insertions / total) * 100;
 
@@ -26,7 +28,7 @@ export default function LineChanges({ insertions, deletions }: Props) {
                 {deletions > 0 && <span className="flex-1 bg-danger" />}
             </span>
             <span className="sr-only">
-                {formatNumber(insertions)} linii adăugate, {formatNumber(deletions)} linii șterse
+                {t('timeline.commit.linesChanged', { added: plural('lines', insertions), removed: plural('lines', deletions) })}
             </span>
         </span>
     );

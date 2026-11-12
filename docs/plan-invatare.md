@@ -254,6 +254,12 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Propozițiile cu o bucată evidențiată (un `<strong>`, un `<code>`, o dată) rămân întregi în dicționar, cu locuri de forma `{nume}` (`rich()`), pentru că ordinea cuvintelor diferă de la o limbă la alta.
   - Comutatorul de limbă stă lângă cel de temă, în antet și în bara spațiului de lucru: un buton cu globul și codul limbii care deschide lista limbilor, fiecare scrisă în limba ei. Schimbarea nu reîncarcă pagina: serverul trimite aceeași pagină în limba nouă, iar Inertia o înlocuiește cu aceeași trecere lină ca între pagini. Pe telefon rămâne doar globul, ca antetul să încapă în ambele limbi.
   - Paginile spațiului de lucru (documentație, diagrame, asistent, istoric, video) se traduc în a doua parte, cu aceleași unelte; până atunci textul lor rămâne în română.
+- 2026-11-12 — Interfața în două limbi, a doua parte: spațiul de lucru al unui repository. Decizii și motivele lor:
+  - Se traduc toate paginile și componentele spațiului de lucru: cuprinsul, bara de sus, panoul „Elemente”, documentația, diagramele, asistentul, istoricul, călătoria în timp, prezentarea generală și Consultanța. Video-ul și slide-urile rămân pentru după ce se termină refacerea lor.
+  - Serverul trimite deja textul în limba cererii acolo unde construiește el titluri: grupurile și capitolele cuprinsului, etichetele stărilor (`lang/*/enums.php`), mesajele de validare ale asistentului și mesajele flash. Pentru gravitatea problemelor și felul lor, interfața traduce valoarea primită, nu eticheta serverului, ca textul să urmeze limba chiar și când pagina vine din istoricul browserului.
+  - „Lipsesc istoricul, documentația…” nu mai vine gata scris de la server: lista lipsurilor se formează în browser cu `Intl.ListFormat`, deci „a, b și c” în română și „a, b and c” în engleză.
+  - Formatările istoricului (luni, zile, durate, sume) urmează limba aleasă, nu mai sunt scrise pentru „ro-RO”.
+  - Rămân deliberat în română, pentru că sunt salvate în baza de date sau scrise de comenzi: erorile etapelor procesării și mesajele `AiException`, textele comenzilor Artisan și ancorele din adrese („cum-functioneaza”). Un script (`audit/out/i18n/scan-ro.cjs`) caută litere cu diacritice și cuvinte românești în textele fișierelor convertite și raportează zero.
 
 ## Faza 7 — Diagrame C4 + prezentare
 - **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.

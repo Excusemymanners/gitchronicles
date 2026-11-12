@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import AssistantBar from '@/components/assistant/assistant-bar';
 import { useAssistantConversation } from '@/components/assistant/assistant-provider';
 import AssistantThread from '@/components/assistant/assistant-thread';
-import { countLabel } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
 import type { RepositoryItem, Workspace } from '@/types';
 
 type Props = {
@@ -26,6 +26,7 @@ const panelButtonClasses =
  * Conversația vine din AssistantProvider, deci rămâne aceeași când deschizi alt capitol.
  */
 export default function AssistantDock({ repository, assistant, showThread = true }: Props) {
+    const { t, plural } = useI18n();
     const conversation = useAssistantConversation();
     const [isThreadOpen, setThreadOpen] = useState(true);
     const hasConversation = conversation.messages.length > 0;
@@ -37,23 +38,23 @@ export default function AssistantDock({ repository, assistant, showThread = true
 
     return (
         <section
-            aria-label="Asistent"
+            aria-label={t('workspace.dock.label')}
             className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-linear-to-b from-canvas/0 via-canvas/90 to-canvas px-3 pt-10 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8"
         >
             <div className="pointer-events-auto mx-auto max-w-190">
                 {showThread && hasConversation && isThreadOpen && (
                     <div className="mb-3 flex max-h-[min(28rem,55dvh)] flex-col overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-raised">
                         <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-1.5">
-                            <p className="text-xs font-semibold text-ink-muted">Conversația cu asistentul</p>
+                            <p className="text-xs font-semibold text-ink-muted">{t('workspace.dock.conversation')}</p>
                             <div className="flex flex-wrap justify-end gap-1">
                                 <Link href={`/repositories/${repository.id}/assistant`} className={panelButtonClasses}>
-                                    Pe toată pagina
+                                    {t('workspace.dock.fullPage')}
                                 </Link>
                                 <button type="button" onClick={conversation.clear} className={panelButtonClasses}>
-                                    Conversație nouă
+                                    {t('workspace.dock.newConversation')}
                                 </button>
                                 <button type="button" onClick={() => setThreadOpen(false)} className={panelButtonClasses}>
-                                    Ascunde
+                                    {t('workspace.dock.hide')}
                                 </button>
                             </div>
                         </div>
@@ -69,7 +70,7 @@ export default function AssistantDock({ repository, assistant, showThread = true
                         onClick={() => setThreadOpen(true)}
                         className="mb-2 cursor-pointer rounded-full border border-line bg-surface-raised px-3 py-1 text-xs font-medium text-ink-muted shadow-raised hover:border-line-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                     >
-                        Arată conversația ({countLabel(conversation.messages.length, 'mesaj', 'mesaje')})
+                        {t('workspace.dock.showConversation', { messages: plural('messages', conversation.messages.length) })}
                     </button>
                 )}
 

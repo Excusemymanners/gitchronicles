@@ -1,4 +1,5 @@
 import CodeStructureSection from '@/components/code-structure';
+import { useI18n } from '@/hooks/use-i18n';
 import type { CodeStructure } from '@/types';
 
 type Props = {
@@ -12,6 +13,8 @@ type Props = {
  * Fără date secțiunea nu apare deloc: nu afișăm nimic inventat.
  */
 export default function StructureSection({ structure }: Props) {
+    const { t } = useI18n();
+
     if (!structure) {
         return null;
     }
@@ -19,7 +22,7 @@ export default function StructureSection({ structure }: Props) {
     return (
         <section aria-labelledby="code-structure-heading">
             <h2 id="code-structure-heading" className="text-lg font-semibold tracking-tight">
-                Structura codului
+                {t('overview.structure.title')}
             </h2>
             <CodeStructureSection codeStructure={structure} />
         </section>

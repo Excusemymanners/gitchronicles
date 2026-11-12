@@ -61,7 +61,7 @@ final class ClaudeCodeGenerator implements TextGenerator
         } catch (ProcessTimedOutException) {
             Log::warning('Claude Code timed out.', ['timeout_seconds' => self::TIMEOUT_SECONDS]);
 
-            throw new AiException('Claude a răspuns prea greu, așa că am oprit cererea. Încearcă din nou mai târziu.', retryable: true);
+            throw new AiException(AiException::TOO_SLOW_MESSAGE, retryable: true);
         } finally {
             File::deleteDirectory($workingDirectory);
         }
@@ -145,8 +145,8 @@ final class ClaudeCodeGenerator implements TextGenerator
         }
 
         throw match ($response['stop_reason'] ?? null) {
-            'max_tokens' => new AiException('Răspunsul lui Claude a fost prea lung și s-a oprit la jumătate.'),
-            'refusal' => new AiException('Claude a refuzat să scrie acest text.'),
+            'max_tokens' => new AiException(AiException::TOO_LONG_MESSAGE),
+            'refusal' => new AiException(AiException::REFUSED_MESSAGE),
             default => new AiException,
         };
     }

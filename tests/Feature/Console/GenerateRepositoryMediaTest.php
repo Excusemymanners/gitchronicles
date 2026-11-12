@@ -40,8 +40,8 @@ class GenerateRepositoryMediaTest extends TestCase
         ['repository' => $repository] = $this->shopRepository();
 
         $this->artisan('repositories:media', ['repository' => $repository->id, '--now' => true])
-            ->expectsOutputToContain("slides (en): Gata — storage/app/private/media/{$repository->id}/slides.pdf")
-            ->expectsOutputToContain("video (en): Gata — storage/app/private/media/{$repository->id}/video-en.mp4")
+            ->expectsOutputToContain("slides (en): Ready — storage/app/private/media/{$repository->id}/slides.pdf")
+            ->expectsOutputToContain("video (en): Ready — storage/app/private/media/{$repository->id}/video-en.mp4")
             ->assertSuccessful();
 
         $this->assertSame(3, MediaAsset::where('status', 'ready')->count());
@@ -54,7 +54,7 @@ class GenerateRepositoryMediaTest extends TestCase
         ['repository' => $repository] = $this->shopRepository();
 
         $this->artisan('repositories:media', ['repository' => $repository->id, '--now' => true])
-            ->expectsOutputToContain('slides (en): Eroare')
+            ->expectsOutputToContain('slides (en): Failed')
             ->assertFailed();
     }
 
@@ -67,7 +67,7 @@ class GenerateRepositoryMediaTest extends TestCase
             ->expectsOutputToContain('Nu există niciun repository cu id-ul 999.')
             ->assertFailed();
         $this->artisan('repositories:media', ['repository' => $pending->id])
-            ->expectsOutputToContain('nu este încă gata (status: În așteptare)')
+            ->expectsOutputToContain('nu este încă gata (status: Queued)')
             ->assertFailed();
 
         Queue::assertNothingPushed();

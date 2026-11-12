@@ -25,7 +25,7 @@ class RunConsultingController extends Controller
 
         GenerateConsultingReport::queueFor($repository, force: true);
 
-        Inertia::flash('success', 'Am pornit analiza. Durează de obicei sub un minut.');
+        Inertia::flash('success', __('repositories.flash.consulting_started'));
 
         return redirect()->route('repositories.consulting', $repository);
     }

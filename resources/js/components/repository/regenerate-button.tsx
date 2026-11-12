@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import PrimaryButton from '@/components/primary-button';
+import { useI18n } from '@/hooks/use-i18n';
 import type { RepositoryItem } from '@/types';
 
 type Props = {
@@ -17,15 +18,11 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
  * „Verifică actualizări”. Perechea lor: „Verifică actualizări” reface doar ce au schimbat commit-urile noi.
  */
 export default function RegenerateButton({ repository, variant = 'compact' }: Props) {
+    const { t } = useI18n();
     const [isStarting, setIsStarting] = useState(false);
 
     function handleClick() {
-        const question =
-            `Regenerezi tot pentru ${repository.full_name}?\n\n` +
-            'Repository-ul trece din nou prin toate etapele: clonare, analiza codului, istoric, documentație, diagrame și indexul asistentului. ' +
-            'Paginile al căror cod nu s-a schimbat rămân la fel.';
-
-        if (!window.confirm(question)) {
+        if (!window.confirm(t('repository.regenerate.confirm', { repository: repository.full_name }))) {
             return;
         }
 
@@ -40,7 +37,7 @@ export default function RegenerateButton({ repository, variant = 'compact' }: Pr
         );
     }
 
-    const label = isStarting ? 'Se pornește…' : 'Regenerează tot';
+    const label = isStarting ? t('repository.update.starting') : t('repository.regenerate.label');
 
     if (variant === 'primary') {
         return (
@@ -55,7 +52,7 @@ export default function RegenerateButton({ repository, variant = 'compact' }: Pr
             type="button"
             onClick={handleClick}
             disabled={isStarting}
-            title="Reface toate capitolele, de la clonare până la indexul asistentului"
+            title={t('repository.regenerate.title')}
             className={`pressable inline-flex cursor-pointer items-center rounded-md bg-surface px-2.5 py-1 text-[0.8125rem] font-medium text-ink shadow-xs ring-1 ring-line-strong ring-inset hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
         >
             {label}

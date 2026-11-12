@@ -1,14 +1,19 @@
-/** Formatări pentru istoricul git (tab-ul „Istoric” și cardurile lui), toate în română. */
+import { getLocale } from '@/lib/i18n';
 
-const monthFormatter = new Intl.DateTimeFormat('ro-RO', { month: 'long', year: 'numeric' });
+/** Formatări pentru istoricul git (tab-ul „Istoric” și cardurile lui), în limba interfeței. */
 
-const shortMonthFormatter = new Intl.DateTimeFormat('ro-RO', { month: 'short', year: 'numeric' });
+/** Formatoarele Intl, create o singură dată pentru fiecare limbă. */
+const formatters = new Map<string, Intl.DateTimeFormat | Intl.NumberFormat>();
 
-const dayFormatter = new Intl.DateTimeFormat('ro-RO', { dateStyle: 'medium' });
+function cached<T extends Intl.DateTimeFormat | Intl.NumberFormat>(name: string, create: (locale: string) => T): T {
+    const key = `${getLocale()}:${name}`;
 
-const usdFormatter = new Intl.NumberFormat('ro-RO', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+    if (!formatters.has(key)) {
+        formatters.set(key, create(getLocale()));
+    }
 
-const secondsFormatter = new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 1 });
+    return formatters.get(key) as T;
+}
 
 /** Luna unei date ISO 8601, ca cheie de grupare: „2026-11” (în fusul orar al vizitatorului). */
 export function monthKey(isoDate: string): string {
@@ -22,12 +27,12 @@ export function formatMonth(key: string, short = false): string {
     const [year, month] = key.split('-').map(Number);
     const date = new Date(year, month - 1, 1);
 
-    return (short ? shortMonthFormatter : monthFormatter).format(date);
+    return cached(short ? 'shortMonth' : 'month', (locale) => new Intl.DateTimeFormat(locale, { month: short ? 'short' : 'long', year: 'numeric' })).format(date);
 }
 
 /** Doar ziua unei date ISO 8601, de exemplu „9 nov. 2026”. */
 export function formatDay(isoDate: string): string {
-    return dayFormatter.format(new Date(isoDate));
+    return cached('day', (locale) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' })).format(new Date(isoDate));
 }
 
 /** O durată în milisecunde: „0,8 s”, „37 s”, „1 min 9 s”. */
@@ -35,7 +40,7 @@ export function formatDuration(milliseconds: number): string {
     const seconds = milliseconds / 1000;
 
     if (seconds < 60) {
-        return `${secondsFormatter.format(seconds)} s`;
+        return `${cached('seconds', (locale) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })).format(seconds)} s`;
     }
 
     const minutes = Math.floor(seconds / 60);
@@ -46,7 +51,7 @@ export function formatDuration(milliseconds: number): string {
 
 /** O sumă în dolari, de exemplu „0,12 USD”. */
 export function formatUsd(amount: number): string {
-    return usdFormatter.format(amount);
+    return cached('usd', (locale) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })).format(amount);
 }
 
 /** Legătura spre commit pe GitHub. */

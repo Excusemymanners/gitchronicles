@@ -2,109 +2,111 @@
 
 # GitChronicle
 
-Asistent AI care documentează automat un repository GitHub și ține documentația la zi pe baza istoricului git: după prima indexare, procesează doar ce s-a schimbat de la ultimul commit indexat, nu tot proiectul de la zero.
+An AI assistant that automatically documents a GitHub repository and keeps the documentation up to date from the git history: after the first indexing, it processes only what changed since the last indexed commit, not the whole project from scratch.
 
-Proiect de licență — Tehnologia Informației, 2026–2027.
+Bachelor’s thesis project — Information Technology, 2026–2027.
 
-- Planul complet al lucrării: [docs/licenta.md](docs/licenta.md)
-- Planul de învățare, pas cu pas: [docs/plan-invatare.md](docs/plan-invatare.md)
+The thesis plan and the journal under `docs/` are written in Romanian; everything else (this README, the interface, the generated content) is in English.
 
-## Ce face
+- The full plan of the thesis: [docs/licenta.md](docs/licenta.md)
+- The step-by-step learning plan: [docs/plan-invatare.md](docs/plan-invatare.md)
 
-- **Spațiu de lucru pentru fiecare repository**, în stilul NotebookLM: cuprinsul în stânga (ca pe Wikipedia), capitolul deschis în mijloc, elementele generate (diagrame, video, slide-uri, activitate, zone fierbinți) în dreapta și bara asistentului mereu jos, în care întrebi orice despre cod.
-- **Documentație** în stil DeepWiki: o pagină pentru fiecare modul, cu navigare și căutare.
-- **Diagrame de arhitectură C4** (Context, Container, Component), generate din codul proiectului.
-- **Asistent pe cod**: răspunde la întrebări despre repository și citează fișierul și liniile exacte.
-- **Actualizare incrementală**: la fiecare push se regenerează doar paginile afectate.
-- **Time travel**: un slider prin istoria commit-urilor arată cum arătau documentația și arhitectura la orice moment.
-- **Prezentare**: slide-uri despre repository (PDF/PPTX).
-- **Discover / leaderboard** *(bonus)*: pagina publică „Descoperă” cu repository-uri interesante de pe GitHub, clasate după cât de repede câștigă stele (măsurat din notări zilnice), cu „repo-ul zilei” și butonul „Documentează”.
-- **Video scurt** *(bonus)* pentru fiecare repository, în engleză și în română: derulează pagina lui reală de GitHub și încadrează ce spune vocea — ce face proiectul, ce problemă rezolvă, cum e construit, cifrele lui și cum îl pornești.
-- **Postări automate pe Instagram** *(bonus)*: zilnic, un Reel cu „repo-ul zilei” din leaderboard.
-- **Consultanță** *(bonus)*: raport cu bug-uri, vulnerabilități și zonele de risc (fișierele schimbate des care au și probleme), făcut cu Semgrep, OSV-Scanner și scc, descărcabil ca Markdown.
+## What it does
 
-## Stare
+- **A workspace for each repository**, NotebookLM-style: the table of contents on the left (like Wikipedia), the open chapter in the middle, the generated artifacts (diagrams, video, slides, activity, hotspots) on the right, and the assistant bar always at the bottom, where you can ask anything about the code.
+- **Documentation** DeepWiki-style: a page for each module, with navigation and search.
+- **C4 architecture diagrams** (Context, Container, Component), generated from the project’s code.
+- **Code assistant**: answers questions about the repository and cites the exact file and lines.
+- **Incremental update**: on every push only the affected pages are regenerated.
+- **Time travel**: a slider through the commit history shows what the documentation and the architecture looked like at any moment.
+- **Presentation**: slides about the repository (PDF/PPTX).
+- **Discover / leaderboard** *(bonus)*: the public “Discover” page with interesting GitHub repositories, ranked by how fast they gain stars (measured from daily snapshots), with the “repository of the day” and a “Document” button.
+- **Short video** *(bonus)* for each repository, in English and in Romanian: it scrolls through its real GitHub page and frames what the voice says — what the project does, what problem it solves, how it is built, its numbers and how to get started.
+- **Automatic Instagram posts** *(bonus)*: every day, a Reel with the leaderboard’s “repository of the day”.
+- **Consulting** *(bonus)*: a report with bugs, vulnerabilities and risk zones (frequently changed files that also have problems), made with Semgrep, OSV-Scanner and scc, downloadable as Markdown.
 
-**Faza curentă:** Faza 9 — Actualizarea incrementală, gata. La un commit nou, GitChronicle aduce doar commit-urile noi (`git fetch` în clona existentă), află din `git diff` ce fișiere s-au schimbat, propagă schimbarea prin graful modulelor (modulele schimbate și vecinii lor la un pas) și reface doar paginile, fragmentele de cod și versiunile de diagrame atinse; peste 40% fișiere schimbate reprocesează tot. O pagină scrisă de Claude pe care Claude nu o poate rescrie acum rămâne, marcată „depășită”, cu motivul exact. Actualizarea pornește dintr-un webhook GitHub, dintr-o verificare programată la 15 minute sau din butonul „Verifică actualizări”. Paginile și diagramele își păstrează versiunile, așa că pe „Documentație” și „Diagrame” se poate „călători” la un commit procesat mai vechi; tab-ul „Istoric” arată pentru fiecare rulare ce s-a schimbat, ce s-a rescris și cât a costat. Înainte: Faza 8 — asistentul pe cod: codul analizat e tăiat în bucăți (funcții, clase, ferestre de linii) și indexat cu căutarea full-text din SQLite (FTS5); bara asistentului, jos pe orice pagină a repository-ului, răspunde la întrebări despre cod cu Claude și citează fișierele și liniile exacte pe GitHub, iar fără AI arată fragmentele găsite. Înainte: Faza 7 — diagramele de arhitectură (straturi și C4 Containere, Componente, Context, desenate cu Mermaid și ELK doar din analiza codului și din fișierele proiectului, plus 1–3 fluxuri „Cum funcționează” explicate de Claude); Faza 6 — documentația generată (o pagină pentru fiecare modul, „Despre proiect” și un README descărcabil, scrise de Claude sau, fără AI, de un șablon care folosește doar faptele din analiză; paginile al căror cod nu s-a schimbat nu se mai scriu); Faza 5 — un analizor în Python cu tree-sitter găsește clasele, funcțiile și importurile, iar Laravel le grupează în module. Pagina repository-ului e un spațiu de lucru: cuprinsul cu capitolele (documentație, arhitectură, modulele grupate pe foldere, istoric) în stânga, capitolul în mijloc, panoul „Elemente” în dreapta și bara asistentului jos; capitolele apar doar când au date reale. Stratul AI comun scrie textele prin Claude Code, cu abonamentul (fără credite API), sau prin API-ul Anthropic. Interfața are temă întunecată (implicită), cu un comutator spre tema luminoasă. Postgres, Redis și Horizon sunt amânate până la deploy. Progresul pe pași e în [docs/plan-invatare.md](docs/plan-invatare.md).
+## Status
 
-**Descoperă (bonus):** gata. Comanda `php artisan discover:refresh`, pornită zilnic de Laravel Scheduler, caută cu GitHub Search API repository-uri noi și populare, active sau noi pe limbaje și notează în fiecare zi stelele fiecărui repository urmărit. Pagina publică „Descoperă” (`/discover`) le clasează după stelele câștigate în 24 de ore, 7 sau 30 de zile, măsurate din două notări; până există două notări, creșterea e „necunoscut” și ordinea folosește media de stele pe zi de la creare, iar pagina spune asta. Fiecare rând are „Documentează” (îl adaugă în GitChronicle) sau „Deschide documentația”.
+**Current phase:** Phase 9 — Incremental update, done. On a new commit, GitChronicle fetches only the new commits (`git fetch` in the existing clone), finds out from `git diff` which files changed, propagates the change through the module graph (the changed modules and their neighbours one step away) and rebuilds only the pages, code chunks and diagram versions that were touched; above 40% changed files it reprocesses everything. A page written by Claude that Claude cannot rewrite right now stays, marked “out of date”, with the exact reason. The update starts from a GitHub webhook, from a scheduled check every 15 minutes or from the “Check for updates” button. Pages and diagrams keep their versions, so on “Documentation” and “Diagrams” you can “travel” to an older processed commit; the “History” tab shows, for each run, what changed, what was rewritten and what it cost. Before that: Phase 8 — the code assistant: the analyzed code is cut into chunks (functions, classes, line windows) and indexed with SQLite full-text search (FTS5); the assistant bar, at the bottom of every page of the repository, answers questions about the code with Claude and cites the exact files and lines on GitHub, and without AI it shows the fragments it found. Before that: Phase 7 — the architecture diagrams (layers and C4 Containers, Components, Context, drawn with Mermaid and ELK only from the code analysis and the project files, plus 1–3 “How it works” flows explained by Claude); Phase 6 — the generated documentation (a page for each module, “About the project” and a downloadable README, written by Claude or, without AI, by a template that uses only the facts from the analysis; pages whose code did not change are not rewritten again); Phase 5 — a Python analyzer with tree-sitter finds the classes, functions and imports, and Laravel groups them into modules. The repository page is a workspace: the table of contents with the chapters (documentation, architecture, modules grouped by folder, history) on the left, the chapter in the middle, the “Artifacts” panel on the right and the assistant bar at the bottom; chapters appear only when they have real data. The shared AI layer writes the texts through Claude Code, with the subscription (no API credits), or through the Anthropic API. The interface is English with a switch to Romanian (English is the default; the choice is remembered), and everything GitChronicle generates for a repository (documentation, diagram labels, assistant answers, slides, reports) is written in English. It has a dark theme (the default), with a switch to the light theme. Postgres, Redis and Horizon are postponed until deploy. Step-by-step progress is in [docs/plan-invatare.md](docs/plan-invatare.md).
 
-**Istoric:** gata. După analiza codului, GitChronicle importă din clonă cele mai noi 500 de commit-uri (apoi doar pe cele noi), cu fișierele și liniile schimbate. Tab-ul „Istoric” le arată pe luni, cu rulările GitChronicle pe commit-urile procesate, căutare, „Zone fierbinți” (fișierele schimbate cel mai des) și contribuitori.
-**Video (bonus):** refăcut. Video-ul unui repository derulează pagina lui reală de GitHub (fotografiată la generare) și spune povestea de la început la sfârșit, în engleză și în română, cu subtitrări care evidențiază cuvântul rostit. Fiecare scenă are o ancoră verificată în README; când GitHub nu poate fi fotografiat, video-ul folosește scene tipografice și spune de ce. Utilizatorii autentificați îl pot genera sau reface de pe pagina „Video și slide-uri”.
+**Discover (bonus):** done. The `php artisan discover:refresh` command, started daily by the Laravel Scheduler, uses the GitHub Search API to look for new and popular repositories, active ones or new ones per language, and records every day the stars of each tracked repository. The public “Discover” page (`/discover`) ranks them by the stars gained in 24 hours, 7 or 30 days, measured from two snapshots; until two snapshots exist, the growth is “unknown” and the order uses the average stars per day since creation, and the page says so. Each row has “Document” (adds it to GitChronicle) or “Open documentation”.
 
-**Consultanță (bonus):** gata. După ce un repository e gata, Semgrep (cu reguli scrise pentru GitChronicle), OSV-Scanner și scc citesc clona; pagina „Consultanță” arată problemele după gravitate, zonele de risc (commit-uri × gravitate), problemele pe fișiere cu legături spre rândurile de pe GitHub, dependențele vulnerabile cu versiunea care le repară și statisticile codului; raportul se descarcă în Markdown (în engleză).
+**History:** done. After the code analysis, GitChronicle imports the newest 500 commits from the clone (then only the new ones), with the files and lines changed. The “History” tab shows them by month, with the GitChronicle runs on the processed commits, search, “Hotspots” (the most frequently changed files) and contributors.
+**Video (bonus):** rebuilt. A repository’s video scrolls through its real GitHub page (captured at generation time) and tells the story from start to finish, in English and in Romanian, with captions that highlight the spoken word. Every scene has an anchor verified in the README; when GitHub cannot be captured, the video uses typographic scenes and says why. Logged-in users can generate or redo it from the “Video and slides” page.
 
-## Tehnologii
+**Consulting (bonus):** done. Once a repository is ready, Semgrep (with rules written for GitChronicle), OSV-Scanner and scc read the clone; the “Consulting” page shows the problems by severity, the risk zones (commits × severity), the problems per file with links to the lines on GitHub, the vulnerable dependencies with the version that fixes them and the code statistics; the report is downloaded as Markdown (in English).
 
-✅ folosită · 🔄 în lucru · ⏳ urmează
+## Technologies
 
-| Tehnologie | Rolul în GitChronicle | Faza | Stare |
+✅ used · 🔄 in progress · ⏳ coming
+
+| Technology | Role in GitChronicle | Phase | Status |
 |---|---|---|---|
-| Git | Istoricul proiectului; „materia primă” a aplicației, care citește istoricul altor repo-uri | 0 | ✅ |
-| GitHub | Găzduiește proiectul; de aici se clonează repo-urile, vin webhook-urile și se deschid PR-urile automate | 0 | ✅ |
-| PHP + Composer | Limbajul backend-ului și managerul de pachete PHP | 0 | ✅ |
-| Laravel 13 | Backend-ul: rute, baza de date, autentificare, joburi, apeluri AI | 0 | ✅ |
-| Artisan | Comenzile Laravel: server, generare de fișiere, migrații, workeri | 0 | ✅ |
-| Blade | Șablonul HTML de bază în care se montează React | 0 | ✅ |
-| npm + Vite | Pachetele JavaScript; compilarea CSS/JS și reîncărcarea paginii | 0 | ✅ |
-| Tailwind CSS | Stilul interfeței | 0 | ✅ |
-| Inertia | Leagă Laravel de React fără un API separat | 1 | ✅ |
-| React + TypeScript | Interfața: pagini, formulare, chat, documentație | 1 | ✅ |
-| PHPUnit | Teste pentru fiecare funcționalitate | 1+ | ✅ |
-| SQLite | Baza de date locală la început | 2 | ✅ |
-| Eloquent + migrații | Tabelele `users`, `repositories` și accesul la ele | 2 | ✅ |
-| Cozi Laravel + Process | Joburile care rulează `git clone` / `git diff` în fundal | 3 | ✅ |
-| Podman | Containere pentru Postgres și Redis; mai târziu imaginea aplicației | 3, 4 | ⏳ |
-| PostgreSQL | Baza de date principală | 3 | ⏳ |
-| Redis + Horizon | Coada de joburi și monitorizarea workerilor | 3 | ⏳ |
-| Kubernetes + kind + Kustomize | Rularea aplicației, a bazei de date și a workerilor ca în producție | 4 | ⏳ |
-| Python + tree-sitter | Analiza codului: clase, funcții, importuri → graful de dependențe | 5 | ✅ |
-| Claude (Claude Code CLI sau API, SDK-ul oficial PHP) | Generarea documentației, a rapoartelor și a răspunsurilor din chat; local prin Claude Code, cu abonamentul | 6, 8 | 🔄 |
-| react-markdown + remark-gfm | Afișarea documentației generate și a răspunsurilor asistentului (Markdown fără HTML) | 6, 8 | ✅ |
-| Mermaid 12 + ELK | Diagramele de arhitectură (straturi, C4 Context/Container/Component) și fluxurile „Cum funcționează”, desenate în browser | 7 | ✅ |
-| Iconify „logos” (CC0) | Logo-urile tehnologiilor din diagrame, salvate local (doar cele folosite) | 7 | ✅ |
-| SQLite FTS5 (bm25) | Căutarea în cod pentru asistent: fragmentele cele mai potrivite unei întrebări | 8 | ✅ |
-| pgvector + Voyage AI | Embedding-uri și căutare semantică pentru asistent (opțional, comparată cu FTS5) | 8 | ⏳ |
-| GitHub webhooks | Pornesc actualizarea incrementală la fiecare push | 9 | ✅ |
-| Semgrep, OSV-Scanner, scc | Consultanța: bug-uri, vulnerabilități, statistici despre cod | bonus | ✅ |
-| Marp | Prezentarea repository-ului ca slide-uri (PDF și PPTX) | 7 | ✅ |
-| HyperFrames + FFmpeg | Video-urile scurte despre repository (HTML + GSAP → MP4) | bonus | ✅ |
-| Puppeteer + Chrome | Fotografia paginii reale de GitHub pe care o derulează video-ul | bonus | ✅ |
-| Piper TTS | Vocile video-ului (engleză și română), generate local, fără internet | bonus | ✅ |
-| GitHub Search API + Laravel Scheduler | Leaderboard: notează zilnic stelele repo-urilor și calculează cine crește cel mai repede | bonus | ✅ |
-| Instagram Graph API | Postarea automată a Reel-ului „repo-ul zilei” | bonus | ⏳ |
-| k3s + KEDA | Deploy pe VPS; workerii se scalează după lungimea cozii | 10 | ⏳ |
+| Git | The project’s history; the “raw material” of the app, which reads the history of other repos | 0 | ✅ |
+| GitHub | Hosts the project; repos are cloned from here, webhooks arrive and automatic PRs are opened | 0 | ✅ |
+| PHP + Composer | The backend language and the PHP package manager | 0 | ✅ |
+| Laravel 13 | The backend: routes, database, authentication, jobs, AI calls | 0 | ✅ |
+| Artisan | The Laravel commands: server, file generation, migrations, workers | 0 | ✅ |
+| Blade | The base HTML template in which React is mounted | 0 | ✅ |
+| npm + Vite | The JavaScript packages; CSS/JS compilation and page reloading | 0 | ✅ |
+| Tailwind CSS | The interface styling | 0 | ✅ |
+| Inertia | Connects Laravel to React without a separate API | 1 | ✅ |
+| React + TypeScript | The interface: pages, forms, chat, documentation | 1 | ✅ |
+| PHPUnit | Tests for every feature | 1+ | ✅ |
+| SQLite | The local database at the start | 2 | ✅ |
+| Eloquent + migrations | The `users` and `repositories` tables and access to them | 2 | ✅ |
+| Laravel queues + Process | The jobs that run `git clone` / `git diff` in the background | 3 | ✅ |
+| Podman | Containers for Postgres and Redis; later the application image | 3, 4 | ⏳ |
+| PostgreSQL | The main database | 3 | ⏳ |
+| Redis + Horizon | The job queue and worker monitoring | 3 | ⏳ |
+| Kubernetes + kind + Kustomize | Running the app, the database and the workers as in production | 4 | ⏳ |
+| Python + tree-sitter | Code analysis: classes, functions, imports → the dependency graph | 5 | ✅ |
+| Claude (Claude Code CLI or API, the official PHP SDK) | Generating the documentation, the reports and the chat answers; locally through Claude Code, with the subscription | 6, 8 | 🔄 |
+| react-markdown + remark-gfm | Displaying the generated documentation and the assistant’s answers (Markdown without HTML) | 6, 8 | ✅ |
+| Mermaid 12 + ELK | The architecture diagrams (layers, C4 Context/Container/Component) and the “How it works” flows, drawn in the browser | 7 | ✅ |
+| Iconify “logos” (CC0) | The technology logos in the diagrams, saved locally (only the ones used) | 7 | ✅ |
+| SQLite FTS5 (bm25) | Code search for the assistant: the fragments that best match a question | 8 | ✅ |
+| pgvector + Voyage AI | Embeddings and semantic search for the assistant (optional, compared with FTS5) | 8 | ⏳ |
+| GitHub webhooks | Start the incremental update on every push | 9 | ✅ |
+| Semgrep, OSV-Scanner, scc | Consulting: bugs, vulnerabilities, code statistics | bonus | ✅ |
+| Marp | The repository presentation as slides (PDF and PPTX) | 7 | ✅ |
+| HyperFrames + FFmpeg | The short videos about the repository (HTML + GSAP → MP4) | bonus | ✅ |
+| Puppeteer + Chrome | The capture of the real GitHub page that the video scrolls through | bonus | ✅ |
+| Piper TTS | The video voices (English and Romanian), generated locally, offline | bonus | ✅ |
+| GitHub Search API + Laravel Scheduler | Leaderboard: records repos’ stars daily and computes who grows fastest | bonus | ✅ |
+| Instagram Graph API | Automatic posting of the “repository of the day” Reel | bonus | ⏳ |
+| k3s + KEDA | Deploy on a VPS; workers scale with the queue length | 10 | ⏳ |
 
-## Plan de dezvoltare
+## Development plan
 
-**Ținta: aplicația completă până în ianuarie 2027.** Din ianuarie: doar ajustări, măsurători și scrierea lucrării.
+**The goal: the complete application by January 2027.** From January: only adjustments, measurements and writing the thesis.
 
-Ritm: o fază pe săptămână. Kubernetes vine la final, ca pas de deploy; până atunci Postgres și Redis rulează în containere Podman simple.
+Pace: one phase per week. Kubernetes comes at the end, as a deploy step; until then Postgres and Redis run in plain Podman containers.
 
-| Săptămâna | Faza | Rezultat | Stare |
+| Week | Phase | Result | Status |
 |---|---|---|---|
-| 28 oct – 3 nov 2026 | 1. Inertia + React + TypeScript | Pagina de start în React, cu test | ✅ |
-| 4 – 10 nov | 2. Utilizatori și repository-uri | Aplicație publică; login doar ca să adaugi un repo, apoi se adaugă singur | ✅ |
-| 11 – 17 nov | 3. Joburi + Postgres, Redis, Horizon | 🏁 Aplicația clonează un repo și afișează SHA-ul | 🔄 |
-| 18 – 24 nov | 5. Analiza codului (tree-sitter) | Modulele și dependențele unui repo | ✅ |
-| 25 nov – 1 dec | 6. Documentația generată cu AI | 🏁 Documentație completă pentru un repo mic | ✅ |
-| 2 – 8 dec | 7. Diagrame C4 + prezentare (Marp) | Diagrame și slide-uri pentru repo | 🔄 |
-| 9 – 15 dec | 8. Asistentul pe cod (RAG) | Răspunsuri cu fișierul și liniile citate | ✅ |
-| 16 – 22 dec | 9. Actualizarea incrementală + webhook + time travel | 🏁 Miezul lucrării funcționează; istoria arhitecturii pe commit-uri | ✅ |
-| 23 dec – 5 ian | 4. Kubernetes + deploy k3s | Aplicația online | ⏳ |
-| Ianuarie | Ajustări + experimente + bonusuri | Rezultate măsurate pentru lucrare. Dacă rămâne timp: leaderboard → video → Instagram, apoi consultanța | ⏳ |
-| Februarie – iunie 2027 | Lucrarea scrisă | Lucrarea predată | ⏳ |
+| 28 Oct – 3 Nov 2026 | 1. Inertia + React + TypeScript | The start page in React, with a test | ✅ |
+| 4 – 10 Nov | 2. Users and repositories | Public application; login only to add a repo, then it is added on its own | ✅ |
+| 11 – 17 Nov | 3. Jobs + Postgres, Redis, Horizon | 🏁 The application clones a repo and shows its SHA | 🔄 |
+| 18 – 24 Nov | 5. Code analysis (tree-sitter) | The modules and dependencies of a repo | ✅ |
+| 25 Nov – 1 Dec | 6. AI-generated documentation | 🏁 Complete documentation for a small repo | ✅ |
+| 2 – 8 Dec | 7. C4 diagrams + presentation (Marp) | Diagrams and slides for a repo | 🔄 |
+| 9 – 15 Dec | 8. The code assistant (RAG) | Answers with the file and lines cited | ✅ |
+| 16 – 22 Dec | 9. Incremental update + webhook + time travel | 🏁 The core of the thesis works; the architecture’s history per commit | ✅ |
+| 23 Dec – 5 Jan | 4. Kubernetes + k3s deploy | The application online | ⏳ |
+| January | Adjustments + experiments + bonuses | Measured results for the thesis. If time is left: leaderboard → video → Instagram, then consulting | ⏳ |
+| February – June 2027 | The written thesis | The thesis submitted | ⏳ |
 
-## Mod de lucru
+## How I work
 
-1. Un pas mic = un commit; push la sfârșitul fiecărei zile de lucru.
-2. O fază e gata doar când rezultatul ei funcționează și are un test.
-3. Pentru fiecare fază se notează deciziile și motivele lor, pentru lucrare.
-4. Miezul (fazele 1–9) înaintea bonusurilor (leaderboard, video, Instagram, consultanță).
+1. A small step = a commit; push at the end of every working day.
+2. A phase is done only when its result works and has a test.
+3. For each phase, the decisions and their reasons are noted, for the thesis.
+4. The core (phases 1–9) before the bonuses (leaderboard, video, Instagram, consulting).
 
-## Rulare locală
+## Running locally
 
-Cerințe: PHP 8.3+, Composer, Node.js 22+, Python 3.10+.
+Requirements: PHP 8.3+, Composer, Node.js 22+, Python 3.10+.
 
 ```bash
 composer install
@@ -112,43 +114,43 @@ cp .env.example .env
 php artisan key:generate
 php artisan migrate
 npm install
-composer analyzer:install   # analizorul de cod: analyzer/.venv + gramaticile tree-sitter
-composer media:install      # opțional, pentru video și slide-uri: renderers/node_modules + vocile Piper (engleză, română)
-composer consulting:install # opțional, pentru consultanță: Semgrep, OSV-Scanner și scc în scanners/ (fără root)
+composer analyzer:install   # the code analyzer: analyzer/.venv + the tree-sitter grammars
+composer media:install      # optional, for video and slides: renderers/node_modules + the Piper voices (English, Romanian)
+composer consulting:install # optional, for consulting: Semgrep, OSV-Scanner and scc in scanners/ (no root)
 ```
 
-Apoi, în trei terminale:
+Then, in three terminals:
 
 ```bash
-php artisan serve       # aplicația, pe http://127.0.0.1:8000
-npm run dev             # Vite: CSS/JS și reîncărcare automată
-php artisan queue:work  # workerul care rulează joburile (clonarea, analiza codului, documentația)
+php artisan serve       # the application, on http://127.0.0.1:8000
+npm run dev             # Vite: CSS/JS and automatic reloading
+php artisan queue:work  # the worker that runs the jobs (cloning, code analysis, documentation)
 ```
 
-Sau totul într-un singur terminal: `composer run dev`. Fără worker, repository-urile adăugate rămân „În așteptare”. Pentru cele adăugate înainte de Faza 3: `php artisan repositories:process --all-pending`.
+Or everything in a single terminal: `composer run dev`. Without a worker, added repositories stay “Queued”. For those added before Phase 3: `php artisan repositories:process --all-pending`.
 
-Video-ul de prezentare (câte unul pe limbă: `MEDIA_LANGUAGES=en,ro`) și slide-urile (PDF, PPTX) se fac după ce repository-ul e gata, pe coada separată `media`, sau la cerere, cu butonul de pe pagina „Video și slide-uri” ori cu `php artisan repositories:media {id} --force`. La generare se fotografiază pagina de GitHub a repository-ului, deci e nevoie de internet (`MEDIA_CAPTURE=false` o oprește). `composer run dev` pornește și workerul ei, iar de mână e `php artisan queue:work --queue=media`. Au nevoie de `composer media:install`, de Google Chrome și de FFmpeg (căile lor: `MEDIA_BROWSER_PATH`, `MEDIA_FFMPEG_PATH`, `MEDIA_FFPROBE_PATH` în `.env`); `MEDIA_AUTO_GENERATE=false` le oprește. De mână: `php artisan repositories:media {id}` (`--force` le reface și pentru același commit, `--now` le randează direct în terminal). Uneltele și licențele lor sunt în [renderers/README.md](renderers/README.md).
+The presentation video (one per language: `MEDIA_LANGUAGES=en,ro`) and the slides (PDF, PPTX) are made once the repository is ready, on the separate `media` queue, or on demand, with the button on the “Video and slides” page or with `php artisan repositories:media {id} --force`. At generation time the repository’s GitHub page is captured, so internet access is needed (`MEDIA_CAPTURE=false` turns it off). `composer run dev` also starts its worker, and by hand it is `php artisan queue:work --queue=media`. They need `composer media:install`, Google Chrome and FFmpeg (their paths: `MEDIA_BROWSER_PATH`, `MEDIA_FFMPEG_PATH`, `MEDIA_FFPROBE_PATH` in `.env`); `MEDIA_AUTO_GENERATE=false` turns them off. By hand: `php artisan repositories:media {id}` (`--force` redoes them even for the same commit, `--now` renders them directly in the terminal). The tools and their licenses are in [renderers/README.md](renderers/README.md).
 
-Consultanța (bug-uri, vulnerabilități, zone de risc, statistici despre cod) rulează tot pe coada `media`, după fiecare procesare (`CONSULTING_AUTO_RUN=false` o oprește). De mână: `php artisan repositories:consult {id}` (`--force` o reface pentru același commit, `--now` rulează uneltele direct în terminal). Are nevoie de `composer consulting:install`; o unealtă lipsă apare pe pagină ca „Nu e instalată”. În timpul unei analize, singurul lucru care iese de pe calculator sunt numele, versiunile și ecosistemele pachetelor din fișierele lock, trimise de OSV-Scanner la `api.osv.dev`. Detaliile, versiunile și licențele: [scanners/README.md](scanners/README.md).
+Consulting (bugs, vulnerabilities, risk zones, code statistics) also runs on the `media` queue, after every processing (`CONSULTING_AUTO_RUN=false` turns it off). By hand: `php artisan repositories:consult {id}` (`--force` redoes it for the same commit, `--now` runs the tools directly in the terminal). It needs `composer consulting:install`; a missing tool appears on the page as “Not installed”. During an analysis, the only thing that leaves the computer is the names, versions and ecosystems of the packages in the lock files, sent by OSV-Scanner to `api.osv.dev`. The details, versions and licenses: [scanners/README.md](scanners/README.md).
 
-Clasamentul „Descoperă”: `php artisan discover:refresh` adună stelele de azi (durează câteva minute, pentru că așteaptă 8 secunde între căutări ca să rămână sub limita GitHub). Zilnic îl pornește Laravel Scheduler: pe server prin cron (`* * * * * php artisan schedule:run`), local cu `php artisan schedule:work`; ora e `DISCOVER_SCHEDULE_TIME` (implicit 03:00), iar `DISCOVER_SCHEDULE_ENABLED=false` îl oprește. Merge fără cont GitHub; un `GITHUB_TOKEN` opțional (orice token personal, fără permisiuni) ridică limitele API-ului. Creșterea pe 24 de ore apare după a doua zi cu notări, cea pe 7 și 30 de zile după tot atâtea zile.
+The “Discover” ranking: `php artisan discover:refresh` collects today’s stars (it takes a few minutes, because it waits 8 seconds between searches to stay under the GitHub limit). Every day it is started by the Laravel Scheduler: on a server through cron (`* * * * * php artisan schedule:run`), locally with `php artisan schedule:work`; the time is `DISCOVER_SCHEDULE_TIME` (default 03:00), and `DISCOVER_SCHEDULE_ENABLED=false` turns it off. It works without a GitHub account; an optional `GITHUB_TOKEN` (any personal token, with no permissions) raises the API limits. The 24-hour growth appears after the second day with snapshots, the 7- and 30-day ones after as many days.
 
-Documentația unui repository deja analizat se poate scrie și direct din terminal: `php artisan repositories:document {id}` (`--force` rescrie și paginile neschimbate, `--page=overview` scrie doar paginile date).
+The documentation of an already analyzed repository can also be written directly from the terminal: `php artisan repositories:document {id}` (`--force` rewrites the unchanged pages too, `--page=overview` writes only the given pages).
 
-### Actualizarea incrementală (Faza 9)
+### Incremental update (Phase 9)
 
-Un repository deja procesat se actualizează în trei feluri; fiecare face `git fetch` și reface doar ce s-a schimbat de la ultimul commit procesat cu succes:
+An already processed repository is updated in three ways; each does a `git fetch` and rebuilds only what changed since the last successfully processed commit:
 
-- **Butonul „Verifică actualizări”** din bara de sus a repository-ului (doar pentru utilizatorii autentificați, pe un repository „Gata”).
-- **Verificarea programată:** `php artisan repositories:check-updates` (sau `… check-updates {id}`) întreabă GitHub de ultimul commit (`git ls-remote`, fără clonare) și pornește actualizarea doar dacă e altul. Rulează singură la 15 minute (`UPDATES_CHECK_CRON`; gol = oprită), dar numai dacă rulează și scheduler-ul: local `php artisan schedule:work`, pe server `* * * * * php artisan schedule:run` în cron.
-- **Webhook-ul GitHub:** pune în `.env` un secret lung, `GITHUB_WEBHOOK_SECRET=…` (fără el, adresa răspunde 404). Pe GitHub, în repository → Settings → Webhooks → Add webhook: *Payload URL* `https://<adresa-aplicației>/webhooks/github`, *Content type* `application/json`, *Secret* același ca în `.env`, *Just the push event*. GitHub trebuie să poată ajunge la aplicație, deci local e nevoie de un tunel (de exemplu `cloudflared tunnel --url http://127.0.0.1:8000` sau `ngrok http 8000`), iar URL-ul tunelului intră în *Payload URL*. Contează doar push-urile pe ramura principală ale unui repository adăugat în GitChronicle și aflat în starea „Gata”.
+- **The “Check for updates” button** in the repository’s top bar (only for logged-in users, on a “Ready” repository).
+- **The scheduled check:** `php artisan repositories:check-updates` (or `… check-updates {id}`) asks GitHub for the latest commit (`git ls-remote`, without cloning) and starts the update only if it is a different one. It runs by itself every 15 minutes (`UPDATES_CHECK_CRON`; empty = off), but only if the scheduler is running too: locally `php artisan schedule:work`, on a server `* * * * * php artisan schedule:run` in cron.
+- **The GitHub webhook:** put a long secret in `.env`, `GITHUB_WEBHOOK_SECRET=…` (without it, the address answers 404). On GitHub, in the repository → Settings → Webhooks → Add webhook: *Payload URL* `https://<the-application-address>/webhooks/github`, *Content type* `application/json`, *Secret* the same as in `.env`, *Just the push event*. GitHub must be able to reach the application, so locally a tunnel is needed (for example `cloudflared tunnel --url http://127.0.0.1:8000` or `ngrok http 8000`), and the tunnel’s URL goes into *Payload URL*. Only pushes to the main branch of a repository added to GitChronicle and in the “Ready” state count.
 
-Webhook-ul și verificarea programată pornesc cel mult o actualizare la `UPDATES_MIN_INTERVAL_MINUTES` (implicit 10) pe repository, ca o rafală de push-uri să nu cheme AI-ul de mai multe ori; commitul venit între timp îl prinde verificarea următoare. Peste `INCREMENTAL_FULL_THRESHOLD` (implicit 40%) fișiere schimbate se reprocesează tot. Reprocesare completă la cerere: `php artisan repositories:process {id} --full`.
+The webhook and the scheduled check start at most one update per `UPDATES_MIN_INTERVAL_MINUTES` (default 10) per repository, so a burst of pushes does not call the AI several times; the commit that arrived in the meantime is caught by the next check. Above `INCREMENTAL_FULL_THRESHOLD` (default 40%) changed files, everything is reprocessed. A full reprocessing on demand: `php artisan repositories:process {id} --full`.
 
-**Repository-uri incomplete.** Un repository „Gata” căruia îi lipsește ceva din ce face procesarea (istoricul, documentația, diagramele sau indexul asistentului; de exemplu unul procesat de o versiune mai veche) primește o procesare completă, chiar dacă pe GitHub nu e niciun commit nou: de la „Verifică actualizări”, de la webhook și de la verificarea programată (aceasta doar o dată pe commit). Lângă „Verifică actualizări” e **„Regenerează tot”** (cu confirmare, pentru utilizatorii autentificați, pe un repository „Gata” sau eșuat): o procesare completă, toate etapele din nou (paginile al căror context nu s-a schimbat rămân la fel). Toate cele incomplete deodată, din terminal: `php artisan repositories:process --all-incomplete`. Video-ul și slide-urile nu fac un repository incomplet: au coada lor (`repositories:media`).
+**Incomplete repositories.** A “Ready” repository that is missing something the processing makes (the history, the documentation, the diagrams or the assistant index; for example one processed by an older version) gets a full processing, even if there is no new commit on GitHub: from “Check for updates”, from the webhook and from the scheduled check (the latter only once per commit). Next to “Check for updates” is **“Regenerate everything”** (with confirmation, for logged-in users, on a “Ready” or failed repository): a full processing, all the stages again (pages whose context did not change stay the same). All the incomplete ones at once, from the terminal: `php artisan repositories:process --all-incomplete`. The video and the slides do not make a repository incomplete: they have their own queue (`repositories:media`).
 
-**Administrator.** Rolul se dă doar din terminal, unui cont existent: `php artisan users:admin {email}` (`--revoke` îl ia înapoi). Un administrator poate face pe orice repository ce poate face cel care l-a adăugat, de exemplu să-l șteargă.
+**Administrator.** The role is given only from the terminal, to an existing account: `php artisan users:admin {email}` (`--revoke` takes it back). An administrator can do on any repository what the person who added it can do, for example delete it.
 
-Măsurătoarea pentru lucrare: `php artisan gitchronicle:benchmark {id} --commits=5` reia ultimele N commit-uri ale clonei într-o bază de date și o copie a clonei separate (datele aplicației nu se ating) și compară, pentru fiecare commit, actualizarea incrementală cu procesarea de la zero: timpul fiecărui pas, fișierele parsate, paginile scrise și caracterele de context care ar fi trimise lui Claude. Implicit nu cheamă AI-ul: tokenii apar doar ca **estimare** (caractere / raportul caractere-pe-token măsurat pe paginile scrise deja de Claude), iar `--ai` folosește driverul configurat. Rezultatele se salvează ca JSON și CSV în `storage/app/private/benchmarks/`. Are nevoie de rețea o dată, ca git să descarce conținutul commit-urilor vechi.
+The measurement for the thesis: `php artisan gitchronicle:benchmark {id} --commits=5` replays the clone’s last N commits in a separate database and a separate copy of the clone (the application’s data is not touched) and compares, for each commit, the incremental update with processing from scratch: the time of each step, the files parsed, the pages written and the context characters that would be sent to Claude. By default it does not call the AI: the tokens appear only as an **estimate** (characters / the characters-per-token ratio measured on the pages already written by Claude), and `--ai` uses the configured driver. The results are saved as JSON and CSV in `storage/app/private/benchmarks/`. It needs the network once, so that git downloads the content of the old commits.
 
-Textele AI: în `.env`, `AI_DRIVER=claude-code` le scrie cu CLI-ul Claude Code logat pe laptop (abonamentul, fără credite API; calea lui în `CLAUDE_CODE_BIN`), `AI_DRIVER=claude` folosește API-ul (cere `ANTHROPIC_API_KEY`), iar `AI_DRIVER=none` merge fără AI.
+The AI texts: in `.env`, `AI_DRIVER=claude-code` writes them with the Claude Code CLI logged in on the laptop (the subscription, no API credits; its path in `CLAUDE_CODE_BIN`), `AI_DRIVER=claude` uses the API (needs `ANTHROPIC_API_KEY`), and `AI_DRIVER=none` works without AI.

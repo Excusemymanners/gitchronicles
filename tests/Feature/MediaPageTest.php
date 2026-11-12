@@ -57,7 +57,7 @@ class MediaPageTest extends TestCase
             ->where('media.slides', null)
             ->where('media.videos.0', [
                 'status' => 'ready',
-                'status_label' => 'Gata',
+                'status_label' => 'Ready',
                 'error' => null,
                 'generated_at' => '2026-11-10T12:00:00+00:00',
                 'size_bytes' => 1048576,
@@ -92,7 +92,7 @@ class MediaPageTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->where('media.is_working', true)
             ->where('media.videos.0.status', 'running')
-            ->where('media.videos.0.status_label', 'Se generează')
+            ->where('media.videos.0.status_label', 'Generating')
             ->where('media.videos.0.src', null)
             ->where('media.videos.0.download', null)
             ->where('media.slides.status', 'ready')
@@ -221,23 +221,23 @@ class MediaPageTest extends TestCase
             ->where('workspace.elements.video', [
                 'href' => "/repositories/{$repository->id}/media",
                 'status' => 'ready',
-                'status_label' => 'Gata',
+                'status_label' => 'Ready',
                 'poster' => "/repositories/{$repository->id}/media/poster?lang=ro&v={$version}",
                 'duration_ms' => 31200,
             ])
             ->where('workspace.elements.slides', [
                 'href' => "/repositories/{$repository->id}/media#slide-uri",
                 'status' => 'running',
-                'status_label' => 'Se generează',
+                'status_label' => 'Generating',
                 'slide_count' => null,
             ])
             ->where('workspace.chapters.1', [
                 'key' => 'media',
-                'title' => 'Prezentare',
+                'title' => 'Presentation',
                 'count' => null,
                 'chapters' => [
                     ['label' => 'Video', 'href' => "/repositories/{$repository->id}/media", 'count' => null],
-                    ['label' => 'Slide-uri', 'href' => "/repositories/{$repository->id}/media#slide-uri", 'count' => null],
+                    ['label' => 'Slides', 'href' => "/repositories/{$repository->id}/media#slide-uri", 'count' => null],
                 ],
                 'folders' => [],
             ])

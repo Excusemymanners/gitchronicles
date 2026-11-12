@@ -1,4 +1,5 @@
 import ReportSection from '@/components/consulting/report-section';
+import { useI18n } from '@/hooks/use-i18n';
 import { formatNumber, formatPercent } from '@/lib/format';
 import type { ConsultingResult } from '@/types/consulting';
 
@@ -7,15 +8,17 @@ import type { ConsultingResult } from '@/types/consulting';
  * complexitate (ramificațiile și buclele numărate de scc) — cu partea fiecărui limbaj din liniile de cod.
  */
 export default function CodeStatisticsSection({ statistics }: { statistics: ConsultingResult['code_statistics'] }) {
+    const { t } = useI18n();
+
     return (
         <ReportSection
             id="statistici-cod"
-            title="Statistici despre cod"
-            description="Numărate de scc, fără bibliotecile copiate în proiect, fișierele minificate sau generate și fișierele uriașe."
+            title={t('consulting.statistics.title')}
+            description={t('consulting.statistics.description')}
         >
             {statistics === null || statistics.languages.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-muted">
-                    scc nu a rulat sau nu a găsit cod (vezi „Unelte” mai jos).
+                    {t('consulting.statistics.empty')}
                 </p>
             ) : (
                 <div className="overflow-x-auto rounded-lg border border-line bg-surface">
@@ -23,19 +26,19 @@ export default function CodeStatisticsSection({ statistics }: { statistics: Cons
                         <thead className="border-b border-line text-ink-subtle">
                             <tr>
                                 <th scope="col" className="px-3 py-2 font-medium">
-                                    Limbaj
+                                    {t('consulting.statistics.language')}
                                 </th>
                                 <th scope="col" className="px-3 py-2 text-right font-medium">
-                                    Fișiere
+                                    {t('consulting.statistics.files')}
                                 </th>
                                 <th scope="col" className="px-3 py-2 text-right font-medium">
-                                    Linii de cod
+                                    {t('consulting.statistics.linesOfCode')}
                                 </th>
                                 <th scope="col" className="px-3 py-2 text-right font-medium">
-                                    Comentarii
+                                    {t('consulting.statistics.comments')}
                                 </th>
                                 <th scope="col" className="px-3 py-2 text-right font-medium">
-                                    Complexitate
+                                    {t('consulting.statistics.complexity')}
                                 </th>
                             </tr>
                         </thead>
@@ -64,7 +67,7 @@ export default function CodeStatisticsSection({ statistics }: { statistics: Cons
                         <tfoot className="border-t border-line font-medium text-ink">
                             <tr>
                                 <th scope="row" className="px-3 py-2 text-left font-medium">
-                                    Total
+                                    {t('consulting.statistics.total')}
                                 </th>
                                 <td className="px-3 py-2 text-right tabular-nums">{formatNumber(statistics.totals.files)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{formatNumber(statistics.totals.code)}</td>

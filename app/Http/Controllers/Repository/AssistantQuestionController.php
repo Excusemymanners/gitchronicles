@@ -28,7 +28,7 @@ class AssistantQuestionController extends Controller
         abort_unless(
             $repository->codeChunks()->exists(),
             409,
-            'Codul acestui repository nu a fost pregătit încă pentru asistent. Încearcă după ce se termină procesarea.',
+            __('assistant.not_indexed'),
         );
 
         return response()->json($answerQuestion->handle(

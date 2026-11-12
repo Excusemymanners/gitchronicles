@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react';
 import DeleteRepositoryButton from '@/components/delete-repository-button';
 import ChaptersNav from '@/components/workspace/chapters-nav';
 import { CloseIcon, GitHubIcon } from '@/components/workspace/icons';
+import { useI18n } from '@/hooks/use-i18n';
 import { shortSha } from '@/lib/format';
 import type { RepositoryItem, WorkspaceGroup } from '@/types';
 
@@ -24,6 +25,7 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
  * Sus are ce nu încape în bara de sus pe telefon: ramura, ultimul commit, GitHub și „Șterge”.
  */
 export default function ChaptersDrawer({ repository, groups, canDelete, isOpen, onClose }: Props) {
+    const { t, rich } = useI18n();
     const dialogRef = useRef<HTMLDialogElement>(null);
 
     // La deschidere, focusul merge pe capitolul curent (adus în vedere), ca Tab să continue prin cuprins.
@@ -58,7 +60,7 @@ export default function ChaptersDrawer({ repository, groups, canDelete, isOpen, 
     return (
         <dialog
             ref={dialogRef}
-            aria-label="Cuprins"
+            aria-label={t('workspace.contents')}
             onClose={onClose}
             onClick={handleClick}
             className="fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-[min(20rem,88vw)] max-w-none overflow-hidden border-r border-line bg-surface-raised p-0 text-ink backdrop:bg-canvas/80 backdrop:backdrop-blur-sm open:flex open:flex-col motion-safe:transition-transform motion-safe:duration-200 starting:open:-translate-x-full"
@@ -70,22 +72,27 @@ export default function ChaptersDrawer({ repository, groups, canDelete, isOpen, 
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
                         {repository.default_branch && (
                             <span>
-                                ramura <code className="rounded-sm bg-surface-2 px-1 py-0.5 font-mono text-ink">{repository.default_branch}</code>
+                                {rich('workspace.branch', {
+                                    branch: <code className="rounded-sm bg-surface-2 px-1 py-0.5 font-mono text-ink">{repository.default_branch}</code>,
+                                })}
                             </span>
                         )}
 
                         {repository.last_sha && (
                             <span>
-                                commit{' '}
-                                <a
-                                    href={`https://github.com/${repository.owner}/${repository.name}/commit/${repository.last_sha}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`rounded-sm text-accent hover:text-accent-hover ${focusRing}`}
-                                >
-                                    <code className="rounded-sm bg-surface-2 px-1 py-0.5 font-mono">{shortSha(repository.last_sha)}</code>
-                                    <span className="sr-only"> (ultimul commit procesat, pe GitHub, se deschide într-o filă nouă)</span>
-                                </a>
+                                {rich('workspace.commit', {
+                                    sha: (
+                                        <a
+                                            href={`https://github.com/${repository.owner}/${repository.name}/commit/${repository.last_sha}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`rounded-sm text-accent hover:text-accent-hover ${focusRing}`}
+                                        >
+                                            <code className="rounded-sm bg-surface-2 px-1 py-0.5 font-mono">{shortSha(repository.last_sha)}</code>
+                                            <span className="sr-only"> {t('workspace.lastProcessedCommitLink')}</span>
+                                        </a>
+                                    ),
+                                })}
                             </span>
                         )}
                     </div>
@@ -98,8 +105,8 @@ export default function ChaptersDrawer({ repository, groups, canDelete, isOpen, 
                             className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-ink-muted ring-1 ring-line-strong ring-inset hover:bg-surface-2 hover:text-ink ${focusRing}`}
                         >
                             <GitHubIcon className="size-3.5" />
-                            GitHub
-                            <span className="sr-only"> (se deschide într-o filă nouă)</span>
+                            {t('workspace.gitHub')}
+                            <span className="sr-only"> {t('common.opensInNewTab')}</span>
                         </a>
 
                         {canDelete && <DeleteRepositoryButton repository={repository} />}
@@ -109,7 +116,7 @@ export default function ChaptersDrawer({ repository, groups, canDelete, isOpen, 
                 <button
                     type="button"
                     onClick={onClose}
-                    aria-label="Închide cuprinsul"
+                    aria-label={t('workspace.closeContents')}
                     className={`inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink ${focusRing}`}
                 >
                     <CloseIcon />

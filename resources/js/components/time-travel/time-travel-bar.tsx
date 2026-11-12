@@ -1,7 +1,9 @@
 import { Link, router } from '@inertiajs/react';
 import { useId } from 'react';
+import { useI18n } from '@/hooks/use-i18n';
 import { shortSha } from '@/lib/format';
 import { formatDay } from '@/lib/history-format';
+import { translate } from '@/lib/i18n';
 import type { ProcessedCommit } from '@/types/history';
 
 type Props = {
@@ -26,7 +28,7 @@ function commitDay(commit: ProcessedCommit): string | null {
 function commitLabel(commit: ProcessedCommit): string {
     const parts = [shortSha(commit.sha), commitDay(commit), commit.subject].filter((part): part is string => Boolean(part));
 
-    return parts.join(' · ') + (commit.is_current ? ' (versiunea curentă)' : '');
+    return parts.join(' · ') + (commit.is_current ? translate('timeTravel.current') : '');
 }
 
 /**
@@ -35,6 +37,7 @@ function commitLabel(commit: ProcessedCommit): string {
  * cel mai nou commit înseamnă versiunea curentă, fără `sha`. Cu un singur commit procesat nu avem unde călători.
  */
 export default function TimeTravelBar({ commits, selected }: Props) {
+    const { t, rich } = useI18n();
     const selectId = useId();
 
     if (commits.length < 2) {
@@ -53,11 +56,11 @@ export default function TimeTravelBar({ commits, selected }: Props) {
     }
 
     return (
-        <section aria-label="Călătorie în timp" className="mb-6 rounded-lg border border-line bg-surface p-3 shadow-xs sm:p-4">
+        <section aria-label={t('timeTravel.title')} className="mb-6 rounded-lg border border-line bg-surface p-3 shadow-xs sm:p-4">
             <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
                 <div className="min-w-0 flex-1 basis-64">
                     <label htmlFor={selectId} className="block text-xs font-semibold tracking-wide text-ink-subtle uppercase">
-                        Călătorie în timp
+                        {t('timeTravel.title')}
                     </label>
                     <select
                         id={selectId}
@@ -76,7 +79,7 @@ export default function TimeTravelBar({ commits, selected }: Props) {
 
                 <div className="flex gap-2">
                     <button type="button" onClick={() => travelTo(selectedIndex - 1)} disabled={selectedIndex === 0} className={stepButtonClasses}>
-                        <span aria-hidden="true">‹&nbsp;</span>Mai vechi
+                        <span aria-hidden="true">‹&nbsp;</span>{t('timeTravel.older')}
                     </button>
                     <button
                         type="button"
@@ -84,7 +87,8 @@ export default function TimeTravelBar({ commits, selected }: Props) {
                         disabled={selectedIndex === currentIndex}
                         className={stepButtonClasses}
                     >
-                        Mai nou<span aria-hidden="true">&nbsp;›</span>
+                        {t('timeTravel.newer')}
+                        <span aria-hidden="true">&nbsp;›</span>
                     </button>
                 </div>
             </div>
@@ -96,7 +100,7 @@ export default function TimeTravelBar({ commits, selected }: Props) {
                 step={1}
                 value={selectedIndex}
                 onChange={(event) => travelTo(Number(event.target.value))}
-                aria-label="Commit-ul procesat, de la cel mai vechi la cel mai nou"
+                aria-label={t('timeTravel.range')}
                 aria-valuetext={commitLabel(selectedCommit)}
                 className={`mt-3 block w-full cursor-pointer accent-accent-strong ${focusRing}`}
             />
@@ -104,15 +108,17 @@ export default function TimeTravelBar({ commits, selected }: Props) {
             {selected !== null && (
                 <p role="status" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-warning-line bg-warning-soft px-3 py-2 text-sm text-warning-ink">
                     <span>
-                        Vezi o versiune veche (commit <code className="font-mono">{shortSha(selectedCommit.sha)}</code>
-                        {commitDay(selectedCommit) && <>, {commitDay(selectedCommit)}</>}).
+                        {rich(commitDay(selectedCommit) ? 'timeTravel.viewingOldDated' : 'timeTravel.viewingOld', {
+                            sha: <code className="font-mono">{shortSha(selectedCommit.sha)}</code>,
+                            date: commitDay(selectedCommit),
+                        })}
                     </span>
                     <Link
                         href={window.location.pathname}
                         preserveScroll
                         className={`rounded-sm font-semibold underline underline-offset-2 hover:no-underline ${focusRing}`}
                     >
-                        Înapoi la versiunea curentă
+                        {t('timeTravel.backToCurrent')}
                     </Link>
                 </p>
             )}

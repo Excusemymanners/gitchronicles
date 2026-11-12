@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n';
 import type { AssistantCitation } from '@/types';
 
 type Props = {
@@ -17,7 +18,8 @@ export function lineRange(citation: AssistantCitation): string {
  * Fișierul și liniile apar la hover (title) și sunt citite de cititoarele de ecran.
  */
 export default function CitationChip({ citation }: Props) {
-    const description = `${citation.path}, liniile ${lineRange(citation)}`;
+    const { t } = useI18n();
+    const description = t('assistant.citation.description', { path: citation.path, range: lineRange(citation) });
 
     if (citation.url === null) {
         return (
@@ -37,7 +39,7 @@ export default function CitationChip({ citation }: Props) {
             className={`${chipClasses} hover:bg-accent/20 hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent`}
         >
             {citation.index}
-            <span className="sr-only"> (sursa: {description}, pe GitHub, se deschide într-o filă nouă)</span>
+            <span className="sr-only"> {t('assistant.citation.sourceLink', { description })}</span>
         </a>
     );
 }

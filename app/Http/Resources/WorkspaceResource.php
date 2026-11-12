@@ -35,16 +35,17 @@ use Illuminate\Support\Facades\DB;
 class WorkspaceResource extends JsonResource
 {
     /**
-     * The chapters of the „Arhitectură” group: one per diagram type, in the order of the „Diagrame” page (Faza 7).
+     * The chapters of the architecture group: one per diagram type, in the order of the diagrams page (Faza 7).
+     * Each value is the translation key of the chapter's name (the workspace translation file).
      *
      * @var array<string, string>
      */
     public const DIAGRAM_CHAPTERS = [
-        'flow' => 'Cum funcționează',
-        'layers' => 'Straturi',
-        'container' => 'Containere (C4)',
-        'component' => 'Componente (C4)',
-        'context' => 'Context (C4)',
+        'flow' => 'workspace.chapters.flow',
+        'layers' => 'workspace.chapters.layers',
+        'container' => 'workspace.chapters.container',
+        'component' => 'workspace.chapters.component',
+        'context' => 'workspace.chapters.context',
     ];
 
     /**
@@ -66,10 +67,10 @@ class WorkspaceResource extends JsonResource
      * @var array<string, string>
      */
     public const PREVIEWED_DIAGRAMS = [
-        'layers' => 'Arhitectura pe straturi',
-        'container' => 'Containerele (C4)',
-        'component' => 'Componentele (C4)',
-        'context' => 'Contextul (C4)',
+        'layers' => 'workspace.previews.layers',
+        'container' => 'workspace.previews.container',
+        'component' => 'workspace.previews.component',
+        'context' => 'workspace.previews.context',
     ];
 
     /**
@@ -105,12 +106,12 @@ class WorkspaceResource extends JsonResource
         $consulting = $this->consultingReports()->latest('id')->first();
 
         $groups = [
-            $this->group('docs', 'Documentație', $this->documentationChapters($documents)),
-            $this->group('architecture', 'Arhitectură', $this->architectureChapters($diagramCounts)),
-            $this->group('modules', 'Module', count: $modules->count(), folders: $this->moduleFolders($modules, $documents)),
-            $this->group('history', 'Istoric', $this->historyChapters($activity, $hotspots)),
-            $this->group('media', 'Prezentare', $this->mediaChapters($media)),
-            $this->group('consulting', 'Consultanță', $this->consultingChapters($consulting)),
+            $this->group('docs', __('workspace.groups.docs'), $this->documentationChapters($documents)),
+            $this->group('architecture', __('workspace.groups.architecture'), $this->architectureChapters($diagramCounts)),
+            $this->group('modules', __('workspace.groups.modules'), count: $modules->count(), folders: $this->moduleFolders($modules, $documents)),
+            $this->group('history', __('workspace.groups.history'), $this->historyChapters($activity, $hotspots)),
+            $this->group('media', __('workspace.groups.media'), $this->mediaChapters($media)),
+            $this->group('consulting', __('workspace.groups.consulting'), $this->consultingChapters($consulting)),
         ];
 
         return [
@@ -146,8 +147,8 @@ class WorkspaceResource extends JsonResource
     private function mediaChapters(Collection $media): array
     {
         return array_values(array_filter([
-            $media->has(MediaKind::Video->value) ? $this->chapter('Video', $this->pageUrl('repositories.media')) : null,
-            $media->has(MediaKind::Slides->value) ? $this->chapter('Slide-uri', $this->pageUrl('repositories.media', self::SLIDES_SECTION)) : null,
+            $media->has(MediaKind::Video->value) ? $this->chapter(__('workspace.chapters.video'), $this->pageUrl('repositories.media')) : null,
+            $media->has(MediaKind::Slides->value) ? $this->chapter(__('workspace.chapters.slides'), $this->pageUrl('repositories.media', self::SLIDES_SECTION)) : null,
         ]));
     }
 
@@ -244,14 +245,14 @@ class WorkspaceResource extends JsonResource
      */
     private function documentationChapters(Collection $documents): array
     {
-        $chapters = [$this->chapter('Prezentare generală', $this->pageUrl('repositories.show'))];
+        $chapters = [$this->chapter(__('workspace.chapters.overview'), $this->pageUrl('repositories.show'))];
 
         if ($documents->contains('slug', 'overview')) {
-            $chapters[] = $this->chapter('Despre proiect', $this->pageUrl('repositories.docs'));
+            $chapters[] = $this->chapter(__('workspace.chapters.about'), $this->pageUrl('repositories.docs'));
         }
 
         if ($documents->contains('slug', 'readme')) {
-            $chapters[] = $this->chapter('README generat', $this->documentUrl('readme'));
+            $chapters[] = $this->chapter(__('workspace.chapters.readme'), $this->documentUrl('readme'));
         }
 
         return $chapters;
@@ -268,11 +269,11 @@ class WorkspaceResource extends JsonResource
     {
         $chapters = [];
 
-        foreach (self::DIAGRAM_CHAPTERS as $type => $label) {
+        foreach (self::DIAGRAM_CHAPTERS as $type => $labelKey) {
             $count = (int) $diagramCounts->get($type, 0);
 
             if ($count > 0) {
-                $chapters[] = $this->chapter($label, $this->pageUrl('repositories.diagrams', self::DIAGRAM_SECTIONS[$type]), $count > 1 ? $count : null);
+                $chapters[] = $this->chapter(__($labelKey), $this->pageUrl('repositories.diagrams', self::DIAGRAM_SECTIONS[$type]), $count > 1 ? $count : null);
             }
         }
 
@@ -345,9 +346,9 @@ class WorkspaceResource extends JsonResource
         }
 
         return array_values(array_filter([
-            $this->chapter('Commit-uri', $this->pageUrl('repositories.timeline', 'commits'), $activity['commit_count']),
-            $hotspots === [] ? null : $this->chapter('Zone fierbinți', $this->pageUrl('repositories.timeline', 'hotspots')),
-            $this->chapter('Contribuitori', $this->pageUrl('repositories.timeline', 'contributors'), $activity['contributor_count']),
+            $this->chapter(__('workspace.chapters.commits'), $this->pageUrl('repositories.timeline', 'commits'), $activity['commit_count']),
+            $hotspots === [] ? null : $this->chapter(__('workspace.chapters.hotspots'), $this->pageUrl('repositories.timeline', 'hotspots')),
+            $this->chapter(__('workspace.chapters.contributors'), $this->pageUrl('repositories.timeline', 'contributors'), $activity['contributor_count']),
         ]));
     }
 
@@ -366,7 +367,7 @@ class WorkspaceResource extends JsonResource
         }
 
         return [
-            'title' => self::PREVIEWED_DIAGRAMS[$type],
+            'title' => __(self::PREVIEWED_DIAGRAMS[$type]),
             'type' => $type,
             'mermaid' => (string) DB::table('diagrams')
                 ->where('repository_id', $this->id)
@@ -497,15 +498,15 @@ class WorkspaceResource extends JsonResource
             return [];
         }
 
-        $chapters = [$this->chapter('Raport', $this->pageUrl('repositories.consulting'))];
+        $chapters = [$this->chapter(__('workspace.chapters.report'), $this->pageUrl('repositories.consulting'))];
 
         if ($report?->status === ConsultingStatus::Ready) {
             $counts = $report->counts ?? [];
 
-            $chapters[] = $this->chapter('Zone de risc', $this->pageUrl('repositories.consulting', 'zone-de-risc'));
-            $chapters[] = $this->chapter('Probleme în cod', $this->pageUrl('repositories.consulting', 'probleme-in-cod'), ($counts['bugs'] ?? 0) + ($counts['code_vulnerabilities'] ?? 0));
-            $chapters[] = $this->chapter('Dependențe vulnerabile', $this->pageUrl('repositories.consulting', 'dependente-vulnerabile'), $counts['vulnerable_packages'] ?? 0);
-            $chapters[] = $this->chapter('Statistici despre cod', $this->pageUrl('repositories.consulting', 'statistici-cod'));
+            $chapters[] = $this->chapter(__('workspace.chapters.risk_zones'), $this->pageUrl('repositories.consulting', 'zone-de-risc'));
+            $chapters[] = $this->chapter(__('workspace.chapters.code_issues'), $this->pageUrl('repositories.consulting', 'probleme-in-cod'), ($counts['bugs'] ?? 0) + ($counts['code_vulnerabilities'] ?? 0));
+            $chapters[] = $this->chapter(__('workspace.chapters.vulnerable_dependencies'), $this->pageUrl('repositories.consulting', 'dependente-vulnerabile'), $counts['vulnerable_packages'] ?? 0);
+            $chapters[] = $this->chapter(__('workspace.chapters.code_statistics'), $this->pageUrl('repositories.consulting', 'statistici-cod'));
         }
 
         return $chapters;

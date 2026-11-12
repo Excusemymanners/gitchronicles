@@ -8,6 +8,7 @@ import ChaptersDrawer from '@/components/workspace/chapters-drawer';
 import ChaptersNav from '@/components/workspace/chapters-nav';
 import ElementsPanel from '@/components/workspace/elements-panel';
 import WorkspaceTopBar from '@/components/workspace/workspace-top-bar';
+import { useI18n } from '@/hooks/use-i18n';
 import { useMediaQuery } from '@/lib/workspace';
 import type { RepositoryPageProps } from '@/types';
 
@@ -33,6 +34,7 @@ const ELEMENTS_COLUMN_QUERY = '(min-width: 80rem)';
  * Tot aici e reîmprospătarea cât timp repository-ul se procesează (mutată din fosta bară de tab-uri).
  */
 export default function WorkspaceLayout({ children }: Props) {
+    const { t } = useI18n();
     const { props, component } = usePage<RepositoryPageProps>();
     const { repository, workspace, can_delete, can_retry, can_check_updates, can_regenerate, last_update } = props;
 
@@ -85,7 +87,7 @@ export default function WorkspaceLayout({ children }: Props) {
                     onClick={skipToContent}
                     className="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm font-medium text-accent focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:outline-2 focus:outline-accent"
                 >
-                    Sari la conținut
+                    {t('workspace.skipToContent')}
                 </a>
 
                 <WorkspaceTopBar

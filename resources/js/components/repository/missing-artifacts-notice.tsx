@@ -1,4 +1,6 @@
 import { RegenerateOffer } from '@/components/repository/chapter-empty-state';
+import { useI18n } from '@/hooks/use-i18n';
+import { formatList } from '@/lib/format';
 import type { Completeness, RepositoryItem } from '@/types';
 
 type Props = {
@@ -12,6 +14,8 @@ type Props = {
  * Video-ul și slide-urile nu sunt aici: au coada și pagina lor.
  */
 export default function MissingArtifactsNotice({ repository, completeness }: Props) {
+    const { t } = useI18n();
+
     if (repository.status !== 'ready' || !completeness.is_incomplete) {
         return null;
     }
@@ -23,12 +27,9 @@ export default function MissingArtifactsNotice({ repository, completeness }: Pro
         >
             <div>
                 <h2 id="missing-artifacts-heading" className="font-sans text-sm font-semibold">
-                    Lipsesc {completeness.missing_text}.
+                    {t('overview.missing.title', { items: formatList(completeness.missing.map((key) => t(`overview.missing.artifacts.${key}`))) })}
                 </h2>
-                <p className="mt-1 leading-relaxed">
-                    Repository-ul a fost procesat fără ele, de exemplu de o versiune mai veche a GitChronicle. O procesare completă le face
-                    {completeness.heals_automatically ? ': pornește singură la următoarea verificare a actualizărilor sau acum, cu „Regenerează tot”.' : '.'}
-                </p>
+                <p className="mt-1 leading-relaxed">{completeness.heals_automatically ? t('overview.missing.textHeals') : t('overview.missing.text')}</p>
             </div>
 
             <RegenerateOffer className="shrink-0" />

@@ -234,7 +234,7 @@ class IncrementalUpdateTest extends TestCase
         $this->app->instance(TextGenerator::class, new FakeTextGenerator([self::AI_PAGE]));
         $repository = $this->repositoryWithFixtureOrigin();
         $firstRun = $this->process($repository);
-        $this->app->instance(TextGenerator::class, $generator = new FakeTextGenerator(exception: new AiException(AiException::LIMIT_MESSAGE, retryable: true)));
+        $this->app->instance(TextGenerator::class, $generator = new FakeTextGenerator(exception: new AiException(__(AiException::LIMIT_MESSAGE), retryable: true)));
         $newSha = $this->pushToOrigin(['src/Support/Money.php' => self::MONEY_WITH_A_NEW_METHOD]);
 
         $run = $this->process($repository);
@@ -244,7 +244,7 @@ class IncrementalUpdateTest extends TestCase
         $this->assertSame($firstRun->to_sha, $page->source_sha);
         $this->assertSame(
             "The module's code changed at commit ".substr($newSha, 0, 7).' (1 file); this page describes commit '.substr($firstRun->to_sha, 0, 7).'. '
-            .'Claude could not write it again: '.AiException::LIMIT_MESSAGE,
+            .'Claude could not write it again: '.__(AiException::LIMIT_MESSAGE),
             $page->stale_reason,
         );
         $this->assertSame('succeeded', $run->status->value);

@@ -171,7 +171,7 @@ class RepositoryController extends Controller
 
         $reprocessRepository->handle($repository, full: true);
 
-        Inertia::flash('success', 'Am pornit procesarea completă: toate capitolele se fac din nou.');
+        Inertia::flash('success', __('repositories.flash.regenerate_started'));
 
         return redirect()->back(fallback: route('repositories.show', $repository));
     }

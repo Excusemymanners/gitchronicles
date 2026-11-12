@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import MermaidDiagram from '@/components/diagrams/mermaid-diagram';
+import { useI18n } from '@/hooks/use-i18n';
 import type { Diagram } from '@/components/diagrams/types';
 
 type Props = {
@@ -19,7 +20,8 @@ type Props = {
  * Un card cu previzualizarea unei diagrame (micșorată ca să încapă toată), titlul și propoziția ei.
  * Tot cardul e o legătură spre vederea completă, ca să poată sta și într-un panou lateral.
  */
-export default function DiagramCard({ diagram, href, linkLabel = 'Deschide diagramele', size = 'sm' }: Props) {
+export default function DiagramCard({ diagram, href, linkLabel, size = 'sm' }: Props) {
+    const { t } = useI18n();
     const preview = (
         <div className={`overflow-hidden rounded-md border border-line-subtle bg-canvas p-2 ${size === 'sm' ? 'h-40' : 'h-80'}`}>
             <MermaidDiagram code={diagram.mermaid} title={diagram.title} compact />
@@ -37,7 +39,7 @@ export default function DiagramCard({ diagram, href, linkLabel = 'Deschide diagr
                     {size === 'sm' && preview}
                     {diagram.caption && <p className={`text-ink-subtle ${size === 'sm' ? 'line-clamp-2 text-xs' : 'text-sm'}`}>{diagram.caption}</p>}
                     <p className="text-sm font-medium text-accent group-hover:text-accent-hover">
-                        {linkLabel} <span aria-hidden="true">→</span>
+                        {linkLabel ?? t('diagrams.openDiagrams')} <span aria-hidden="true">→</span>
                     </p>
                 </div>
                 {size === 'md' && preview}

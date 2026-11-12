@@ -24,15 +24,7 @@ enum RepositoryStatus: string
      */
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => 'În așteptare',
-            self::Cloning => 'Se clonează',
-            self::Analyzing => 'Se analizează codul',
-            self::Documenting => 'Se scrie documentația',
-            self::Ready => 'Gata',
-            self::Updating => 'Se actualizează',
-            self::Failed => 'Eroare',
-        };
+        return __('enums.repository_status.'.$this->value);
     }
 
     /**

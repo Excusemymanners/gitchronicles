@@ -1,4 +1,5 @@
-import { countLabel, formatNumber, formatPercent } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import { formatNumber, formatPercent } from '@/lib/format';
 import type { CodeStructure } from '@/types';
 
 type Props = {
@@ -15,13 +16,14 @@ const languageRowClasses = 'grid grid-cols-[7rem_1fr] items-center gap-x-4 gap-y
  * modulele și cele mai puternice dependențe dintre module, așa cum le-a găsit analiza codului.
  */
 export default function CodeStructureSection({ codeStructure }: Props) {
+    const { t, plural } = useI18n();
     const { languages, modules, dependencies } = codeStructure;
 
     const keyNumbers = [
-        { label: 'Fișiere', value: codeStructure.file_count },
-        { label: 'Linii de cod', value: codeStructure.line_count },
-        { label: 'Module', value: codeStructure.module_count },
-        { label: 'Limbaje', value: codeStructure.language_count },
+        { label: t('overview.structure.files'), value: codeStructure.file_count },
+        { label: t('overview.structure.linesOfCode'), value: codeStructure.line_count },
+        { label: t('overview.structure.modules'), value: codeStructure.module_count },
+        { label: t('overview.structure.languages'), value: codeStructure.language_count },
     ];
 
     return (
@@ -36,7 +38,7 @@ export default function CodeStructureSection({ codeStructure }: Props) {
             </dl>
 
             <div className={cardClasses}>
-                <h3 className="font-medium text-ink">Limbaje</h3>
+                <h3 className="font-medium text-ink">{t('overview.structure.languages')}</h3>
                 <ul className="mt-4 flex flex-col gap-3">
                     {languages.map((language) => {
                         // Partea limbajului din totalul liniilor (între 0 și 1); bara și textul arată același număr.
@@ -49,7 +51,7 @@ export default function CodeStructureSection({ codeStructure }: Props) {
                                     <span className="block h-2 rounded-full bg-accent" style={{ width: `${Math.max(share * 100, 1)}%` }} />
                                 </span>
                                 <span className="col-start-2 text-ink-subtle tabular-nums sm:col-start-auto sm:text-right">
-                                    {countLabel(language.line_count, 'linie', 'linii')} · {formatPercent(share)}
+                                    {t('overview.structure.languageLines', { lines: plural('lines', language.line_count), share: formatPercent(share) })}
                                 </span>
                             </li>
                         );
@@ -58,21 +60,21 @@ export default function CodeStructureSection({ codeStructure }: Props) {
             </div>
 
             <div className={cardClasses}>
-                <h3 className="font-medium text-ink">Module</h3>
-                <p className="mt-1 text-sm text-ink-subtle">Fișierele sunt grupate după folder; „/” este folderul principal al proiectului.</p>
+                <h3 className="font-medium text-ink">{t('overview.structure.modules')}</h3>
+                <p className="mt-1 text-sm text-ink-subtle">{t('overview.structure.modulesNote')}</p>
                 {/* Un proiect mare poate avea sute de module: lista se derulează în casetă, cu antetul fix. */}
                 <div className="mt-4 max-h-112 overflow-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="sticky top-0 border-b border-line bg-surface text-ink-subtle">
                             <tr>
                                 <th scope="col" className="py-2 pr-4 font-medium">
-                                    Modul
+                                    {t('overview.structure.module')}
                                 </th>
                                 <th scope="col" className="py-2 pr-4 text-right font-medium">
-                                    Fișiere
+                                    {t('overview.structure.filesColumn')}
                                 </th>
                                 <th scope="col" className="py-2 text-right font-medium">
-                                    Linii
+                                    {t('overview.structure.linesColumn')}
                                 </th>
                             </tr>
                         </thead>
@@ -96,15 +98,18 @@ export default function CodeStructureSection({ codeStructure }: Props) {
             </div>
 
             <div className={cardClasses}>
-                <h3 className="font-medium text-ink">Dependențe între module</h3>
+                <h3 className="font-medium text-ink">{t('overview.structure.dependencies')}</h3>
                 {dependencies.length === 0 ? (
-                    <p className="mt-1 text-sm text-ink-subtle">Modulele nu se importă între ele.</p>
+                    <p className="mt-1 text-sm text-ink-subtle">{t('overview.structure.noDependencies')}</p>
                 ) : (
                     <>
                         <p className="mt-1 text-sm text-ink-subtle">
-                            {dependencies.length < codeStructure.dependency_count &&
-                                `Cele mai puternice ${dependencies.length} din ${codeStructure.dependency_count}. `}
-                            Modulul din stânga importă fișiere din cel din dreapta.
+                            {dependencies.length < codeStructure.dependency_count
+                                ? t('overview.structure.dependenciesTopNote', {
+                                      shown: formatNumber(dependencies.length),
+                                      total: formatNumber(codeStructure.dependency_count),
+                                  })
+                                : t('overview.structure.dependenciesNote')}
                         </p>
                         <ul className="mt-4 divide-y divide-line-subtle text-sm">
                             {dependencies.map((dependency) => (
@@ -114,11 +119,11 @@ export default function CodeStructureSection({ codeStructure }: Props) {
                                         <span aria-hidden="true" className="text-base text-ink-subtle">
                                             →
                                         </span>
-                                        <span className="sr-only">importă din</span>
+                                        <span className="sr-only">{t('overview.structure.importsFrom')}</span>
                                         <code className="font-mono break-all text-ink">{dependency.to}</code>
                                     </span>
                                     <span className="text-ink-subtle tabular-nums">
-                                        {countLabel(dependency.weight, 'import', 'importuri')}
+                                        {plural('imports', dependency.weight)}
                                     </span>
                                 </li>
                             ))}

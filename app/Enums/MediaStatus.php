@@ -18,12 +18,7 @@ enum MediaStatus: string
      */
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => 'În așteptare',
-            self::Running => 'Se generează',
-            self::Ready => 'Gata',
-            self::Failed => 'Eroare',
-        };
+        return __('enums.media_status.'.$this->value);
     }
 
     /**

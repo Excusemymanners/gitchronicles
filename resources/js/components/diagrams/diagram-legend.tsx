@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n';
 import { DARK_CLASS_STYLES, LIGHT_CLASS_STYLES, useDiagramTheme } from '@/lib/mermaid';
 
 /** Ce poate apărea într-o legendă: o clasă de stil a diagramelor sau săgeata. */
@@ -16,10 +17,11 @@ type Props = {
  * și ce înseamnă.
  */
 export default function DiagramLegend({ items }: Props) {
+    const { t } = useI18n();
     const theme = useDiagramTheme();
 
     return (
-        <ul aria-label="Legenda diagramei" className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-muted">
+        <ul aria-label={t('diagrams.legend.label')} className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-muted">
             {items.map((item) => (
                 <li key={item.label} className="flex items-center gap-2">
                     <Swatch name={item.swatch} style={theme === 'dark' ? (DARK_CLASS_STYLES[item.swatch] ?? LIGHT_CLASS_STYLES[item.swatch]) : LIGHT_CLASS_STYLES[item.swatch]} />

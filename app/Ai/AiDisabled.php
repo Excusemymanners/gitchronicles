@@ -16,6 +16,6 @@ class AiDisabled extends AiException
      */
     public function __construct()
     {
-        parent::__construct('Generarea cu AI este oprită pe acest server.');
+        parent::__construct('ai.disabled');
     }
 }

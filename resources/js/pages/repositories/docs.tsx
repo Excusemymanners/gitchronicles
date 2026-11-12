@@ -5,6 +5,7 @@ import DocsPager from '@/components/docs/docs-pager';
 import Markdown from '@/components/docs/markdown';
 import ChapterEmptyState from '@/components/repository/chapter-empty-state';
 import TimeTravelBar from '@/components/time-travel/time-travel-bar';
+import { useI18n } from '@/hooks/use-i18n';
 import RepositoryLayout from '@/layouts/repository-layout';
 import { formatDate, shortSha } from '@/lib/format';
 import type { Completeness, RepositoryItem, RepositoryPageProps } from '@/types';
@@ -28,6 +29,7 @@ type Props = RepositoryPageProps & {
  * Cu „Călătorie în timp” alegi un commit procesat și vezi textul paginii de atunci.
  */
 export default function RepositoriesDocs({ repository, completeness, navigation, document, time_travel }: Props) {
+    const { t } = useI18n();
     const { start, stop } = usePoll(4000, { only: ['navigation', 'document', 'time_travel'] }, { autoStart: false });
 
     useEffect(() => {
@@ -38,7 +40,7 @@ export default function RepositoriesDocs({ repository, completeness, navigation,
         }
     }, [repository.is_processing, start, stop]);
 
-    const title = document ? `${document.title} · ${repository.full_name}` : `Documentație · ${repository.full_name}`;
+    const title = document ? `${document.title} · ${repository.full_name}` : t('docs.pageTitle', { repository: repository.full_name });
 
     return (
         <RepositoryLayout>
@@ -67,7 +69,7 @@ export default function RepositoriesDocs({ repository, completeness, navigation,
                     </>
                 ) : (
                     <p className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-muted">
-                        Pagina „Despre proiect” nu e gata încă. Celelalte pagini sunt în cuprins.
+                        {t('docs.notReady')}
                     </p>
                 )}
             </div>
@@ -80,12 +82,13 @@ export default function RepositoriesDocs({ repository, completeness, navigation,
  * O pagină care a apărut mai târziu nu are ce arăta.
  */
 function OldVersion({ document, timeTravel }: { document: DocumentPage; timeTravel: DocumentTimeTravel }) {
+    const { t, rich } = useI18n();
     const version = timeTravel.version;
 
     if (version === null) {
         return (
             <p className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-muted">
-                Pagina „{document.title}” nu exista încă la acest commit: a fost scrisă mai târziu.
+                {t('docs.pageMissingAtCommit', { title: document.title })}
             </p>
         );
     }
@@ -93,20 +96,18 @@ function OldVersion({ document, timeTravel }: { document: DocumentPage; timeTrav
     return (
         <article className="min-w-0">
             <p className="mb-6 border-b border-line pb-4 text-sm text-ink-subtle">
-                Versiune scrisă
-                {version.sha && (
-                    <>
-                        {' la commitul '}
-                        <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ink">{shortSha(version.sha)}</code>
-                    </>
-                )}
+                {version.sha
+                    ? rich('docs.version.writtenAtCommit', {
+                          sha: <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ink">{shortSha(version.sha)}</code>,
+                      })
+                    : t('docs.version.written')}
                 {version.written_at && (
                     <>
                         {' · '}
                         <time dateTime={version.written_at}>{formatDate(version.written_at)}</time>
                     </>
                 )}
-                {version.same_as_current && ' · pagina nu s-a schimbat de atunci'}
+                {version.same_as_current && ` · ${t('docs.version.unchanged')}`}
             </p>
 
             <Markdown>{version.markdown}</Markdown>
@@ -120,6 +121,8 @@ function OldVersion({ document, timeTravel }: { document: DocumentPage; timeTrav
  * versiune mai veche); atunci oferim „Regenerează tot”.
  */
 function EmptyState({ repository, completeness }: { repository: RepositoryItem; completeness: Completeness }) {
+    const { t } = useI18n();
+
     if (repository.is_processing) {
         return (
             <p
@@ -128,24 +131,23 @@ function EmptyState({ repository, completeness }: { repository: RepositoryItem; 
             >
                 <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-info motion-safe:animate-pulse" />
                 {repository.status === 'documenting'
-                    ? 'Se scrie documentația. Paginile apar aici pe măsură ce sunt gata.'
-                    : 'Documentația se scrie după ce se termină clonarea și analiza codului.'}
+                    ? t('docs.empty.writing')
+                    : t('docs.empty.waiting')}
             </p>
         );
     }
 
     if (repository.status === 'failed') {
         return (
-            <ChapterEmptyState title="Documentația nu a fost scrisă.">
-                Procesarea s-a oprit înainte de etapa documentației. Motivul e mai sus.
+            <ChapterEmptyState title={t('docs.empty.failedTitle')}>
+                {t('docs.empty.failedText')}
             </ChapterEmptyState>
         );
     }
 
     return (
-        <ChapterEmptyState title="Documentația nu a fost generată încă." offerRegenerate={completeness.artifacts.documentation.state === 'missing'}>
-            Repository-ul a fost procesat fără etapa care scrie documentația. O procesare completă scrie pagina „Despre proiect”, un README
-            și câte o pagină pentru fiecare modul, din codul și fișierele lui.
+        <ChapterEmptyState title={t('docs.empty.missingTitle')} offerRegenerate={completeness.artifacts.documentation.state === 'missing'}>
+            {t('docs.empty.missingText')}
         </ChapterEmptyState>
     );
 }

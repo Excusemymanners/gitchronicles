@@ -18,12 +18,7 @@ enum ConsultingStatus: string
      */
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => 'În așteptare',
-            self::Running => 'Se analizează',
-            self::Ready => 'Gata',
-            self::Failed => 'Eroare',
-        };
+        return __('enums.consulting_status.'.$this->value);
     }
 
     /**

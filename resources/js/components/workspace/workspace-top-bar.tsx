@@ -6,6 +6,7 @@ import LastUpdateLine from '@/components/repository/last-update';
 import StatusBadge from '@/components/status-badge';
 import ThemeToggle from '@/components/theme-toggle';
 import { GitHubIcon, MenuIcon } from '@/components/workspace/icons';
+import { useI18n } from '@/hooks/use-i18n';
 import { shortSha } from '@/lib/format';
 import type { LastUpdate, RepositoryItem } from '@/types';
 
@@ -43,13 +44,15 @@ export default function WorkspaceTopBar({
     onOpenChapters,
     isChaptersOpen,
 }: Props) {
+    const { t, rich } = useI18n();
+
     return (
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-2 sm:gap-3 sm:px-4">
             {onOpenChapters && (
                 <button
                     type="button"
                     onClick={onOpenChapters}
-                    aria-label="Deschide cuprinsul"
+                    aria-label={t('workspace.openContents')}
                     aria-expanded={isChaptersOpen}
                     aria-haspopup="dialog"
                     className={iconButtonClasses}
@@ -61,7 +64,7 @@ export default function WorkspaceTopBar({
             <Link href="/" className={`flex shrink-0 items-center gap-2.5 rounded-md ${focusRing}`}>
                 <AppLogoMark className="size-7" />
                 <span className="font-brand text-base font-bold tracking-tight text-ink max-sm:sr-only">GitChronicle</span>
-                <span className="sr-only">, toate repository-urile</span>
+                <span className="sr-only">{t('workspace.allRepositories')}</span>
             </Link>
 
             <span aria-hidden="true" className="text-ink-subtle max-sm:hidden">
@@ -81,7 +84,9 @@ export default function WorkspaceTopBar({
                 <div className="flex items-center gap-4 pr-2 text-[0.8125rem] text-ink-muted max-lg:hidden">
                     {repository.default_branch && (
                         <span>
-                            ramura <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-ink">{repository.default_branch}</code>
+                            {rich('workspace.branch', {
+                                branch: <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-ink">{repository.default_branch}</code>,
+                            })}
                         </span>
                     )}
 
@@ -91,17 +96,20 @@ export default function WorkspaceTopBar({
                     ) : (
                         repository.last_sha && (
                             <span>
-                                commit{' '}
-                                <a
-                                    href={`https://github.com/${repository.owner}/${repository.name}/commit/${repository.last_sha}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title={`Ultimul commit clonat: ${repository.last_sha}`}
-                                    className={`rounded-sm text-accent hover:text-accent-hover ${focusRing}`}
-                                >
-                                    <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-xs">{shortSha(repository.last_sha)}</code>
-                                    <span className="sr-only"> (ultimul commit clonat, pe GitHub, se deschide într-o filă nouă)</span>
-                                </a>
+                                {rich('workspace.commit', {
+                                    sha: (
+                                        <a
+                                            href={`https://github.com/${repository.owner}/${repository.name}/commit/${repository.last_sha}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            title={t('workspace.lastClonedCommit', { sha: repository.last_sha })}
+                                            className={`rounded-sm text-accent hover:text-accent-hover ${focusRing}`}
+                                        >
+                                            <code className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-xs">{shortSha(repository.last_sha)}</code>
+                                            <span className="sr-only"> {t('workspace.lastClonedCommitLink')}</span>
+                                        </a>
+                                    ),
+                                })}
                             </span>
                         )
                     )}
@@ -111,11 +119,13 @@ export default function WorkspaceTopBar({
                     href={repository.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Deschide pe GitHub"
+                    title={t('workspace.openOnGitHub')}
                     className={`${iconButtonClasses} max-lg:hidden`}
                 >
                     <GitHubIcon />
-                    <span className="sr-only">Deschide pe GitHub (se deschide într-o filă nouă)</span>
+                    <span className="sr-only">
+                        {t('workspace.openOnGitHub')} {t('common.opensInNewTab')}
+                    </span>
                 </a>
 
                 {/* „Reîncearcă” e aici pe ecranele late; pe telefon e în mesajul de eroare de deasupra capitolului. */}
@@ -127,7 +137,7 @@ export default function WorkspaceTopBar({
                                 disabled={processing}
                                 className={`inline-flex cursor-pointer items-center rounded-md bg-accent-strong px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-strong-hover disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
                             >
-                                {processing ? 'Se pornește…' : 'Reîncearcă'}
+                                {processing ? t('workspace.starting') : t('workspace.retry')}
                             </button>
                         )}
                     </Form>

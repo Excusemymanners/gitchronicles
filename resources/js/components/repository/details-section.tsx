@@ -1,4 +1,5 @@
 import SectionCard from '@/components/repository/section-card';
+import { useI18n } from '@/hooks/use-i18n';
 import { formatDate } from '@/lib/format';
 import type { RepositoryItem } from '@/types';
 
@@ -11,15 +12,17 @@ type Props = {
  * etapă a procesării. O etapă care nu s-a terminat încă nu apare în listă.
  */
 export default function DetailsSection({ repository }: Props) {
+    const { t } = useI18n();
+
     const dates = [
-        { label: 'Adăugat la', date: repository.created_at },
-        { label: 'Clonat la', date: repository.cloned_at },
-        { label: 'Cod analizat la', date: repository.analyzed_at },
-        { label: 'Documentație scrisă la', date: repository.documented_at },
+        { label: t('overview.details.added'), date: repository.created_at },
+        { label: t('overview.details.cloned'), date: repository.cloned_at },
+        { label: t('overview.details.analyzed'), date: repository.analyzed_at },
+        { label: t('overview.details.documented'), date: repository.documented_at },
     ].filter((item): item is { label: string; date: string } => item.date !== null);
 
     return (
-        <SectionCard title="Detalii">
+        <SectionCard title={t('overview.details.title')}>
             <dl className="grid gap-6 sm:grid-cols-2">
                 {dates.map((item) => (
                     <div key={item.label}>

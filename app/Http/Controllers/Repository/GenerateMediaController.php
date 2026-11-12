@@ -39,7 +39,7 @@ class GenerateMediaController extends Controller
 
         GenerateMedia::dispatch($repository, force: true);
 
-        Inertia::flash('success', 'Am pornit generarea video-ului și a slide-urilor.');
+        Inertia::flash('success', __('repositories.flash.media_started'));
 
         return redirect()->route('repositories.media', $repository);
     }

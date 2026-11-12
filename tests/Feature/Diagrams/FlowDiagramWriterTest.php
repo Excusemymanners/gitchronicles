@@ -115,7 +115,7 @@ class FlowDiagramWriterTest extends TestCase
     {
         $repository = $this->repositoryWithCode();
         $currentFlow = Diagram::factory()->flow()->for($repository)->create(['source_sha' => $repository->last_sha]);
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator(exception: new AiException(AiException::LIMIT_MESSAGE, retryable: true)));
+        $this->app->instance(TextGenerator::class, new FakeTextGenerator(exception: new AiException(__(AiException::LIMIT_MESSAGE), retryable: true)));
 
         $result = app(FlowDiagramWriter::class)->refresh($repository);
 

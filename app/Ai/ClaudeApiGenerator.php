@@ -75,13 +75,13 @@ final class ClaudeApiGenerator implements TextGenerator
                 'category' => $message->stopDetails?->category,
             ]);
 
-            throw new AiException('Claude a refuzat să scrie acest text.');
+            throw new AiException(AiException::REFUSED_MESSAGE);
         }
 
         if ($message->stopReason === 'max_tokens') {
             Log::warning('Claude stopped at max_tokens.', ['model' => $message->model, 'max_tokens' => $this->maxTokens]);
 
-            throw new AiException('Răspunsul lui Claude a fost prea lung și s-a oprit la jumătate.');
+            throw new AiException(AiException::TOO_LONG_MESSAGE);
         }
 
         $text = collect($message->content)

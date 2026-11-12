@@ -73,11 +73,11 @@ class ClaudeApiGeneratorTest extends TestCase
         return [
             'refused' => [
                 ['stop_reason' => 'refusal', 'stop_details' => ['type' => 'refusal', 'category' => 'cyber', 'explanation' => 'Declined.'], 'content' => []],
-                'Claude a refuzat să scrie acest text.',
+                'ai.refused',
             ],
             'cut at max_tokens' => [
                 ['stop_reason' => 'max_tokens', 'content' => [['type' => 'text', 'text' => '## Rol']]],
-                'Răspunsul lui Claude a fost prea lung și s-a oprit la jumătate.',
+                'ai.too_long',
             ],
             'without text' => [
                 ['stop_reason' => 'end_turn', 'content' => []],
@@ -97,7 +97,8 @@ class ClaudeApiGeneratorTest extends TestCase
 
         $exception = $this->generateExpectingFailure($generator);
 
-        $this->assertSame($expectedMessage, $exception->getMessage());
+        $this->assertSame(__($expectedMessage), $exception->getMessage());
+        $this->assertNotSame($expectedMessage, $exception->getMessage());
         $this->assertFalse($exception->retryable);
     }
 
@@ -129,7 +130,8 @@ class ClaudeApiGeneratorTest extends TestCase
 
         $exception = $this->generateExpectingFailure($generator);
 
-        $this->assertSame($expectedMessage, $exception->getMessage());
+        $this->assertSame(__($expectedMessage), $exception->getMessage());
+        $this->assertNotSame($expectedMessage, $exception->getMessage());
         $this->assertSame($expectedRetryable, $exception->retryable);
         $this->assertCount(1, $this->sentRequests, 'The SDK must not retry by itself.');
     }
@@ -140,7 +142,7 @@ class ClaudeApiGeneratorTest extends TestCase
 
         $exception = $this->generateExpectingFailure($generator);
 
-        $this->assertSame(AiException::GENERIC_MESSAGE, $exception->getMessage());
+        $this->assertSame(__(AiException::GENERIC_MESSAGE), $exception->getMessage());
         $this->assertTrue($exception->retryable);
     }
 

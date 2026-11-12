@@ -43,7 +43,7 @@ class RegenerateButtonTest extends TestCase
             ->from(route('repositories.docs', $repository))
             ->post(route('repositories.regenerate', $repository))
             ->assertRedirect(route('repositories.docs', $repository))
-            ->assertInertiaFlash('success', 'Am pornit procesarea completă: toate capitolele se fac din nou.');
+            ->assertInertiaFlash('success', 'Full regeneration started.');
 
         Queue::assertPushed(ProcessRepository::class, fn (ProcessRepository $job): bool => $job->repository->is($repository)
             && $job->trigger === ProcessingTrigger::Manual

@@ -51,7 +51,7 @@ class RepositoryTest extends TestCase
                 'full_name' => 'laravel/framework',
                 'description' => null,
                 'status' => 'ready',
-                'status_label' => 'Gata',
+                'status_label' => 'Ready',
                 'is_processing' => false,
                 'default_branch' => 'main',
                 'last_sha' => '0a1b2c3d4e5f60718293a4b5c6d7e8f901234567',

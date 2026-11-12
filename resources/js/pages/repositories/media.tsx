@@ -2,6 +2,7 @@ import { Form, Head, router, usePoll } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import SlidesSection from '@/components/media/slides-section';
 import VideoSection from '@/components/media/video-section';
+import { useI18n } from '@/hooks/use-i18n';
 import RepositoryLayout from '@/layouts/repository-layout';
 import type { RepositoryPageProps } from '@/types';
 import type { MediaLanguage, PresentationMedia } from '@/types/media';
@@ -20,6 +21,7 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
  * reîmprospătează singură.
  */
 export default function RepositoriesMedia({ repository, media }: Props) {
+    const { t } = useI18n();
     // Cât timp ceva e în coadă sau se randează, cerem serverului la fiecare 3 secunde doar prop-ul „media”.
     const { start, stop } = usePoll(3000, { only: ['media'] }, { autoStart: false });
 
@@ -50,17 +52,17 @@ export default function RepositoriesMedia({ repository, media }: Props) {
     const hasFailure = media.videos.some((item) => item.status === 'failed') || media.slides?.status === 'failed';
     const isStale = media.videos.some((item) => item.is_stale) || media.slides?.is_stale === true;
 
-    let actionLabel = 'Regenerează';
+    let actionLabel = t('media.regenerate');
 
     if (hasNothing) {
-        actionLabel = 'Generează video și slide-uri';
+        actionLabel = t('media.generate');
     } else if (hasFailure) {
-        actionLabel = 'Încearcă din nou';
+        actionLabel = t('media.retry');
     }
 
     const languageSwitch =
         media.videos.length > 1 && video ? (
-            <div role="group" aria-label="Limba video-ului" className="ml-auto inline-flex rounded-md bg-surface-2 p-0.5 ring-1 ring-line ring-inset">
+            <div role="group" aria-label={t('media.languageGroup')} className="ml-auto inline-flex rounded-md bg-surface-2 p-0.5 ring-1 ring-line ring-inset">
                 {media.videos.map((item) => (
                     <button
                         key={item.language}
@@ -80,10 +82,10 @@ export default function RepositoriesMedia({ repository, media }: Props) {
 
     return (
         <RepositoryLayout>
-            <Head title={`Video · ${repository.full_name}`} />
+            <Head title={t('media.pageTitle', { repository: repository.full_name })} />
 
             <div className="flex flex-wrap items-start justify-between gap-3">
-                <h1 className="font-brand text-2xl font-bold tracking-tight text-ink">Video și slide-uri</h1>
+                <h1 className="font-brand text-2xl font-bold tracking-tight text-ink">{t('media.title')}</h1>
 
                 {media.can_generate && (
                     <Form action={`/repositories/${repository.id}/media/generate`} method="post" options={{ preserveScroll: true }}>
@@ -97,7 +99,7 @@ export default function RepositoriesMedia({ repository, media }: Props) {
                                         : 'bg-surface text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2'
                                 }`}
                             >
-                                {processing ? 'Se pornește…' : actionLabel}
+                                {processing ? t('media.starting') : actionLabel}
                             </button>
                         )}
                     </Form>
@@ -105,31 +107,29 @@ export default function RepositoriesMedia({ repository, media }: Props) {
             </div>
 
             <p className="mt-2 text-sm text-ink-muted">
-                Un video scurt care derulează pagina reală de GitHub a proiectului în timp ce o voce îi spune povestea, în engleză și în română,
-                și o prezentare pe slide-uri. Tot ce apare în ele vine din datele reale ale repository-ului: README, documentația generată,
-                GitHub, analiza codului și istoricul git.
+                {t('media.intro')}
             </p>
 
             {media.is_working && (
                 <p role="status" className="mt-4 flex items-center gap-2 rounded-lg border border-info-line bg-info-soft px-4 py-3 text-sm text-info-ink">
                     <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-info motion-safe:animate-pulse" />
-                    Se generează… Pagina se actualizează singură când sunt gata.
+                    {t('media.working')}
                 </p>
             )}
 
             {!media.is_working && isStale && media.can_generate && (
                 <p className="mt-4 rounded-lg border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning-ink">
-                    Repository-ul are un commit mai nou decât cel din care au fost făcute. Apasă „Regenerează” ca să le aduci la zi.
+                    {t('media.stale')}
                 </p>
             )}
 
             {hasNothing ? (
                 <div className="mt-6 rounded-lg border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-muted">
-                    <p className="font-medium text-ink">Video-ul și slide-urile nu au fost generate încă.</p>
+                    <p className="font-medium text-ink">{t('media.emptyTitle')}</p>
                     <p className="mt-1">
-                        {repository.status !== 'ready' && 'Se pot face după ce repository-ul termină de procesat.'}
-                        {repository.status === 'ready' && media.can_generate && 'Apasă „Generează video și slide-uri”. Randarea durează câteva minute.'}
-                        {repository.status === 'ready' && !media.can_generate && 'Un utilizator autentificat le poate genera de pe această pagină.'}
+                        {repository.status !== 'ready' && t('media.emptyNotReady')}
+                        {repository.status === 'ready' && media.can_generate && t('media.emptyCanGenerate')}
+                        {repository.status === 'ready' && !media.can_generate && t('media.emptyLogIn')}
                     </p>
                 </div>
             ) : (

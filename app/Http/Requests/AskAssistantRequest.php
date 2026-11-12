@@ -45,16 +45,16 @@ class AskAssistantRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'question.required' => 'Scrie o întrebare.',
-            'question.string' => 'Scrie o întrebare.',
-            'question.min' => 'Întrebarea trebuie să aibă cel puțin 3 caractere.',
-            'question.max' => 'Întrebarea poate avea cel mult 1.000 de caractere.',
-            'history.array' => 'Conversația trimisă nu are forma corectă.',
-            'history.max' => 'Conversația trimisă poate avea cel mult 6 mesaje.',
-            'history.*' => 'Conversația trimisă nu are forma corectă.',
-            'history.*.role' => 'Conversația trimisă nu are forma corectă.',
-            'history.*.content.max' => 'Un mesaj al conversației poate avea cel mult 4.000 de caractere.',
-            'history.*.content' => 'Conversația trimisă nu are forma corectă.',
+            'question.required' => __('assistant.validation.question_required'),
+            'question.string' => __('assistant.validation.question_required'),
+            'question.min' => __('assistant.validation.question_min'),
+            'question.max' => __('assistant.validation.question_max'),
+            'history.array' => __('assistant.validation.history_shape'),
+            'history.max' => __('assistant.validation.history_max'),
+            'history.*' => __('assistant.validation.history_shape'),
+            'history.*.role' => __('assistant.validation.history_shape'),
+            'history.*.content.max' => __('assistant.validation.history_content_max'),
+            'history.*.content' => __('assistant.validation.history_shape'),
         ];
     }
 }

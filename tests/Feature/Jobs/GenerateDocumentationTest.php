@@ -183,14 +183,14 @@ class GenerateDocumentationTest extends TestCase
 
     public function test_an_error_that_will_repeat_pauses_claude_for_the_rest_of_the_run(): void
     {
-        $this->app->instance(TextGenerator::class, $generator = new FakeTextGenerator(exception: new AiException(AiException::LIMIT_MESSAGE, retryable: true)));
+        $this->app->instance(TextGenerator::class, $generator = new FakeTextGenerator(exception: new AiException(__(AiException::LIMIT_MESSAGE), retryable: true)));
         ['repository' => $repository] = $this->shopRepository();
 
         $this->runJob($repository, ProcessingRun::factory()->for($repository)->create());
 
         $generator->assertSentCount(1);
         $this->assertSame(5, Document::whereBelongsTo($repository)->where('is_stale', true)->count());
-        $this->assertStringContainsString(AiException::LIMIT_MESSAGE, Document::whereBelongsTo($repository)->firstWhere('slug', Document::README)->stale_reason);
+        $this->assertStringContainsString(__(AiException::LIMIT_MESSAGE), Document::whereBelongsTo($repository)->firstWhere('slug', Document::README)->stale_reason);
     }
 
     public function test_an_answer_that_is_not_the_requested_page_is_replaced_by_the_template_and_still_counted(): void

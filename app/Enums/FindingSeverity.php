@@ -20,13 +20,7 @@ enum FindingSeverity: string
      */
     public function label(): string
     {
-        return match ($this) {
-            self::Critical => 'Critică',
-            self::High => 'Ridicată',
-            self::Medium => 'Medie',
-            self::Low => 'Scăzută',
-            self::Info => 'Informativă',
-        };
+        return __('enums.finding_severity.'.$this->value);
     }
 
     /**

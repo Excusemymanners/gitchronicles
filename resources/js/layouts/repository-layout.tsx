@@ -1,7 +1,9 @@
 import { Form, Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import LastUpdateLine from '@/components/repository/last-update';
+import { useI18n } from '@/hooks/use-i18n';
 import { useActiveChapter } from '@/lib/workspace';
+import type { TranslationKey } from '@/lang';
 import type { RepositoryPageProps } from '@/types';
 
 type Props = {
@@ -16,13 +18,13 @@ const linkClasses = `rounded-sm text-accent hover:text-accent-hover hover:underl
  * Firul paginii pentru paginile care nu au (încă) un capitol în cuprins, de exemplu „Diagrame”
  * înainte să existe vreo diagramă.
  */
-const pageTitles: Record<string, string> = {
-    'repositories/show': 'Documentație · Prezentare generală',
-    'repositories/docs': 'Documentație',
-    'repositories/diagrams': 'Arhitectură',
-    'repositories/assistant': 'Asistent',
-    'repositories/timeline': 'Istoric',
-    'repositories/media': 'Media',
+const pageTitleKeys: Record<string, TranslationKey> = {
+    'repositories/show': 'workspace.pageTitles.show',
+    'repositories/docs': 'workspace.pageTitles.docs',
+    'repositories/diagrams': 'workspace.pageTitles.diagrams',
+    'repositories/assistant': 'workspace.pageTitles.assistant',
+    'repositories/timeline': 'workspace.pageTitles.timeline',
+    'repositories/media': 'workspace.pageTitles.media',
 };
 
 /**
@@ -31,11 +33,12 @@ const pageTitles: Record<string, string> = {
  * procesării sau eroarea ei. Fiecare pagină a unui repository își pune conținutul aici.
  */
 export default function RepositoryLayout({ children }: Props) {
+    const { t, rich } = useI18n();
     const { props, component } = usePage<RepositoryPageProps>();
     const { auth, repository, can_retry, can_check_updates, can_regenerate, last_update } = props;
     const activeChapter = useActiveChapter();
 
-    const breadcrumb = activeChapter ? `${activeChapter.groupTitle} · ${activeChapter.label}` : (pageTitles[component] ?? null);
+    const breadcrumb = activeChapter ? `${activeChapter.groupTitle} · ${activeChapter.label}` : (pageTitleKeys[component] ? t(pageTitleKeys[component]) : null);
 
     return (
         <div className="mx-auto w-full max-w-190 px-4 pt-6 sm:px-8 sm:pt-8">
@@ -56,7 +59,7 @@ export default function RepositoryLayout({ children }: Props) {
                     className="mt-4 flex items-center gap-2 rounded-lg border border-info-line bg-info-soft px-4 py-3 text-sm text-info-ink"
                 >
                     <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-info motion-safe:animate-pulse" />
-                    Încă se procesează… Capitolele noi apar singure, fără reîncărcarea paginii.
+                    {t('workspace.stillProcessing')}
                 </p>
             )}
 
@@ -66,7 +69,7 @@ export default function RepositoryLayout({ children }: Props) {
                     className="mt-4 flex flex-col gap-3 rounded-lg border border-danger-line bg-danger-soft p-4 text-sm text-danger-ink sm:flex-row sm:items-center sm:justify-between"
                 >
                     <p>
-                        <span className="font-semibold">Procesarea a eșuat.</span> {repository.error}
+                        <span className="font-semibold">{t('workspace.processingFailed')}</span> {repository.error}
                     </p>
 
                     {/* Pe ecranele late „Reîncearcă” e în bara de sus; un vizitator e invitat să intre în cont. */}
@@ -78,17 +81,20 @@ export default function RepositoryLayout({ children }: Props) {
                                     disabled={processing}
                                     className={`inline-flex cursor-pointer items-center rounded-md bg-accent-strong px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-strong-hover disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
                                 >
-                                    {processing ? 'Se pornește…' : 'Reîncearcă'}
+                                    {processing ? t('workspace.starting') : t('workspace.retry')}
                                 </button>
                             )}
                         </Form>
                     ) : (
                         !auth.user && (
                             <p className="shrink-0">
-                                <Link href="/login" className={`font-medium ${linkClasses}`}>
-                                    Intră în cont
-                                </Link>{' '}
-                                ca să poți reîncerca.
+                                {rich('workspace.logInToRetry', {
+                                    logIn: (
+                                        <Link href="/login" className={`font-medium ${linkClasses}`}>
+                                            {t('nav.logIn')}
+                                        </Link>
+                                    ),
+                                })}
                             </p>
                         )
                     )}

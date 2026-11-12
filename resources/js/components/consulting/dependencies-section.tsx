@@ -1,7 +1,7 @@
 import ReportSection from '@/components/consulting/report-section';
 import SeverityBadge from '@/components/consulting/severity-badge';
 import { ExternalLinkIcon } from '@/components/icons';
-import { countLabel } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
 import type { ConsultingTool, DependencyFinding } from '@/types/consulting';
 
 type PackageGroup = {
@@ -52,22 +52,19 @@ function groupByPackage(findings: DependencyFinding[]): PackageGroup[] {
  * fiecare cu avertismentele lui, versiunea care le repară și legătura spre avertisment pe osv.dev.
  */
 export default function DependenciesSection({ dependencies, osvScanner }: { dependencies: DependencyFinding[]; osvScanner: ConsultingTool | undefined }) {
+    const { t, plural } = useI18n();
     const groups = groupByPackage(dependencies);
     const packagesScanned = osvScanner?.details.packages_scanned ?? null;
 
     return (
         <ReportSection
             id="dependente-vulnerabile"
-            title="Dependențe vulnerabile"
-            description={
-                packagesScanned === null
-                    ? undefined
-                    : `OSV-Scanner a verificat ${countLabel(packagesScanned, 'pachet', 'pachete')} din fișierele lock în baza de date publică OSV (osv.dev).`
-            }
+            title={t('consulting.dependencies.title')}
+            description={packagesScanned === null ? undefined : t('consulting.dependencies.description', { packages: plural('packages', packagesScanned) })}
         >
             {groups.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-muted">
-                    Nicio dependență cu o vulnerabilitate cunoscută (sau OSV-Scanner nu a rulat; vezi „Unelte” mai jos).
+                    {t('consulting.dependencies.empty')}
                 </p>
             ) : (
                 <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
@@ -77,17 +74,17 @@ export default function DependenciesSection({ dependencies, osvScanner }: { depe
                                 <p className="min-w-0">
                                     <code className="font-mono text-xs font-medium break-all text-ink">{group.package}</code>{' '}
                                     <span className="text-xs text-ink-subtle">
-                                        {group.ecosystem}, versiunea {group.installed}, în {group.path}
+                                        {t('consulting.dependencies.packageInfo', { ecosystem: group.ecosystem ?? '', version: group.installed ?? '', path: group.path ?? '' })}
                                     </span>
                                 </p>
                                 <p className="text-xs text-ink-muted">
-                                    {group.fixesAll === null ? 'Nu toate avertismentele au o versiune care le repară.' : `Le repară pe toate versiunea ${group.fixesAll}.`}
+                                    {group.fixesAll === null ? t('consulting.dependencies.notAllFixed') : t('consulting.dependencies.fixedByAll', { version: group.fixesAll })}
                                 </p>
                             </div>
                             <ul className="mt-2 flex flex-col gap-2">
                                 {group.advisories.map((advisory) => (
                                     <li key={advisory.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                        <SeverityBadge severity={advisory.severity} label={advisory.severity_label} />
+                                        <SeverityBadge severity={advisory.severity} />
                                         {advisory.original_severity && <span className="text-xs text-ink-subtle">{advisory.original_severity}</span>}
                                         {advisory.advisory_url ? (
                                             <a
@@ -98,7 +95,7 @@ export default function DependenciesSection({ dependencies, osvScanner }: { depe
                                             >
                                                 {advisory.advisory_id}
                                                 <ExternalLinkIcon className="size-3.5" />
-                                                <span className="sr-only"> (avertismentul pe osv.dev, se deschide într-o filă nouă)</span>
+                                                <span className="sr-only"> {t('consulting.dependencies.advisoryLink')}</span>
                                             </a>
                                         ) : (
                                             <code className="font-mono text-xs text-ink">{advisory.advisory_id}</code>
@@ -107,7 +104,7 @@ export default function DependenciesSection({ dependencies, osvScanner }: { depe
                                             {advisory.title}
                                         </span>
                                         <span className="text-xs text-ink-subtle">
-                                            {advisory.fixed_version === null ? 'Fără versiune reparată cunoscută' : `Reparată în ${advisory.fixed_version}`}
+                                            {advisory.fixed_version === null ? t('consulting.dependencies.noFix') : t('consulting.dependencies.fixedIn', { version: advisory.fixed_version })}
                                         </span>
                                     </li>
                                 ))}

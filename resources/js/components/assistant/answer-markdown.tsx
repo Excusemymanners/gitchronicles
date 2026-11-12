@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CitationChip from '@/components/assistant/citation-chip';
+import { translate } from '@/lib/i18n';
 import type { AssistantCitation } from '@/types';
 
 type Props = {
@@ -40,7 +41,7 @@ export default function AnswerMarkdown({ markdown, citations }: Props) {
                     className="rounded-sm font-medium text-accent underline decoration-accent/40 underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                     {children}
-                    <span className="sr-only"> (se deschide într-o filă nouă)</span>
+                    <span className="sr-only"> {translate('common.opensInNewTab')}</span>
                 </a>
             );
         },

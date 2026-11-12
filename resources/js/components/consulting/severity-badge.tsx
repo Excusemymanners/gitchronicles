@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n';
 import type { Severity } from '@/types/consulting';
 
 /*
@@ -40,28 +41,21 @@ export function SeverityIcon({ severity, className = 'size-3' }: { severity: Sev
 
 type Props = {
     severity: Severity;
-    /** Eticheta în română, de la server (de exemplu „Ridicată”). */
-    label: string;
+    /** Textul din etichetă; fără el, numele treptei în limba interfeței (de exemplu „High”). */
+    label?: string;
 };
 
 /** Eticheta rotunjită cu gravitatea unei probleme: forma, culoarea și cuvântul. */
 export default function SeverityBadge({ severity, label }: Props) {
+    const { t } = useI18n();
+
     return (
         <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${badgeClasses[severity]}`}>
             <SeverityIcon severity={severity} />
-            {label}
+            {label ?? t(`severities.${severity}`)}
         </span>
     );
 }
-
-/** Etichetele treptelor, pentru locurile unde serverul trimite doar valoarea (de exemplu cifrele de sus). */
-export const SEVERITY_LABELS: Record<Severity, string> = {
-    critical: 'Critică',
-    high: 'Ridicată',
-    medium: 'Medie',
-    low: 'Scăzută',
-    info: 'Informativă',
-};
 
 /** Treptele, de la cea mai gravă. */
 export const SEVERITIES: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];

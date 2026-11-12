@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n';
 import { formatTimecode } from '@/lib/format';
 import type { VideoScene } from '@/types/media';
 
@@ -16,6 +17,8 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
  * Momentul scenei e un buton care mută video-ul acolo.
  */
 export default function SceneList({ scenes, onSeek }: Props) {
+    const { t } = useI18n();
+
     return (
         <ol className="divide-y divide-line rounded-lg border border-line bg-surface">
             {scenes.map((scene, index) => {
@@ -28,7 +31,7 @@ export default function SceneList({ scenes, onSeek }: Props) {
                             onClick={() => onSeek(scene.start_ms)}
                             className={`h-fit shrink-0 cursor-pointer rounded-md bg-surface-2 px-2 py-1 font-mono text-xs text-accent tabular-nums hover:text-accent-hover ${focusRing}`}
                         >
-                            <span className="sr-only">Redă video-ul de la </span>
+                            <span className="sr-only">{t('media.scenes.playFrom')}</span>
                             {formatTimecode(scene.start_ms)}
                         </button>
 
@@ -43,7 +46,7 @@ export default function SceneList({ scenes, onSeek }: Props) {
                             )}
                             {scene.narration && scene.narration !== scene.text && (
                                 <p className="mt-2 text-sm text-ink-muted">
-                                    <span className="text-ink-subtle">Vocea spune: </span>
+                                    <span className="text-ink-subtle">{t('media.scenes.narration')}</span>
                                     {scene.narration}
                                 </p>
                             )}
@@ -52,7 +55,7 @@ export default function SceneList({ scenes, onSeek }: Props) {
                                 <figure className="mt-3 border-l-2 border-line-strong pl-3">
                                     <blockquote className="text-sm text-ink-muted">„{scene.source.quote}”</blockquote>
                                     <figcaption className="mt-1 text-xs text-ink-subtle">
-                                        Sursa:{' '}
+                                        {t('media.scenes.source')}
                                         {scene.source.url ? (
                                             <a
                                                 href={scene.source.url}
@@ -64,7 +67,7 @@ export default function SceneList({ scenes, onSeek }: Props) {
                                                 {scene.source.url.startsWith('http') && (
                                                     <>
                                                         <span aria-hidden="true"> {'↗︎'}</span>
-                                                        <span className="sr-only"> (se deschide într-o filă nouă)</span>
+                                                        <span className="sr-only"> {t('common.opensInNewTab')}</span>
                                                     </>
                                                 )}
                                             </a>
@@ -74,7 +77,7 @@ export default function SceneList({ scenes, onSeek }: Props) {
                                     </figcaption>
                                 </figure>
                             ) : (
-                                <p className="mt-3 text-xs text-ink-subtle">Scenă făcută din șablon, fără text din repository.</p>
+                                <p className="mt-3 text-xs text-ink-subtle">{t('media.scenes.template')}</p>
                             )}
                         </div>
                     </li>

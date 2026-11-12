@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useI18n } from '@/hooks/use-i18n';
 import { renderDiagram, useDiagramTheme } from '@/lib/mermaid';
 
 type Props = {
@@ -20,6 +21,7 @@ type RenderState = { status: 'loading' } | { status: 'ready'; svg: string } | { 
  * dacă tot nu încape (de exemplu pe telefon), caseta se derulează orizontal.
  */
 export default function MermaidDiagram({ code, title, compact = false }: Props) {
+    const { t } = useI18n();
     const theme = useDiagramTheme();
     const [state, setState] = useState<RenderState>({ status: 'loading' });
     const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -101,10 +103,10 @@ export default function MermaidDiagram({ code, title, compact = false }: Props) 
     if (state.status === 'error') {
         return (
             <div role="alert" className="rounded-lg border border-danger-line bg-danger-soft p-4 text-sm text-danger-ink">
-                <p>Nu am putut desena această diagramă. Codul ei este mai jos și poate fi deschis în orice editor Mermaid.</p>
+                <p>{t('diagrams.mermaid.failed')}</p>
                 {!compact && (
                     <details className="mt-3">
-                        <summary className="cursor-pointer font-medium">Codul Mermaid</summary>
+                        <summary className="cursor-pointer font-medium">{t('diagrams.mermaid.code')}</summary>
                         <pre className="mt-2 max-h-80 overflow-auto rounded-md border border-line bg-canvas p-3 font-mono text-xs text-ink">
                             {code}
                         </pre>
@@ -116,7 +118,7 @@ export default function MermaidDiagram({ code, title, compact = false }: Props) 
 
     if (compact) {
         return (
-            <div role="img" aria-label={`Diagrama: ${title}`} className="h-full w-full">
+            <div role="img" aria-label={t('diagrams.mermaid.label', { title })} className="h-full w-full">
                 {state.status === 'loading' ? (
                     <div className="h-full w-full rounded-md bg-surface-2 motion-safe:animate-pulse" />
                 ) : (
@@ -130,14 +132,14 @@ export default function MermaidDiagram({ code, title, compact = false }: Props) 
         <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center justify-end gap-2">
                 <span aria-live="polite" className="text-xs text-ink-subtle">
-                    {copyStatus === 'copied' && 'Codul a fost copiat.'}
-                    {copyStatus === 'failed' && 'Nu am putut copia codul.'}
+                    {copyStatus === 'copied' && t('diagrams.mermaid.copied')}
+                    {copyStatus === 'failed' && t('diagrams.mermaid.copyFailed')}
                 </span>
                 <button type="button" onClick={() => setIsFullScreen(true)} disabled={state.status !== 'ready'} className={toolbarButton}>
-                    Ecran complet
+                    {t('diagrams.mermaid.fullScreen')}
                 </button>
                 <button type="button" onClick={copyCode} className={toolbarButton}>
-                    Copiază codul Mermaid
+                    {t('diagrams.mermaid.copyCode')}
                 </button>
             </div>
 
@@ -145,13 +147,13 @@ export default function MermaidDiagram({ code, title, compact = false }: Props) 
             <div
                 ref={scrollBoxRef}
                 role="group"
-                aria-label={`Diagrama: ${title}`}
+                aria-label={t('diagrams.mermaid.label', { title })}
                 tabIndex={0}
                 className="overflow-x-auto rounded-lg border border-line bg-surface p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
                 {state.status === 'loading' ? (
                     <div className="h-64 rounded-md bg-surface-2 motion-safe:animate-pulse">
-                        <span className="sr-only">Se desenează diagrama…</span>
+                        <span className="sr-only">{t('diagrams.mermaid.drawing')}</span>
                     </div>
                 ) : (
                     <div ref={diagramRef} className="[&_svg]:mx-auto" dangerouslySetInnerHTML={{ __html: state.svg }} />
@@ -159,13 +161,13 @@ export default function MermaidDiagram({ code, title, compact = false }: Props) 
             </div>
 
             {isOverflowing && (
-                <p className="text-xs text-ink-subtle">Diagrama e mai lată decât pagina: derulează caseta sau deschide-o pe ecran complet.</p>
+                <p className="text-xs text-ink-subtle">{t('diagrams.mermaid.overflow')}</p>
             )}
 
             {isFullScreen && state.status === 'ready' && (
                 <dialog
                     ref={dialogRef}
-                    aria-label={`Diagrama: ${title}, pe tot ecranul`}
+                    aria-label={t('diagrams.mermaid.fullScreenLabel', { title })}
                     onClose={() => setIsFullScreen(false)}
                     className="m-auto h-[calc(100dvh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none rounded-lg border border-line bg-surface-raised p-0 text-ink shadow-lg backdrop:bg-canvas/80 backdrop:backdrop-blur-sm"
                 >
@@ -173,7 +175,7 @@ export default function MermaidDiagram({ code, title, compact = false }: Props) 
                         <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-3">
                             <p className="truncate text-sm font-semibold">{title}</p>
                             <button type="button" onClick={() => dialogRef.current?.close()} className={toolbarButton} autoFocus>
-                                Închide
+                                {t('diagrams.mermaid.close')}
                             </button>
                         </div>
                         {/* Aici diagrama are mărimea ei firească: se derulează în ambele direcții. */}

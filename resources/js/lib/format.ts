@@ -140,6 +140,11 @@ export function formatAge(days: number): string {
     return pluralize('years', Math.floor(days / 365));
 }
 
+/** O listă în limba interfeței: „a, b and c” / „a, b și c”. */
+export function formatList(items: string[]): string {
+    return cached('list', (locale) => new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' })).format(items);
+}
+
 /** O durată în milisecunde: „0.8 s” / „0,8 s”, „37 s”, „1 min 9 s”. */
 export function formatDuration(milliseconds: number): string {
     const seconds = milliseconds / 1000;

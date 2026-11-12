@@ -47,9 +47,9 @@ class RepositoryWorkspaceTest extends TestCase
                 'chapters' => [
                     [
                         'key' => 'docs',
-                        'title' => 'Documentație',
+                        'title' => 'Documentation',
                         'count' => null,
-                        'chapters' => [['label' => 'Prezentare generală', 'href' => "/repositories/{$repository->id}", 'count' => null]],
+                        'chapters' => [['label' => 'Overview', 'href' => "/repositories/{$repository->id}", 'count' => null]],
                         'folders' => [],
                     ],
                 ],
@@ -83,7 +83,7 @@ class RepositoryWorkspaceTest extends TestCase
 
         $response->assertInertia(fn (Assert $page) => $page
             ->where('workspace.chapters.1.key', 'modules')
-            ->where('workspace.chapters.1.title', 'Module')
+            ->where('workspace.chapters.1.title', 'Modules')
             ->where('workspace.chapters.1.count', 7)
             ->where('workspace.chapters.1.folders', [
                 ['name' => 'app', 'file_count' => 11, 'modules' => [
@@ -157,25 +157,25 @@ class RepositoryWorkspaceTest extends TestCase
 
         $response->assertInertia(fn (Assert $page) => $page
             ->where('workspace.chapters.0.chapters', [
-                ['label' => 'Prezentare generală', 'href' => $base, 'count' => null],
-                ['label' => 'Despre proiect', 'href' => "{$base}/docs", 'count' => null],
-                ['label' => 'README generat', 'href' => "{$base}/docs/readme", 'count' => null],
+                ['label' => 'Overview', 'href' => $base, 'count' => null],
+                ['label' => 'About the project', 'href' => "{$base}/docs", 'count' => null],
+                ['label' => 'Generated README', 'href' => "{$base}/docs/readme", 'count' => null],
             ])
             ->where('workspace.chapters.1.key', 'architecture')
             ->where('workspace.chapters.1.chapters', [
-                ['label' => 'Cum funcționează', 'href' => "{$base}/diagrams#cum-functioneaza", 'count' => 2],
-                ['label' => 'Straturi', 'href' => "{$base}/diagrams#straturi", 'count' => null],
-                ['label' => 'Containere (C4)', 'href' => "{$base}/diagrams#containere", 'count' => null],
+                ['label' => 'How it works', 'href' => "{$base}/diagrams#cum-functioneaza", 'count' => 2],
+                ['label' => 'Layers', 'href' => "{$base}/diagrams#straturi", 'count' => null],
+                ['label' => 'Containers (C4)', 'href' => "{$base}/diagrams#containere", 'count' => null],
             ])
             ->where('workspace.chapters.2.folders.0.modules.0.href', "{$base}/docs/app-http")
             ->where('workspace.chapters.3.key', 'history')
             ->where('workspace.chapters.3.chapters', [
-                ['label' => 'Commit-uri', 'href' => "{$base}/timeline#commits", 'count' => 3],
-                ['label' => 'Zone fierbinți', 'href' => "{$base}/timeline#hotspots", 'count' => null],
-                ['label' => 'Contribuitori', 'href' => "{$base}/timeline#contributors", 'count' => 2],
+                ['label' => 'Commits', 'href' => "{$base}/timeline#commits", 'count' => 3],
+                ['label' => 'Hotspots', 'href' => "{$base}/timeline#hotspots", 'count' => null],
+                ['label' => 'Contributors', 'href' => "{$base}/timeline#contributors", 'count' => 2],
             ])
             ->where('workspace.elements.architecture', [
-                'title' => 'Arhitectura pe straturi',
+                'title' => 'Layered architecture',
                 'type' => 'layers',
                 'mermaid' => 'flowchart TB'."\n".'  web --> data',
                 'href' => "{$base}/diagrams#straturi",

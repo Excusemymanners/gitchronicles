@@ -6,7 +6,7 @@ import TextInput from '@/components/text-input';
 import CommitRow from '@/components/timeline/commit-row';
 import ContributorList from '@/components/timeline/contributor-list';
 import HotspotList from '@/components/timeline/hotspot-list';
-import { HOTSPOTS_EXPLANATION } from '@/components/timeline/hotspots-card';
+import { useI18n } from '@/hooks/use-i18n';
 import { formatNumber } from '@/lib/format';
 import { formatMonth, monthKey } from '@/lib/history-format';
 import type { RepositoryItem } from '@/types';
@@ -34,6 +34,8 @@ const SEARCH_DELAY_MS = 300;
  * Când e loc (containerul are cel puțin 48rem), ultimele două stau într-o coloană în dreapta.
  */
 export default function TimelineContent({ repository, summary, commits, runs, hotspots, contributors, filters }: TimelineContentProps) {
+    const { t, rich } = useI18n();
+
     if (summary === null) {
         return <EmptyHistory repository={repository} />;
     }
@@ -44,39 +46,42 @@ export default function TimelineContent({ repository, summary, commits, runs, ho
 
             {/* Pe o singură coloană, secțiunile laterale ajung sub listă: legăturile duc direct la ele. */}
             <p className="text-sm text-ink-muted @3xl:hidden">
-                Mai jos, după commit-uri:{' '}
-                <a href="#zone-fierbinti" className="rounded-sm font-medium text-accent hover:text-accent-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                    Zone fierbinți
-                </a>{' '}
-                și{' '}
-                <a href="#contribuitori" className="rounded-sm font-medium text-accent hover:text-accent-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                    Contribuitori
-                </a>
-                .
+                {rich('timeline.furtherDown', {
+                    hotspots: (
+                        <a href="#zone-fierbinti" className="rounded-sm font-medium text-accent hover:text-accent-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                            {t('timeline.hotspots')}
+                        </a>
+                    ),
+                    contributors: (
+                        <a href="#contribuitori" className="rounded-sm font-medium text-accent hover:text-accent-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                            {t('timeline.contributors')}
+                        </a>
+                    ),
+                })}
             </p>
 
             <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1fr)_17rem]">
                 <section aria-labelledby="timeline-commits-heading" className="min-w-0">
                     <h2 id="timeline-commits-heading" className="text-lg font-semibold tracking-tight">
-                        Commit-uri
+                        {t('timeline.commits')}
                     </h2>
                     <SearchBox repositoryId={repository.id} initialQuery={filters.q} />
                     <CommitTimeline repository={repository} commits={commits.data} runs={runs} query={filters.q} />
                 </section>
 
                 <aside className="flex min-w-0 flex-col gap-8">
-                    <AsideSection id="zone-fierbinti" title="Zone fierbinți">
+                    <AsideSection id="zone-fierbinti" title={t('timeline.hotspots')}>
                         <p className="mb-4 text-sm text-ink-muted">
-                            {HOTSPOTS_EXPLANATION} Numărate în cele {formatNumber(summary.commit_count)} commit-uri importate.
+                            {t('timeline.hotspotsExplanationCounted', { commits: formatNumber(summary.commit_count) })}
                         </p>
                         {hotspots.length > 0 ? (
                             <HotspotList repository={repository} hotspots={hotspots} />
                         ) : (
-                            <p className="text-sm text-ink-subtle">Commit-urile importate nu au schimbat fișiere ale proiectului.</p>
+                            <p className="text-sm text-ink-subtle">{t('timeline.hotspotsEmpty')}</p>
                         )}
                     </AsideSection>
 
-                    <AsideSection id="contribuitori" title="Contribuitori">
+                    <AsideSection id="contribuitori" title={t('timeline.contributors')}>
                         <ContributorList contributors={contributors} total={summary.contributor_count} />
                     </AsideSection>
                 </aside>
@@ -90,22 +95,23 @@ export default function TimelineContent({ repository, summary, commits, runs, ho
  * procesat fără etapa istoricului (de exemplu de o versiune mai veche): oferim „Regenerează tot”.
  */
 function EmptyHistory({ repository }: { repository: RepositoryItem }) {
-    let message = 'Istoricul nu a fost importat încă. Apare după următoarea procesare a repository-ului.';
+    const { t } = useI18n();
+    let message = t('timeline.empty.default');
 
     if (repository.status === 'ready') {
-        message = 'Istoricul nu a fost importat încă: repository-ul a fost procesat fără etapa care citește commit-urile din git. O procesare completă le importă.';
+        message = t('timeline.empty.ready');
     } else if (repository.status === 'failed') {
-        message = 'Procesarea s-a oprit înainte să fie importat istoricul. Motivul e mai sus.';
+        message = t('timeline.empty.failed');
     } else if (repository.is_processing) {
-        message = 'Istoricul se importă după clonare și analiza codului. Pagina se actualizează singură.';
+        message = t('timeline.empty.processing');
     } else if (repository.cloned_at === null) {
-        message = 'Repository-ul nu a fost clonat încă, așa că nu avem încă un istoric de arătat.';
+        message = t('timeline.empty.notCloned');
     }
 
     return (
         <section aria-labelledby="timeline-empty-heading" className="rounded-lg border border-line bg-surface p-6 shadow-xs">
             <h2 id="timeline-empty-heading" className="text-base font-semibold text-ink">
-                Istoric
+                {t('timeline.title')}
             </h2>
             <p className="mt-2 text-sm text-ink-muted">{message}</p>
             {repository.status === 'ready' && <RegenerateOffer className="mt-4 text-sm text-ink-muted" />}
@@ -115,14 +121,15 @@ function EmptyHistory({ repository }: { repository: RepositoryItem }) {
 
 /** Cifrele de sus: câte commit-uri, câți oameni, câte rulări și perioada acoperită. */
 function KeyNumbers({ summary, runCount }: { summary: HistorySummary; runCount: number }) {
+    const { t } = useI18n();
     const firstMonth = formatMonth(monthKey(summary.first_commit_at), true);
     const lastMonth = formatMonth(monthKey(summary.last_commit_at), true);
 
     const numbers = [
-        { label: 'Commit-uri importate', value: formatNumber(summary.commit_count) },
-        { label: 'Contribuitori', value: formatNumber(summary.contributor_count) },
-        { label: 'Rulări GitChronicle', value: formatNumber(runCount) },
-        { label: 'Perioada importată', value: firstMonth === lastMonth ? lastMonth : `${firstMonth} – ${lastMonth}` },
+        { label: t('timeline.numbers.commits'), value: formatNumber(summary.commit_count) },
+        { label: t('timeline.numbers.contributors'), value: formatNumber(summary.contributor_count) },
+        { label: t('timeline.numbers.runs'), value: formatNumber(runCount) },
+        { label: t('timeline.numbers.period'), value: firstMonth === lastMonth ? lastMonth : `${firstMonth} – ${lastMonth}` },
     ];
 
     return (
@@ -142,6 +149,7 @@ function KeyNumbers({ summary, runCount }: { summary: HistorySummary; runCount: 
  * (și filtrul), de la prima pagină (`reset`), fără să adauge o intrare nouă în istoricul browserului.
  */
 function SearchBox({ repositoryId, initialQuery }: { repositoryId: number; initialQuery: string }) {
+    const { t } = useI18n();
     const inputId = useId();
     const [query, setQuery] = useState(initialQuery);
 
@@ -166,7 +174,7 @@ function SearchBox({ repositoryId, initialQuery }: { repositoryId: number; initi
     return (
         <div className="mt-3 mb-5">
             <label htmlFor={inputId} className="sr-only">
-                Caută în commit-uri
+                {t('timeline.search.label')}
             </label>
             <TextInput
                 id={inputId}
@@ -174,7 +182,7 @@ function SearchBox({ repositoryId, initialQuery }: { repositoryId: number; initi
                 value={query}
                 maxLength={100}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Caută după mesaj sau autor"
+                placeholder={t('timeline.search.placeholder')}
             />
         </div>
     );
@@ -205,8 +213,10 @@ function groupByMonth(commits: CommitItem[]): MonthGroup[] {
  * butonului „Încarcă mai multe” (`manual`), fără să schimbe adresa paginii (`preserveUrl`).
  */
 function CommitTimeline({ repository, commits, runs, query }: { repository: RepositoryItem; commits: CommitItem[]; runs: ProcessingRunItem[]; query: string }) {
+    const { t } = useI18n();
+
     if (commits.length === 0) {
-        return <p className="text-sm text-ink-subtle">Niciun commit nu se potrivește cu „{query}”.</p>;
+        return <p className="text-sm text-ink-subtle">{t('timeline.search.noMatch', { query })}</p>;
     }
 
     // Rulările fiecărui commit procesat, în ordinea primită (cea mai nouă prima).
@@ -232,7 +242,7 @@ function CommitTimeline({ repository, commits, runs, query }: { repository: Repo
                         disabled={loading}
                         className="mt-6 w-full cursor-pointer rounded-md bg-surface px-4 py-2 text-sm font-medium text-ink shadow-xs ring-1 ring-line-strong ring-inset hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-wait disabled:opacity-60"
                     >
-                        {loading ? 'Se încarcă…' : 'Încarcă mai multe'}
+                        {loading ? t('timeline.loading') : t('timeline.loadMore')}
                     </button>
                 )
             }

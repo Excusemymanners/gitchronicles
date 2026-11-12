@@ -1,5 +1,8 @@
-import { countLabel, formatDate, formatNumber, shortSha } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import type { TranslationKey } from '@/lang';
+import { formatDate, formatNumber, shortSha } from '@/lib/format';
 import { formatDuration, formatUsd } from '@/lib/history-format';
+import { pluralize, translate } from '@/lib/i18n';
 import type { AffectedModule, ProcessingMode, ProcessingRunItem, ProcessingRunStatus, ProcessingTrigger } from '@/types/history';
 
 type Props = {
@@ -7,24 +10,24 @@ type Props = {
     runs: ProcessingRunItem[];
 };
 
-const modeLabels: Record<ProcessingMode, string> = {
-    initial: 'prima procesare',
-    incremental: 'actualizare incrementală',
-    full: 'reprocesare completă',
+const modeLabels: Record<ProcessingMode, TranslationKey> = {
+    initial: 'timeline.runs.mode.initial',
+    incremental: 'timeline.runs.mode.incremental',
+    full: 'timeline.runs.mode.full',
 };
 
-const triggerLabels: Record<ProcessingTrigger, string> = {
-    add: 'la adăugare',
-    manual: 'manual',
-    webhook: 'de webhook',
-    schedule: 'de verificarea automată',
+const triggerLabels: Record<ProcessingTrigger, TranslationKey> = {
+    add: 'timeline.runs.trigger.add',
+    manual: 'timeline.runs.trigger.manual',
+    webhook: 'timeline.runs.trigger.webhook',
+    schedule: 'timeline.runs.trigger.schedule',
 };
 
-const statusLabels: Record<ProcessingRunStatus, string> = {
-    running: 'în curs',
-    succeeded: 'reușită',
-    failed: 'eșuată',
-    skipped: 'nimic nou',
+const statusLabels: Record<ProcessingRunStatus, TranslationKey> = {
+    running: 'timeline.runs.status.running',
+    succeeded: 'timeline.runs.status.succeeded',
+    failed: 'timeline.runs.status.failed',
+    skipped: 'timeline.runs.status.skipped',
 };
 
 const statusDotClasses: Record<ProcessingRunStatus, string> = {
@@ -34,10 +37,10 @@ const statusDotClasses: Record<ProcessingRunStatus, string> = {
     skipped: 'bg-ink-subtle',
 };
 
-const viaLabels: Record<AffectedModule['via'], string> = {
-    changed: 'fișiere schimbate',
-    imports: 'importă dintr-un modul schimbat',
-    imported: 'e importat de un modul schimbat',
+const viaLabels: Record<AffectedModule['via'], TranslationKey> = {
+    changed: 'timeline.runs.via.changed',
+    imports: 'timeline.runs.via.imports',
+    imported: 'timeline.runs.via.imported',
 };
 
 const summaryClasses =
@@ -50,6 +53,7 @@ const summaryClasses =
  * rulările care au lucrat vin primele.
  */
 export default function CommitRuns({ runs }: Props) {
+    const { t } = useI18n();
     const [newest, ...older] = [...runs.filter((run) => run.status !== 'skipped'), ...runs.filter((run) => run.status === 'skipped')];
 
     return (
@@ -59,7 +63,7 @@ export default function CommitRuns({ runs }: Props) {
             {older.length > 0 && (
                 <details className="mt-1.5">
                     <summary className={summaryClasses}>
-                        {older.length === 1 ? 'Încă o rulare' : `Încă ${countLabel(older.length, 'rulare', 'rulări')}`} pe acest commit
+                        {older.length === 1 ? t('timeline.runs.oneMore') : t('timeline.runs.moreRuns', { runs: pluralize('runs', older.length) })}
                     </summary>
                     <ul className="mt-1.5 flex flex-col gap-2 border-t border-info-line pt-1.5">
                         {older.map((run) => (
@@ -79,20 +83,21 @@ export default function CommitRuns({ runs }: Props) {
  * modulele afectate (la cerere) și, la o actualizare incrementală, economia față de ultima procesare completă.
  */
 function Run({ run }: { run: ProcessingRunItem }) {
+    const { t, rich } = useI18n();
     const isUpdate = run.mode !== 'initial';
 
     const numbers = [
-        run.duration_ms !== null && `durată ${formatDuration(run.duration_ms)}`,
+        run.duration_ms !== null && t('timeline.runs.duration', { duration: formatDuration(run.duration_ms) }),
         isUpdate && run.changes !== null && changedFilesLabel(run),
         run.mode === 'incremental' &&
             run.status === 'succeeded' &&
             run.files_analyzed > 0 &&
-            `${countLabel(run.files_analyzed, 'fișier analizat din nou', 'fișiere analizate din nou')}`,
+            pluralize('filesAnalyzedAgain', run.files_analyzed),
         run.documents_regenerated + run.documents_kept > 0 &&
-            `${countLabel(run.documents_regenerated, 'pagină rescrisă', 'pagini rescrise')}, ${formatNumber(run.documents_kept)} ${run.documents_kept === 1 ? 'păstrată' : 'păstrate'}`,
+            t('timeline.runs.pages', { rewritten: pluralize('pagesRewritten', run.documents_regenerated), kept: pluralize('pagesKept', run.documents_kept) }),
         (run.input_tokens > 0 || run.output_tokens > 0) &&
-            `${formatNumber(run.input_tokens)} tokeni la intrare, ${formatNumber(run.output_tokens)} la ieșire`,
-        run.cost_usd_equivalent !== null && `≈ ${formatUsd(run.cost_usd_equivalent)} echivalent API`,
+            t('timeline.runs.tokens', { input: pluralize('tokens', run.input_tokens), output: pluralize('tokens', run.output_tokens) }),
+        run.cost_usd_equivalent !== null && t('timeline.runs.cost', { cost: formatUsd(run.cost_usd_equivalent) }),
     ].filter((detail): detail is string => typeof detail === 'string');
 
     const savings = savingsOf(run);
@@ -102,7 +107,7 @@ function Run({ run }: { run: ProcessingRunItem }) {
             <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="inline-flex items-center gap-1.5 font-medium">
                     <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${statusDotClasses[run.status]}`} />
-                    GitChronicle: {modeLabels[run.mode]}, pornită {triggerLabels[run.trigger]}, {statusLabels[run.status]}
+                    {t('timeline.runs.line', { mode: t(modeLabels[run.mode]), trigger: t(triggerLabels[run.trigger]), status: t(statusLabels[run.status]) })}
                 </span>
                 <time dateTime={run.started_at} className="text-info-ink/80">
                     {formatDate(run.started_at)}
@@ -111,20 +116,18 @@ function Run({ run }: { run: ProcessingRunItem }) {
 
             {numbers.length > 0 && <p className="text-info-ink/80">{numbers.join(' · ')}</p>}
 
-            {run.changes?.full_reason && <p className="text-info-ink/80">De ce completă: {run.changes.full_reason}</p>}
+            {run.changes?.full_reason && <p className="text-info-ink/80">{t('timeline.runs.whyFull', { reason: run.changes.full_reason })}</p>}
 
             {run.changes !== null && run.changes.modules.length > 0 && <AffectedModules run={run} />}
 
             {savings.length > 0 && run.reference && (
                 <p>
-                    <span className="font-medium">Economie</span> față de procesarea completă
-                    {run.reference.sha && (
-                        <>
-                            {' '}
-                            de la commitul <code className="font-mono">{shortSha(run.reference.sha)}</code>
-                        </>
-                    )}
-                    : {savings.join(' · ')}
+                    {run.reference.sha
+                        ? rich('timeline.runs.savingsAtCommit', {
+                              sha: <code className="font-mono">{shortSha(run.reference.sha)}</code>,
+                              savings: savings.join(' · '),
+                          })
+                        : t('timeline.runs.savings', { savings: savings.join(' · ') })}
                 </p>
             )}
         </div>
@@ -133,7 +136,7 @@ function Run({ run }: { run: ProcessingRunItem }) {
 
 /** „12 fișiere schimbate (3 noi, 8 modificate, 1 șters)”; fără paranteză când rularea nu a putut compara commit-urile. */
 function changedFilesLabel(run: ProcessingRunItem): string {
-    const label = countLabel(run.files_changed, 'fișier schimbat', 'fișiere schimbate');
+    const label = pluralize('filesChanged', run.files_changed);
     const changes = run.changes;
 
     if (changes === null || changes.added === null || changes.modified === null || changes.deleted === null || run.files_changed === 0) {
@@ -141,12 +144,12 @@ function changedFilesLabel(run: ProcessingRunItem): string {
     }
 
     const parts = [
-        changes.added > 0 && `${formatNumber(changes.added)} noi`,
-        changes.modified > 0 && `${formatNumber(changes.modified)} modificate`,
-        changes.deleted > 0 && `${formatNumber(changes.deleted)} șterse`,
+        changes.added > 0 && translate('timeline.runs.newFiles', { count: formatNumber(changes.added) }),
+        changes.modified > 0 && translate('timeline.runs.modifiedFiles', { count: formatNumber(changes.modified) }),
+        changes.deleted > 0 && translate('timeline.runs.deletedFiles', { count: formatNumber(changes.deleted) }),
     ].filter((part): part is string => typeof part === 'string');
 
-    return `${label} (${parts.join(', ')})`;
+    return translate('timeline.runs.changedParts', { files: label, parts: parts.join(', ') });
 }
 
 /**
@@ -167,20 +170,29 @@ function savingsOf(run: ProcessingRunItem): string[] {
         run.duration_ms !== null &&
             reference.duration_ms !== null &&
             reference.duration_ms > 0 &&
-            `${formatDuration(run.duration_ms)} în loc de ${formatDuration(reference.duration_ms)}`,
+            translate('timeline.runs.insteadOf', { now: formatDuration(run.duration_ms), before: formatDuration(reference.duration_ms) }),
         reference.documents_regenerated > 0 &&
-            `${countLabel(run.documents_regenerated, 'pagină rescrisă', 'pagini rescrise')} în loc de ${formatNumber(reference.documents_regenerated)}`,
+            translate('timeline.runs.insteadOf', {
+                now: pluralize('pagesRewritten', run.documents_regenerated),
+                before: formatNumber(reference.documents_regenerated),
+            }),
         reference.files_analyzed > 0 &&
             run.files_analyzed > 0 &&
-            `${countLabel(run.files_analyzed, 'fișier analizat', 'fișiere analizate')} în loc de ${formatNumber(reference.files_analyzed)}`,
+            translate('timeline.runs.insteadOf', { now: pluralize('filesAnalyzed', run.files_analyzed), before: formatNumber(reference.files_analyzed) }),
         reference.context_characters > 0 &&
-            `${formatNumber(run.context_characters)} caractere de context în loc de ${formatNumber(reference.context_characters)}`,
-        runTokens > 0 && referenceTokens > 0 && `${formatNumber(runTokens)} tokeni în loc de ${formatNumber(referenceTokens)}`,
+            translate('timeline.runs.contextCharacters', {
+                now: formatNumber(run.context_characters),
+                before: formatNumber(reference.context_characters),
+            }),
+        runTokens > 0 &&
+            referenceTokens > 0 &&
+            translate('timeline.runs.tokensInsteadOf', { now: formatNumber(runTokens), before: formatNumber(referenceTokens) }),
     ].filter((saving): saving is string => typeof saving === 'string');
 }
 
 /** Lista modulelor afectate, deschisă la cerere: întâi cele cu fișiere schimbate, apoi vecinii lor din graf. */
 function AffectedModules({ run }: { run: ProcessingRunItem }) {
+    const { t, plural } = useI18n();
     const changes = run.changes;
 
     if (changes === null) {
@@ -190,25 +202,27 @@ function AffectedModules({ run }: { run: ProcessingRunItem }) {
     return (
         <details>
             <summary className={summaryClasses}>
-                {countLabel(run.modules_affected, 'modul afectat', 'module afectate')} din {formatNumber(run.modules_total)}
+                {t('timeline.runs.affected', { affected: plural('modulesAffected', run.modules_affected), total: formatNumber(run.modules_total) })}
             </summary>
             <ul className="mt-1.5 flex flex-col gap-1 border-t border-info-line pt-1.5">
                 {changes.modules.map((module) => (
                     <li key={module.path} className="flex flex-wrap items-baseline gap-x-2">
-                        <code className="font-mono break-all">{module.path === '/' ? 'rădăcina proiectului' : module.path}</code>
+                        <code className="font-mono break-all">{module.path === '/' ? t('diagrams.projectRoot') : module.path}</code>
                         <span className="text-info-ink/80">
-                            {module.via === 'changed' ? countLabel(module.files, 'fișier schimbat', 'fișiere schimbate') : viaLabels[module.via]}
+                            {module.via === 'changed' ? plural('filesChanged', module.files) : t(viaLabels[module.via])}
                         </span>
                     </li>
                 ))}
                 {changes.modules_not_listed > 0 && (
-                    <li className="text-info-ink/80">și încă {countLabel(changes.modules_not_listed, 'modul', 'module')}</li>
+                    <li className="text-info-ink/80">
+                        {t('timeline.runs.moreModules', { count: formatNumber(changes.modules_not_listed), modules: plural('modules', changes.modules_not_listed) })}
+                    </li>
                 )}
             </ul>
             {(changes.modules_added.length > 0 || changes.modules_removed.length > 0) && (
                 <p className="mt-1.5 text-info-ink/80">
-                    {changes.modules_added.length > 0 && <>Module noi: {changes.modules_added.join(', ')}. </>}
-                    {changes.modules_removed.length > 0 && <>Module dispărute: {changes.modules_removed.join(', ')}.</>}
+                    {changes.modules_added.length > 0 && `${t('timeline.runs.newModules', { names: changes.modules_added.join(', ') })} `}
+                    {changes.modules_removed.length > 0 && t('timeline.runs.removedModules', { names: changes.modules_removed.join(', ') })}
                 </p>
             )}
         </details>

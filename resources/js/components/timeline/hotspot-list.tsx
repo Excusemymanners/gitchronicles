@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
-import { countLabel, formatNumber } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import { formatNumber } from '@/lib/format';
 import { fileUrl, formatDay } from '@/lib/history-format';
 import type { RepositoryItem } from '@/types';
 import type { Hotspot } from '@/types/history';
@@ -17,6 +18,7 @@ type Props = {
  * ultimei schimbări și mărimea de acum; un fișier care există acum are legătură spre GitHub.
  */
 export default function HotspotList({ repository, hotspots, compact = false }: Props) {
+    const { t, plural } = useI18n();
     const maxCommits = Math.max(...hotspots.map((hotspot) => hotspot.commit_count), 1);
 
     return (
@@ -38,7 +40,7 @@ export default function HotspotList({ repository, hotspots, compact = false }: P
                                     className="min-w-0 rounded-sm font-mono text-xs break-words text-accent hover:text-accent-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                                 >
                                     <PathWithBreaks path={hotspot.path} />
-                                    <span className="sr-only"> (fișierul pe GitHub, se deschide într-o filă nouă)</span>
+                                    <span className="sr-only"> {t('timeline.hotspot.onGitHub')}</span>
                                 </a>
                             ) : (
                                 <code className="min-w-0 font-mono text-xs break-words text-ink">
@@ -46,7 +48,7 @@ export default function HotspotList({ repository, hotspots, compact = false }: P
                                 </code>
                             )}
                             {compact && (
-                                <span className="shrink-0 text-xs text-ink-subtle tabular-nums">{countLabel(hotspot.commit_count, 'commit', 'commit-uri')}</span>
+                                <span className="shrink-0 text-xs text-ink-subtle tabular-nums">{plural('commits', hotspot.commit_count)}</span>
                             )}
                         </div>
 
@@ -81,12 +83,16 @@ function PathWithBreaks({ path }: { path: string }) {
 
 /** Rândul de sub bară: doar cifrele pe care le știm. */
 function HotspotDetails({ hotspot }: { hotspot: Hotspot }) {
+    const { t, plural } = useI18n();
+
     const details = [
-        countLabel(hotspot.commit_count, 'commit', 'commit-uri'),
-        hotspot.insertions !== null && hotspot.deletions !== null && `+${formatNumber(hotspot.insertions)} −${formatNumber(hotspot.deletions)} linii`,
-        countLabel(hotspot.author_count, 'autor', 'autori'),
-        `ultima schimbare ${formatDay(hotspot.last_changed_at)}`,
-        hotspot.lines !== null && `${countLabel(hotspot.lines, 'linie', 'linii')} acum`,
+        plural('commits', hotspot.commit_count),
+        hotspot.insertions !== null &&
+            hotspot.deletions !== null &&
+            t('timeline.hotspot.lines', { insertions: formatNumber(hotspot.insertions), deletions: formatNumber(hotspot.deletions) }),
+        plural('authors', hotspot.author_count),
+        t('timeline.hotspot.lastChange', { date: formatDay(hotspot.last_changed_at) }),
+        hotspot.lines !== null && t('timeline.hotspot.linesNow', { lines: plural('lines', hotspot.lines) }),
     ].filter((detail): detail is string => typeof detail === 'string');
 
     return (

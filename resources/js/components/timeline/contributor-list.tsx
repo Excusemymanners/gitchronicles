@@ -1,4 +1,4 @@
-import { countLabel } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
 import { formatDay } from '@/lib/history-format';
 import type { Contributor } from '@/types/history';
 
@@ -13,6 +13,7 @@ type Props = {
  * cu perioada în care au contribuit.
  */
 export default function ContributorList({ contributors, total }: Props) {
+    const { t, plural } = useI18n();
     const hiddenCount = total - contributors.length;
 
     return (
@@ -21,9 +22,9 @@ export default function ContributorList({ contributors, total }: Props) {
                 {contributors.map((contributor) => (
                     <li key={contributor.name} className="py-2 first:pt-0 last:pb-0">
                         <div className="flex items-baseline justify-between gap-3 text-sm">
-                            <span className="min-w-0 font-medium break-words text-ink">{contributor.name || 'autor necunoscut'}</span>
+                            <span className="min-w-0 font-medium break-words text-ink">{contributor.name || t('timeline.contributor.unknownAuthor')}</span>
                             <span className="shrink-0 text-xs text-ink-subtle tabular-nums">
-                                {countLabel(contributor.commit_count, 'commit', 'commit-uri')}
+                                {plural('commits', contributor.commit_count)}
                             </span>
                         </div>
                         <p className="mt-0.5 text-xs text-ink-subtle">
@@ -36,7 +37,7 @@ export default function ContributorList({ contributors, total }: Props) {
             </ol>
 
             {hiddenCount > 0 && (
-                <p className="mt-3 text-xs text-ink-subtle">Și încă {countLabel(hiddenCount, 'contribuitor', 'contribuitori')}.</p>
+                <p className="mt-3 text-xs text-ink-subtle">{t('timeline.contributor.more', { contributors: plural('contributors', hiddenCount) })}</p>
             )}
         </>
     );

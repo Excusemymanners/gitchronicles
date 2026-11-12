@@ -1,7 +1,7 @@
 import { useHttp } from '@inertiajs/react';
 import type { HttpResponse } from '@inertiajs/core';
 import { useCallback, useRef, useState } from 'react';
-import { countLabel } from '@/lib/format';
+import { pluralize, translate } from '@/lib/i18n';
 import type { AssistantReply } from '@/types';
 
 /** Lungimile acceptate de server pentru o întrebare (AskAssistantRequest). */
@@ -50,13 +50,13 @@ export function useAssistant(repositoryId: number) {
                     setMessages((current) => [...current, { id: nextId.current++, role: 'assistant', reply }]);
                 },
                 onError: (errors) => {
-                    setFailure({ message: Object.values(errors)[0] ?? 'Întrebarea nu a putut fi trimisă.', payload });
+                    setFailure({ message: Object.values(errors)[0] ?? translate('assistant.errors.generic'), payload });
                 },
                 onHttpException: (response) => {
                     setFailure({ message: messageForStatus(response), payload });
                 },
                 onNetworkError: () => {
-                    setFailure({ message: 'Nu am putut contacta serverul. Verifică conexiunea și încearcă din nou.', payload });
+                    setFailure({ message: translate('assistant.errors.network'), payload });
                 },
             }).catch(() => {});
         },
@@ -124,20 +124,18 @@ function messageForStatus(response: HttpResponse): string {
         const seconds = Number(response.headers['retry-after']);
         const minutes = Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds / 60) : null;
 
-        return minutes === null
-            ? 'Ai pus multe întrebări într-un timp scurt. Încearcă din nou puțin mai târziu.'
-            : `Ai pus multe întrebări într-un timp scurt. Poți întreba din nou peste ${countLabel(minutes, 'minut', 'minute')}.`;
+        return minutes === null ? translate('assistant.errors.tooMany') : translate('assistant.errors.tooManyWait', { minutes: pluralize('minutes', minutes) });
     }
 
     if (response.status === 419) {
-        return 'Sesiunea a expirat. Reîncarcă pagina și întreabă din nou.';
+        return translate('assistant.errors.expired');
     }
 
     if (response.status === 409) {
-        return serverMessage(response) ?? 'Asistentul nu este pregătit încă pentru acest repository.';
+        return serverMessage(response) ?? translate('assistant.errors.notReady');
     }
 
-    return 'Asistentul nu a putut răspunde acum. Încearcă din nou.';
+    return translate('assistant.errors.failed');
 }
 
 /** Mesajul trimis de server în JSON ({"message": "..."}), dacă există. */

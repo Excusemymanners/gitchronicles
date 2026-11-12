@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { useI18n } from '@/hooks/use-i18n';
 import type { DocumentLink } from '@/types/docs';
 
 type Props = {
@@ -16,6 +17,7 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
  * Prima pagină nu are „anterioară”, ultima nu are „următoare”.
  */
 export default function DocsPager({ items, currentSlug }: Props) {
+    const { t } = useI18n();
     const index = items.findIndex((item) => item.slug === currentSlug);
 
     if (index === -1 || items.length < 2) {
@@ -26,7 +28,7 @@ export default function DocsPager({ items, currentSlug }: Props) {
     const next = items[index + 1] ?? null;
 
     return (
-        <nav aria-label="Paginile documentației" className="mt-12 grid gap-3 border-t border-line pt-6 sm:grid-cols-2">
+        <nav aria-label={t('docs.pagesNav')} className="mt-12 grid gap-3 border-t border-line pt-6 sm:grid-cols-2">
             {previous ? <PagerLink item={previous} direction="previous" /> : <span aria-hidden="true" className="max-sm:hidden" />}
             {next && <PagerLink item={next} direction="next" />}
         </nav>
@@ -34,6 +36,7 @@ export default function DocsPager({ items, currentSlug }: Props) {
 }
 
 function PagerLink({ item, direction }: { item: DocumentLink; direction: 'previous' | 'next' }) {
+    const { t } = useI18n();
     const isNext = direction === 'next';
 
     return (
@@ -41,7 +44,7 @@ function PagerLink({ item, direction }: { item: DocumentLink; direction: 'previo
             href={item.href}
             className={`group flex flex-col gap-1 rounded-xl border border-line px-4 py-3 hover:border-line-strong hover:bg-surface ${isNext ? 'sm:items-end sm:text-right' : ''} ${focusRing}`}
         >
-            <span className="text-xs text-ink-subtle">{isNext ? 'Pagina următoare →' : '← Pagina anterioară'}</span>
+            <span className="text-xs text-ink-subtle">{isNext ? t('docs.nextPage') : t('docs.previousPage')}</span>
             <span className="max-w-full truncate font-medium text-ink group-hover:text-accent">{item.title}</span>
         </Link>
     );

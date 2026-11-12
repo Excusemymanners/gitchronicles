@@ -18,11 +18,6 @@ enum ScanToolStatus: string
      */
     public function label(): string
     {
-        return match ($this) {
-            self::Ran => 'A rulat',
-            self::NotInstalled => 'Nu e instalat',
-            self::Failed => 'Eroare',
-            self::TimedOut => 'Timp depășit',
-        };
+        return __('enums.scan_tool_status.'.$this->value);
     }
 }

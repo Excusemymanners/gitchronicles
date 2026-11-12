@@ -16,9 +16,6 @@ enum FindingKind: string
      */
     public function label(): string
     {
-        return match ($this) {
-            self::Bug => 'Bug',
-            self::Vulnerability => 'Vulnerabilitate',
-        };
+        return __('enums.finding_kind.'.$this->value);
     }
 }

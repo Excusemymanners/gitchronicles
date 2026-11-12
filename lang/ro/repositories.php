@@ -23,6 +23,9 @@ return [
         'retry_started' => 'Am pornit din nou procesarea.',
         'checking_updates' => 'Verificăm dacă sunt commit-uri noi pe GitHub.',
         'deleted' => 'Repository șters.',
+        'regenerate_started' => 'Am pornit procesarea completă: toate capitolele se fac din nou.',
+        'media_started' => 'Am pornit generarea video-ului și a slide-urilor.',
+        'consulting_started' => 'Am pornit analiza. Durează de obicei sub un minut.',
     ],
 
 ];

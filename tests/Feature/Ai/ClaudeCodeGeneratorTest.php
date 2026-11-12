@@ -70,7 +70,7 @@ class ClaudeCodeGeneratorTest extends TestCase
 
         $exception = $this->generateExpectingFailure();
 
-        $this->assertSame('Limita abonamentului Claude a fost atinsă; încearcă mai târziu.', $exception->getMessage());
+        $this->assertSame('The Claude subscription limit has been reached; try again later.', $exception->getMessage());
         $this->assertTrue($exception->retryable);
     }
 
@@ -87,7 +87,7 @@ class ClaudeCodeGeneratorTest extends TestCase
 
         $exception = $this->generateExpectingFailure();
 
-        $this->assertSame('Răspunsul lui Claude a fost prea lung și s-a oprit la jumătate.', $exception->getMessage());
+        $this->assertSame('Claude’s answer was too long and stopped halfway.', $exception->getMessage());
         $this->assertFalse($exception->retryable);
     }
 
@@ -98,7 +98,7 @@ class ClaudeCodeGeneratorTest extends TestCase
 
         $exception = $this->generateExpectingFailure();
 
-        $this->assertSame(AiException::GENERIC_MESSAGE, $exception->getMessage());
+        $this->assertSame(__(AiException::GENERIC_MESSAGE), $exception->getMessage());
         Log::shouldHaveReceived('warning')->once()->withArgs(fn (string $message, array $context): bool => $message === 'Claude Code did not return JSON.'
             && $context['exit_code'] === 1
             && ! str_contains(json_encode($context), self::USER_TEXT)
@@ -116,7 +116,7 @@ class ClaudeCodeGeneratorTest extends TestCase
 
         $exception = $this->generateExpectingFailure();
 
-        $this->assertSame(AiException::GENERIC_MESSAGE, $exception->getMessage());
+        $this->assertSame(__(AiException::GENERIC_MESSAGE), $exception->getMessage());
         $this->assertFalse($exception->retryable);
         $this->assertDirectoryDoesNotExist($workingDirectory);
     }

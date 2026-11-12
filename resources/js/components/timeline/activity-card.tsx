@@ -1,5 +1,6 @@
 import CompactCard from '@/components/timeline/compact-card';
-import { countLabel, formatNumber } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import { formatNumber } from '@/lib/format';
 import { formatDay, formatMonth } from '@/lib/history-format';
 import type { Activity } from '@/types/history';
 
@@ -17,6 +18,7 @@ type Props = {
  * Cititoarele de ecran primesc graficul ca tabel.
  */
 export default function ActivityCard({ activity, timelineHref }: Props) {
+    const { t, plural } = useI18n();
     const maxCount = Math.max(...activity.months.map((month) => month.commit_count ?? 0), 1);
     const firstMonth = activity.months[0];
     const lastMonth = activity.months[activity.months.length - 1];
@@ -24,7 +26,7 @@ export default function ActivityCard({ activity, timelineHref }: Props) {
     const hasCommitsInChart = activity.months.some((month) => (month.commit_count ?? 0) > 0);
 
     return (
-        <CompactCard title="Activitate" link={timelineHref ? { href: timelineHref, label: 'Vezi istoricul' } : undefined}>
+        <CompactCard title={t('timeline.activity.title')} link={timelineHref ? { href: timelineHref, label: t('timeline.activity.viewHistory') } : undefined}>
             {/* Pe un card lat, cifrele stau în stânga și graficul în dreapta; pe unul îngust, unul sub altul. */}
             <div className="@container">
                 <div className="grid gap-4 @lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] @lg:items-end @lg:gap-8">
@@ -33,11 +35,11 @@ export default function ActivityCard({ activity, timelineHref }: Props) {
 
                         <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
                             <div>
-                                <dt className="text-xs text-ink-subtle">Contribuitori</dt>
+                                <dt className="text-xs text-ink-subtle">{t('timeline.activity.contributors')}</dt>
                                 <dd className="font-medium text-ink tabular-nums">{formatNumber(activity.contributor_count)}</dd>
                             </div>
                             <div>
-                                <dt className="text-xs text-ink-subtle">Ultimul commit</dt>
+                                <dt className="text-xs text-ink-subtle">{t('timeline.activity.lastCommit')}</dt>
                                 <dd className="font-medium text-ink">
                                     <time dateTime={activity.last_commit_at}>{formatDay(activity.last_commit_at)}</time>
                                 </dd>
@@ -55,7 +57,7 @@ export default function ActivityCard({ activity, timelineHref }: Props) {
                                             style={{ height: month.commit_count ? `${Math.max((month.commit_count / maxCount) * 100, 6)}%` : 0 }}
                                         />
                                         <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 rounded-sm border border-line bg-surface-raised px-1.5 py-0.5 text-xs whitespace-nowrap text-ink shadow-lg group-hover:block">
-                                            {formatMonth(month.month, true)}: {month.commit_count === null ? 'neimportată' : formatNumber(month.commit_count)}
+                                            {formatMonth(month.month, true)}: {month.commit_count === null ? t('timeline.activity.notImported') : formatNumber(month.commit_count)}
                                         </span>
                                     </div>
                                 ))}
@@ -66,18 +68,18 @@ export default function ActivityCard({ activity, timelineHref }: Props) {
                             </div>
 
                             <table className="sr-only">
-                                <caption>Commit-uri pe lună în ultimele 12 luni</caption>
+                                <caption>{t('timeline.activity.tableCaption')}</caption>
                                 <thead>
                                     <tr>
-                                        <th scope="col">Luna</th>
-                                        <th scope="col">Commit-uri</th>
+                                        <th scope="col">{t('timeline.activity.month')}</th>
+                                        <th scope="col">{t('timeline.activity.commits')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {activity.months.map((month) => (
                                         <tr key={month.month}>
                                             <th scope="row">{formatMonth(month.month)}</th>
-                                            <td>{month.commit_count === null ? 'neimportată' : month.commit_count}</td>
+                                            <td>{month.commit_count === null ? t('timeline.activity.notImported') : month.commit_count}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -88,8 +90,9 @@ export default function ActivityCard({ activity, timelineHref }: Props) {
             </div>
 
             <p className="mt-4 text-xs text-ink-subtle">
-                Din cele mai noi {countLabel(activity.commit_count, 'commit importat', 'commit-uri importate')}
-                {firstKnownMonth && firstKnownMonth !== firstMonth ? `; lunile dinainte de ${formatMonth(firstKnownMonth.month)} nu sunt importate.` : '.'}
+                {firstKnownMonth && firstKnownMonth !== firstMonth
+                    ? t('timeline.activity.basedOnPartial', { commits: plural('commitsImported', activity.commit_count), month: formatMonth(firstKnownMonth.month) })
+                    : t('timeline.activity.basedOn', { commits: plural('commitsImported', activity.commit_count) })}
             </p>
         </CompactCard>
     );
@@ -100,13 +103,18 @@ export default function ActivityCard({ activity, timelineHref }: Props) {
  * importate și data de la care încep (toate sunt atunci în ultimele 12 luni).
  */
 function Headline({ activity }: { activity: Activity }) {
+    const { rich } = useI18n();
     const count = activity.commits_last_year ?? activity.commit_count;
+    const number = <span className="text-2xl font-semibold tracking-tight text-ink tabular-nums">{formatNumber(count)}</span>;
 
     return (
         <p className="text-sm text-ink-muted">
-            <span className="text-2xl font-semibold tracking-tight text-ink tabular-nums">{formatNumber(count)}</span>{' '}
-            {count === 1 ? 'commit' : 'commit-uri'}{' '}
-            {activity.commits_last_year !== null ? 'în ultimele 12 luni' : `din ${formatDay(activity.first_commit_at)} încoace`}
+            {activity.commits_last_year !== null
+                ? rich(count === 1 ? 'timeline.activity.lastYearOne' : 'timeline.activity.lastYear', { count: number })
+                : rich(count === 1 ? 'timeline.activity.sinceOne' : 'timeline.activity.since', {
+                      count: number,
+                      date: formatDay(activity.first_commit_at),
+                  })}
         </p>
     );
 }

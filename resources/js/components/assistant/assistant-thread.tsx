@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import AnswerMarkdown from '@/components/assistant/answer-markdown';
 import CitationChip, { lineRange } from '@/components/assistant/citation-chip';
+import { useI18n } from '@/hooks/use-i18n';
 import type { Assistant } from '@/hooks/use-assistant';
 import type { AssistantCitation, AssistantReply } from '@/types';
 
@@ -21,6 +22,7 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
  * E un „log” pentru cititoarele de ecran: mesajele noi sunt anunțate fără să mute focusul.
  */
 export default function AssistantThread({ assistant }: Props) {
+    const { t } = useI18n();
     const { messages, isAsking, error, retry } = assistant;
     const lastAnswerRef = useRef<HTMLDivElement>(null);
     const endRef = useRef<HTMLDivElement>(null);
@@ -38,12 +40,12 @@ export default function AssistantThread({ assistant }: Props) {
     }
 
     return (
-        <div role="log" aria-label="Conversația cu asistentul" className="flex flex-col gap-4">
+        <div role="log" aria-label={t('workspace.dock.conversation')} className="flex flex-col gap-4">
             {messages.map((message, index) =>
                 message.role === 'user' ? (
                     <div key={message.id} className="flex justify-end">
                         <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-accent-strong px-4 py-2.5 text-sm whitespace-pre-wrap text-on-accent">
-                            <span className="sr-only">Întrebarea ta: </span>
+                            <span className="sr-only">{t('assistant.thread.youAsked')}</span>
                             {message.content}
                         </p>
                     </div>
@@ -61,7 +63,7 @@ export default function AssistantThread({ assistant }: Props) {
                             <span key={delay} className="size-1.5 rounded-full bg-accent motion-safe:animate-bounce" style={{ animationDelay: `${delay}ms` }} />
                         ))}
                     </span>
-                    Caut în cod și scriu răspunsul…
+                    {t('assistant.thread.searching')}
                 </div>
             )}
 
@@ -76,7 +78,7 @@ export default function AssistantThread({ assistant }: Props) {
                         onClick={retry}
                         className="shrink-0 cursor-pointer self-start rounded-md bg-surface px-3 py-1.5 font-medium text-danger-ink ring-1 ring-danger-line ring-inset hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger sm:self-auto"
                     >
-                        Încearcă din nou
+                        {t('assistant.thread.retry')}
                     </button>
                 </div>
             )}
@@ -88,23 +90,24 @@ export default function AssistantThread({ assistant }: Props) {
 
 /** Un răspuns: nota (dacă e fără AI), textul cu citări și sursele lui. */
 function AssistantAnswer({ reply }: { reply: AssistantReply }) {
+    const { t } = useI18n();
     const cited = reply.citations.filter((citation) => citation.cited);
     const notCited = reply.citations.filter((citation) => !citation.cited);
 
     return (
         <article className="flex max-w-full min-w-0 flex-col gap-3 self-start rounded-2xl rounded-bl-sm border border-line bg-surface px-4 py-3 shadow-xs sm:max-w-[92%]">
-            <h3 className="sr-only">Răspunsul asistentului</h3>
+            <h3 className="sr-only">{t('assistant.thread.answerHeading')}</h3>
 
             {reply.notice && <p className="rounded-md border border-info-line bg-info-soft px-3 py-2 text-sm text-info-ink">{reply.notice}</p>}
 
             <AnswerMarkdown markdown={reply.answer_markdown} citations={reply.citations} />
 
-            {cited.length > 0 && <SourceList title="Surse" citations={cited} />}
+            {cited.length > 0 && <SourceList title={t('assistant.thread.sources')} citations={cited} />}
 
             {notCited.length > 0 && (
                 <details className="text-sm">
                     <summary className={`cursor-pointer rounded-sm text-ink-subtle select-none hover:text-ink ${focusRing}`}>
-                        {cited.length > 0 ? 'Alte fragmente consultate' : 'Fragmentele consultate'} ({notCited.length})
+                        {cited.length > 0 ? t('assistant.thread.otherFragments') : t('assistant.thread.fragmentsConsulted')} ({notCited.length})
                     </summary>
                     <div className="mt-2">
                         <SourceList citations={notCited} />
@@ -114,8 +117,10 @@ function AssistantAnswer({ reply }: { reply: AssistantReply }) {
 
             <p className="text-xs text-ink-subtle">
                 {reply.mode === 'ai'
-                    ? `Scris cu AI doar din ${reply.citations.length === 1 ? 'fragmentul găsit' : `cele ${reply.citations.length} fragmente găsite`} în cod. Verifică sursele.`
-                    : 'Fragmente găsite în cod, fără AI.'}
+                    ? reply.citations.length === 1
+                        ? t('assistant.thread.aiNoteOne')
+                        : t('assistant.thread.aiNoteMany', { count: reply.citations.length })
+                    : t('assistant.thread.noAiNote')}
             </p>
         </article>
     );
@@ -123,6 +128,8 @@ function AssistantAnswer({ reply }: { reply: AssistantReply }) {
 
 /** Lista surselor: numărul, fișierul (legătură spre liniile de pe GitHub), liniile și simbolul. */
 function SourceList({ title, citations }: { title?: string; citations: AssistantCitation[] }) {
+    const { t } = useI18n();
+
     return (
         <div className="border-t border-line-subtle pt-3">
             {title && <p className="text-xs font-semibold tracking-wide text-ink-subtle uppercase">{title}</p>}
@@ -139,14 +146,14 @@ function SourceList({ title, citations }: { title?: string; citations: Assistant
                                     className={`rounded-sm font-mono text-[0.8125rem] text-ink hover:text-accent-hover hover:underline ${focusRing}`}
                                 >
                                     {citation.path}
-                                    <span className="sr-only"> (pe GitHub, se deschide într-o filă nouă)</span>
+                                    <span className="sr-only"> {t('assistant.thread.onGitHub')}</span>
                                 </a>
                             ) : (
                                 <span className="font-mono text-[0.8125rem] text-ink">{citation.path}</span>
                             )}
                             <span className="text-ink-subtle">
                                 {' '}
-                                · liniile {lineRange(citation)}
+                                · {t('assistant.thread.lines', { range: lineRange(citation) })}
                                 {citation.symbol_name && ` · ${citation.symbol_name}`}
                             </span>
                         </span>

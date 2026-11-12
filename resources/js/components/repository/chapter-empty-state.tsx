@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+import { useI18n } from '@/hooks/use-i18n';
 import RegenerateButton from '@/components/repository/regenerate-button';
 import type { RepositoryPageProps } from '@/types';
 
@@ -33,6 +34,7 @@ export default function ChapterEmptyState({ title, children, offerRegenerate = f
  * Cât timp repository-ul se procesează nu apare nimic: rularea e deja în curs.
  */
 export function RegenerateOffer({ className = '' }: { className?: string }) {
+    const { t, rich } = useI18n();
     const { props } = usePage<RepositoryPageProps>();
     const { auth, repository, can_regenerate } = props;
 
@@ -51,10 +53,13 @@ export function RegenerateOffer({ className = '' }: { className?: string }) {
     return (
         <p className={`flex ${className}`}>
             <span>
-                <Link href="/login" className={`rounded-sm font-medium text-accent hover:text-accent-hover hover:underline ${focusRing}`}>
-                    Intră în cont
-                </Link>{' '}
-                ca să pornești o procesare completă.
+                {rich('repository.regenerate.logInToStart', {
+                    logIn: (
+                        <Link href="/login" className={`rounded-sm font-medium text-accent hover:text-accent-hover hover:underline ${focusRing}`}>
+                            {t('nav.logIn')}
+                        </Link>
+                    ),
+                })}
             </span>
         </p>
     );

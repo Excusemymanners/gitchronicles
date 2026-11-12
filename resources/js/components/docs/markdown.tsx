@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { translate } from '@/lib/i18n';
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
@@ -46,7 +47,7 @@ const components: Components = {
                 <span aria-hidden="true" className="ml-0.5 text-[0.75em] no-underline">
                     {'↗︎'}
                 </span>
-                <span className="sr-only"> (se deschide într-o filă nouă)</span>
+                <span className="sr-only"> {translate('common.opensInNewTab')}</span>
             </a>
         );
     },
@@ -77,7 +78,7 @@ const components: Components = {
     img: ({ src, alt }) =>
         typeof src === 'string' ? (
             <a href={src} target="_blank" rel="noopener noreferrer" className={linkClasses}>
-                [imagine{alt ? `: ${alt}` : ''}]<span className="sr-only"> (se deschide într-o filă nouă)</span>
+                {alt ? translate('docs.imageNamed', { alt }) : translate('docs.image')}<span className="sr-only"> {translate('common.opensInNewTab')}</span>
             </a>
         ) : null,
 };

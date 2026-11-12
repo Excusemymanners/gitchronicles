@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import Markdown from '@/components/docs/markdown';
-import { countLabel, formatDate, shortSha } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import { formatDate, shortSha } from '@/lib/format';
+import { translate } from '@/lib/i18n';
 import type { DocumentPage } from '@/types/docs';
 
 type Props = {
@@ -16,20 +18,20 @@ const secondaryButtonClasses = `inline-flex cursor-pointer items-center justify-
 /** Cine a scris pagina, pe scurt: Claude (cu modelul și calea, abonament sau API) sau analiza codului. */
 function authorLabel(document: DocumentPage): string {
     if (document.writer === 'template') {
-        return 'Scris automat din analiza codului (fără AI)';
+        return translate('docs.author.template');
     }
 
     const model = document.model ? ` (${document.model})` : '';
 
     if (document.ai_driver === 'claude-code') {
-        return `Scris de Claude${model} prin abonament`;
+        return translate('docs.author.claudeSubscription', { model });
     }
 
     if (document.ai_driver === 'claude') {
-        return `Scris de Claude${model} prin API`;
+        return translate('docs.author.claudeApi', { model });
     }
 
-    return `Scris de Claude${model}`;
+    return translate('docs.author.claude', { model });
 }
 
 /**
@@ -38,13 +40,15 @@ function authorLabel(document: DocumentPage): string {
  * Componenta e de sine stătătoare, ca s-o poată folosi și alte ecrane (de exemplu spațiul de lucru al repository-ului).
  */
 export default function DocsContent({ document, repositoryFullName }: Props) {
+    const { t, plural, rich } = useI18n();
+
     return (
         <article className="min-w-0">
             {/* Două feluri de avertisment: textul lui Claude a rămas în urma codului, sau pagina e scrisă de șablon în locul lui Claude. */}
             {document.is_stale && (
                 <div role="status" className="mb-6 rounded-lg border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning-ink">
                     <p className="font-semibold">
-                        {document.writer === 'ai' ? 'Pagina poate fi depășită: codul s-a schimbat după ce a fost scrisă.' : 'Pagina e scrisă automat, fără AI.'}
+                        {document.writer === 'ai' ? t('docs.stale.ai') : t('docs.stale.template')}
                     </p>
                     {document.stale_reason && <p className="mt-1">{document.stale_reason}</p>}
                 </div>
@@ -56,23 +60,29 @@ export default function DocsContent({ document, repositoryFullName }: Props) {
                     {document.writer === 'ai' && (
                         <>
                             {' · '}
-                            {countLabel(document.input_tokens, 'token', 'tokeni')} la intrare,{' '}
-                            {countLabel(document.output_tokens, 'token', 'tokeni')} la ieșire
+                            {t('docs.tokens', {
+                                input: plural('tokens', document.input_tokens),
+                                output: plural('tokens', document.output_tokens),
+                            })}
                         </>
                     )}
                     {document.source_sha && (
                         <>
-                            {' · commit '}
-                            <a
-                                href={`https://github.com/${repositoryFullName}/commit/${document.source_sha}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={document.source_sha}
-                                className={`rounded-sm font-mono text-accent hover:text-accent-hover hover:underline ${focusRing}`}
-                            >
-                                {shortSha(document.source_sha)}
-                                <span className="sr-only"> (commitul pe GitHub, se deschide într-o filă nouă)</span>
-                            </a>
+                            {' · '}
+                            {rich('docs.sourceCommit', {
+                                sha: (
+                                    <a
+                                        href={`https://github.com/${repositoryFullName}/commit/${document.source_sha}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title={document.source_sha}
+                                        className={`rounded-sm font-mono text-accent hover:text-accent-hover hover:underline ${focusRing}`}
+                                    >
+                                        {shortSha(document.source_sha)}
+                                        <span className="sr-only"> {t('docs.commitLink')}</span>
+                                    </a>
+                                ),
+                            })}
                         </>
                     )}
                     {document.generated_at && (
@@ -87,7 +97,7 @@ export default function DocsContent({ document, repositoryFullName }: Props) {
                     <div className="flex flex-wrap gap-2">
                         <CopyButton text={document.markdown} />
                         <a href={document.download_url} download="README.md" className={secondaryButtonClasses}>
-                            Descarcă README.md
+                            {t('docs.downloadReadme')}
                         </a>
                     </div>
                 )}
@@ -105,6 +115,7 @@ type CopyState = 'idle' | 'copied' | 'failed';
  * ca să-l audă și cititoarele de ecran.
  */
 function CopyButton({ text }: { text: string }) {
+    const { t } = useI18n();
     const [state, setState] = useState<CopyState>('idle');
 
     useEffect(() => {
@@ -128,7 +139,7 @@ function CopyButton({ text }: { text: string }) {
 
     return (
         <button type="button" onClick={copy} className={secondaryButtonClasses}>
-            <span aria-live="polite">{state === 'copied' ? 'Copiat' : state === 'failed' ? 'Nu am putut copia' : 'Copiază'}</span>
+            <span aria-live="polite">{state === 'copied' ? t('docs.copied') : state === 'failed' ? t('docs.copyFailed') : t('docs.copy')}</span>
         </button>
     );
 }

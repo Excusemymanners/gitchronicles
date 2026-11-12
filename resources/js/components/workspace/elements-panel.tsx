@@ -1,9 +1,10 @@
 import { useId } from 'react';
 import MermaidDiagram from '@/components/diagrams/mermaid-diagram';
-import SeverityBadge, { SEVERITIES, SEVERITY_LABELS } from '@/components/consulting/severity-badge';
+import SeverityBadge, { SEVERITIES } from '@/components/consulting/severity-badge';
 import MediaStatusBadge from '@/components/media/media-status-badge';
 import ElementCard from '@/components/workspace/element-card';
-import { countLabel, formatNumber, formatTimecode } from '@/lib/format';
+import { useI18n } from '@/hooks/use-i18n';
+import { formatNumber, formatTimecode } from '@/lib/format';
 import { formatDay, formatMonth } from '@/lib/history-format';
 import type { WorkspaceElements } from '@/types';
 import type { Activity } from '@/types/history';
@@ -23,6 +24,7 @@ type Props = {
  * deci cifrele de aici sunt aceleași cu cele de acolo.
  */
 export default function ElementsPanel({ elements, placement }: Props) {
+    const { t, plural } = useI18n();
     const headingId = useId();
     const { architecture, video, slides, activity, hotspots, consulting } = elements;
 
@@ -33,18 +35,18 @@ export default function ElementsPanel({ elements, placement }: Props) {
         >
             <div className={`mb-3 flex items-baseline justify-between gap-3 px-1 ${placement === 'below' ? 'border-t border-line pt-8' : ''}`}>
                 <h2 id={headingId} className="font-brand text-[0.9375rem] font-bold text-ink">
-                    Elemente
+                    {t('elements.heading')}
                 </h2>
-                <p className="text-xs text-ink-subtle">generate din repository</p>
+                <p className="text-xs text-ink-subtle">{t('elements.subheading')}</p>
             </div>
 
             <ul className={placement === 'column' ? 'flex flex-col gap-3' : 'grid gap-3 sm:grid-cols-2'}>
                 <ElementCard
-                    title={architecture?.title ?? 'Arhitectura pe straturi'}
-                    description="Cum se leagă părțile aplicației, desenat din importurile reale."
+                    title={architecture?.title ?? t('elements.architecture.fallbackTitle')}
+                    description={t('elements.architecture.description')}
                     href={architecture?.href ?? null}
-                    actionLabel="Deschide diagramele"
-                    emptyText="Încă nu a fost generată."
+                    actionLabel={t('elements.architecture.action')}
+                    emptyText={t('elements.architecture.empty')}
                 >
                     {architecture && (
                         // Diagrama micșorată ca să încapă toată; tot cardul duce la vederea completă.
@@ -55,11 +57,11 @@ export default function ElementsPanel({ elements, placement }: Props) {
                 </ElementCard>
 
                 <ElementCard
-                    title="Video de prezentare"
-                    description="Un video scurt despre ce face proiectul, făcut din datele lui."
+                    title={t('elements.video.title')}
+                    description={t('elements.video.description')}
                     href={video?.href ?? null}
-                    actionLabel="Vezi video-ul"
-                    emptyText="Încă nu a fost generat."
+                    actionLabel={t('elements.video.action')}
+                    emptyText={t('elements.video.empty')}
                 >
                     {video &&
                         (video.poster ? (
@@ -78,32 +80,36 @@ export default function ElementsPanel({ elements, placement }: Props) {
                 </ElementCard>
 
                 <ElementCard
-                    title="Prezentare (slide-uri)"
-                    description="Slide-uri despre repository, de descărcat ca PDF sau PPTX."
+                    title={t('elements.slides.title')}
+                    description={t('elements.slides.description')}
                     href={slides?.href ?? null}
-                    actionLabel="Vezi slide-urile"
-                    emptyText="Încă nu au fost generate."
+                    actionLabel={t('elements.slides.action')}
+                    emptyText={t('elements.slides.empty')}
                 >
                     {slides &&
                         (slides.slide_count !== null ? (
-                            <p className="text-[0.8125rem] text-ink">{countLabel(slides.slide_count, 'slide', 'slide-uri')}, în format PDF și PPTX.</p>
+                            <p className="text-[0.8125rem] text-ink">{t('elements.slides.summary', { slides: plural('slides', slides.slide_count) })}</p>
                         ) : (
                             <MediaStatusBadge status={slides.status} label={slides.status_label} />
                         ))}
                 </ElementCard>
 
                 <ElementCard
-                    title="Activitate"
-                    description="Commit-urile din istoricul git, în timp."
+                    title={t('elements.activity.title')}
+                    description={t('elements.activity.description')}
                     href={activity?.href ?? null}
-                    actionLabel="Vezi istoricul"
-                    emptyText="Istoricul nu a fost importat încă."
+                    actionLabel={t('elements.activity.action')}
+                    emptyText={t('elements.activity.empty')}
                 >
                     {activity && (
                         <>
                             <p className="text-[0.8125rem] text-ink">
-                                {countLabel(activity.commit_count, 'commit', 'commit-uri')} de la {formatDay(activity.first_commit_at)} până la{' '}
-                                {formatDay(activity.last_commit_at)}, de la {countLabel(activity.contributor_count, 'contribuitor', 'contribuitori')}.
+                                {t('elements.activity.summary', {
+                                    commits: plural('commits', activity.commit_count),
+                                    first: formatDay(activity.first_commit_at),
+                                    last: formatDay(activity.last_commit_at),
+                                    contributors: plural('contributors', activity.contributor_count),
+                                })}
                             </p>
                             <MonthBars activity={activity} />
                         </>
@@ -111,11 +117,11 @@ export default function ElementsPanel({ elements, placement }: Props) {
                 </ElementCard>
 
                 <ElementCard
-                    title="Zone fierbinți"
-                    description="Fișierele schimbate cel mai des."
+                    title={t('elements.hotspots.title')}
+                    description={t('elements.hotspots.description')}
                     href={hotspots?.href ?? null}
-                    actionLabel="Vezi zonele fierbinți"
-                    emptyText="Istoricul nu a fost importat încă."
+                    actionLabel={t('elements.hotspots.action')}
+                    emptyText={t('elements.hotspots.empty')}
                 >
                     {hotspots && (
                         <ol className="divide-y divide-line text-[0.8125rem]">
@@ -125,8 +131,8 @@ export default function ElementsPanel({ elements, placement }: Props) {
                                         {file.path}
                                     </code>
                                     <span className="shrink-0 text-xs text-ink-muted tabular-nums">
-                                        {formatNumber(file.commit_count)}
-                                        <span className="sr-only"> {file.commit_count === 1 ? 'commit' : 'commit-uri'}</span>
+                                        <span aria-hidden="true">{formatNumber(file.commit_count)}</span>
+                                        <span className="sr-only">{plural('commits', file.commit_count)}</span>
                                     </span>
                                 </li>
                             ))}
@@ -135,11 +141,11 @@ export default function ElementsPanel({ elements, placement }: Props) {
                 </ElementCard>
 
                 <ElementCard
-                    title="Consultanță"
-                    description="Bug-uri, vulnerabilități și zonele de risc ale codului."
+                    title={t('elements.consulting.title')}
+                    description={t('elements.consulting.description')}
                     href={consulting?.href ?? null}
-                    actionLabel="Vezi raportul"
-                    emptyText="Încă nu a fost generat."
+                    actionLabel={t('elements.consulting.action')}
+                    emptyText={t('elements.consulting.empty')}
                 >
                     {consulting && <ConsultingPreview consulting={consulting} />}
                 </ElementCard>
@@ -150,6 +156,8 @@ export default function ElementsPanel({ elements, placement }: Props) {
 
 /** Conținutul cardului „Consultanță”: problemele după gravitate când raportul e gata, altfel starea lui. */
 function ConsultingPreview({ consulting }: { consulting: NonNullable<WorkspaceElements['consulting']> }) {
+    const { t, plural } = useI18n();
+
     if (consulting.counts !== null) {
         const { counts } = consulting;
 
@@ -157,18 +165,18 @@ function ConsultingPreview({ consulting }: { consulting: NonNullable<WorkspaceEl
             <ul className="flex flex-wrap gap-1.5">
                 {SEVERITIES.filter((severity) => severity !== 'info').map((severity) => (
                     <li key={severity}>
-                        <SeverityBadge severity={severity} label={`${SEVERITY_LABELS[severity]}: ${formatNumber(counts[severity])}`} />
+                        <SeverityBadge severity={severity} label={t('elements.consulting.severityCount', { severity: t(`severities.${severity}`), count: formatNumber(counts[severity]) })} />
                     </li>
                 ))}
                 <li className="basis-full text-[0.8125rem] text-ink">
-                    {countLabel(counts.vulnerable_packages, 'pachet vulnerabil', 'pachete vulnerabile')} în dependențe.
+                    {t('elements.consulting.vulnerablePackages', { packages: plural('vulnerablePackages', counts.vulnerable_packages) })}
                 </li>
             </ul>
         );
     }
 
     if (consulting.status === null || consulting.status_label === null) {
-        return <p className="text-[0.8125rem] text-ink-muted">Analiza nu a rulat încă.</p>;
+        return <p className="text-[0.8125rem] text-ink-muted">{t('elements.consulting.notRun')}</p>;
     }
 
     return <MediaStatusBadge status={consulting.status} label={consulting.status_label} />;

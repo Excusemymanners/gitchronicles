@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import TimelineContent from '@/components/timeline/timeline-content';
 import type { TimelineContentProps } from '@/components/timeline/timeline-content';
+import { useI18n } from '@/hooks/use-i18n';
 import RepositoryLayout from '@/layouts/repository-layout';
 import type { RepositoryPageProps } from '@/types';
 
@@ -8,9 +9,11 @@ type Props = RepositoryPageProps & Omit<TimelineContentProps, 'repository'>;
 
 /** Tab-ul „Istoric”: antetul repository-ului și capitolul cu istoricul (TimelineContent). */
 export default function RepositoriesTimeline({ repository, summary, commits, runs, hotspots, contributors, filters }: Props) {
+    const { t } = useI18n();
+
     return (
         <RepositoryLayout>
-            <Head title={`Istoric · ${repository.full_name}`} />
+            <Head title={t('timeline.pageTitle', { repository: repository.full_name })} />
 
             <TimelineContent
                 repository={repository}
