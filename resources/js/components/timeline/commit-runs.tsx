@@ -109,14 +109,14 @@ function Run({ run }: { run: ProcessingRunItem }) {
                     <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${statusDotClasses[run.status]}`} />
                     {t('timeline.runs.line', { mode: t(modeLabels[run.mode]), trigger: t(triggerLabels[run.trigger]), status: t(statusLabels[run.status]) })}
                 </span>
-                <time dateTime={run.started_at} className="text-info-ink/80">
+                <time dateTime={run.started_at} className="text-info-ink">
                     {formatDate(run.started_at)}
                 </time>
             </p>
 
-            {numbers.length > 0 && <p className="text-info-ink/80">{numbers.join(' · ')}</p>}
+            {numbers.length > 0 && <p className="text-info-ink">{numbers.join(' · ')}</p>}
 
-            {run.changes?.full_reason && <p className="text-info-ink/80">{t('timeline.runs.whyFull', { reason: run.changes.full_reason })}</p>}
+            {run.changes?.full_reason && <p className="text-info-ink">{t('timeline.runs.whyFull', { reason: run.changes.full_reason })}</p>}
 
             {run.changes !== null && run.changes.modules.length > 0 && <AffectedModules run={run} />}
 
@@ -208,19 +208,19 @@ function AffectedModules({ run }: { run: ProcessingRunItem }) {
                 {changes.modules.map((module) => (
                     <li key={module.path} className="flex flex-wrap items-baseline gap-x-2">
                         <code className="font-mono break-all">{module.path === '/' ? t('diagrams.projectRoot') : module.path}</code>
-                        <span className="text-info-ink/80">
+                        <span className="text-info-ink">
                             {module.via === 'changed' ? plural('filesChanged', module.files) : t(viaLabels[module.via])}
                         </span>
                     </li>
                 ))}
                 {changes.modules_not_listed > 0 && (
-                    <li className="text-info-ink/80">
+                    <li className="text-info-ink">
                         {t('timeline.runs.moreModules', { count: formatNumber(changes.modules_not_listed), modules: plural('modules', changes.modules_not_listed) })}
                     </li>
                 )}
             </ul>
             {(changes.modules_added.length > 0 || changes.modules_removed.length > 0) && (
-                <p className="mt-1.5 text-info-ink/80">
+                <p className="mt-1.5 text-info-ink">
                     {changes.modules_added.length > 0 && `${t('timeline.runs.newModules', { names: changes.modules_added.join(', ') })} `}
                     {changes.modules_removed.length > 0 && t('timeline.runs.removedModules', { names: changes.modules_removed.join(', ') })}
                 </p>

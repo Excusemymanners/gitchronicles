@@ -131,7 +131,7 @@ function composedReading(i18n: ReturnType<typeof useI18n>, diagram: Diagram, fin
     sentences.push(
         diagram.type === 'layers'
             ? rich('diagrams.meaning.composed.layers', { ...values, arrows: plural('arrows', evidence.length) })
-            : rich(wording(unit, 'composed.components'), { ...values, arrows: formatNumber(evidence.length) }),
+            : rich(wording(unit, 'composed.components'), { ...values, arrows: plural('arrows', evidence.length) }),
     );
 
     if (coverage.shown_modules < coverage.total_modules) {

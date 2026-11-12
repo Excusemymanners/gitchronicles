@@ -447,7 +447,7 @@ class WorkspaceResource extends JsonResource
             ->first();
 
         if ($mostUsedModule !== null) {
-            $questions[] = "What does the module {$mostUsedModule['path']} do?";
+            $questions[] = __('workspace.starter.most_used', ['module' => $mostUsedModule['path']]);
             $askedPaths[] = $mostUsedModule['path'];
         }
 
@@ -461,7 +461,7 @@ class WorkspaceResource extends JsonResource
             ->first();
 
         if ($strongestDependency !== null) {
-            $questions[] = "How does {$strongestDependency['from']} use the module {$strongestDependency['to']}?";
+            $questions[] = __('workspace.starter.dependency', ['from' => $strongestDependency['from'], 'to' => $strongestDependency['to']]);
             $askedPaths = [...$askedPaths, $strongestDependency['from'], $strongestDependency['to']];
         }
 
@@ -471,7 +471,7 @@ class WorkspaceResource extends JsonResource
             ->first();
 
         if ($biggestModule !== null) {
-            $questions[] = "What is in the module {$biggestModule->path}?";
+            $questions[] = __('workspace.starter.biggest', ['module' => $biggestModule->path]);
         }
 
         return $questions;

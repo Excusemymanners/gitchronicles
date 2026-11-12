@@ -168,4 +168,10 @@ class LocaleTest extends TestCase
             ->post('/login', ['email' => $user->email, 'password' => 'wrong-password'])
             ->assertSessionHasErrors(['email' => 'The email or password is incorrect.']);
     }
+
+    public function test_the_not_found_page_follows_the_visitors_language(): void
+    {
+        $this->withUnencryptedCookie(SetLocale::COOKIE, 'ro')->get('/no-such-page-xyz')->assertNotFound()->assertSee('Pagina nu există');
+        $this->withUnencryptedCookie(SetLocale::COOKIE, 'en')->get('/no-such-page-xyz')->assertNotFound()->assertSee('Not Found');
+    }
 }

@@ -1,0 +1,258 @@
+
+=== en dark 1440  (lang switch ok=True)
+/ {"status": 200, "wrongLang": ["Asistent AI care documentează automat un repository GitHub și ține documentația "]}
+/discover {"status": 200}
+/login {"status": 200}
+/register {"status": 200}
+/github.com/octocat/hello-world {"status": 200}
+/no-such-page-xyz {"status": 404, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["Pagina nu există"]}
+/repositories/3 {"status": 200}
+/repositories/3/docs {"status": 200}
+/repositories/3/diagrams {"status": 200, "wrongLang": ["Composed from the code analysis, without AI"]}
+/repositories/3/assistant {"status": 200}
+/repositories/3/timeline {"status": 200}
+/repositories/3/media {"status": 200}
+/repositories/3/consulting {"status": 200}
+/repositories/1 {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": [", GitChronicle este un asistent AI care documentează automat un repository GitHu", "Funcționalitățile prevăzute în README:", "Documentație", "în stil DeepWiki: o pagină pentru fiecare modul, cu navigare și căutare.", "Diagrame de arhitectură C4"]}
+/repositories/1/docs {"status": 200, "wrongLang": ["Arhitectură", "Cum îl rulezi"], "overlap": ["a.rounded-sm.font-medium \"docs/plan-invatare.md (opens i\" x a.rounded-sm.font-medium \"docs/licenta.md (opens in a ne\""]}
+/repositories/1/diagrams {"status": 200, "wrongLang": ["Composed from the code analysis, without AI"]}
+/repositories/1/assistant {"status": 200}
+/repositories/1/timeline {"status": 200, "wrongLang": ["Fișierele locale ale uneltelor de dezvoltare nu se mai urcă în repository", "Logo nou: iconița cu pana, commit-urile și cadranul de ceas", "Logo cu pana cronicarului, favicon și fonturile încărcate cu @fonts", "Faza 2 gata: verificare cap-coadă în browser, documentație la zi", "Test pentru pagina home"]}
+/repositories/1/media {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["Ce este", "gitchronicles — Un asistent AI care documentează repo-uri GitHub", "Asistent AI care documentează automat un repository GitHub", "Ce rezolvă", "Documentația rămâne la zi. Se procesează doar ce s-a schimbat."]}
+/repositories/1/consulting {"status": 200}
+/repositories/2 {"status": 200}
+/repositories/2/docs {"status": 200}
+/repositories/2/diagrams {"status": 200}
+/repositories/2/assistant {"status": 200}
+/repositories/2/timeline {"status": 200}
+/repositories/2/media {"status": 200}
+/repositories/2/consulting {"status": 200}
+/repositories/1/docs/overview {"status": 200, "wrongLang": ["Arhitectură", "Cum îl rulezi"], "overlap": ["a.rounded-sm.font-medium \"docs/plan-invatare.md (opens i\" x a.rounded-sm.font-medium \"docs/licenta.md (opens in a ne\""]}
+/repositories/1/docs/app-http {"status": 200}
+/repositories/1/docs/readme {"status": 200, "wrongLang": ["Despre proiect", "Funcționalități", "Cerințe", "Licență"]}
+
+=== en dark 390  (lang switch ok=True)
+/ {"status": 200, "wrongLang": ["Asistent AI care documentează automat un repository GitHub și ține documentația "]}
+/discover {"status": 200}
+/login {"status": 200}
+/register {"status": 200}
+/github.com/octocat/hello-world {"status": 200}
+/no-such-page-xyz {"status": 404, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["Pagina nu există"]}
+/repositories/3 {"status": 200}
+/repositories/3/docs {"status": 200}
+/repositories/3/diagrams {"status": 200, "wrongLang": ["Composed from the code analysis, without AI"]}
+/repositories/3/assistant {"status": 200}
+/repositories/3/timeline {"status": 200}
+/repositories/3/media {"status": 200}
+/repositories/3/consulting {"status": 200}
+/repositories/1 {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": [", GitChronicle este un asistent AI care documentează automat un repository GitHu", "Funcționalitățile prevăzute în README:", "Documentație", "în stil DeepWiki: o pagină pentru fiecare modul, cu navigare și căutare.", "Diagrame de arhitectură C4"], "overlap": ["button.group.relative \"0:32Play the video about excus\" x button.pressable.absolute \"AskCtrl I\""]}
+/repositories/1/docs {"status": 200}
+/repositories/1/diagrams {"status": 200, "wrongLang": ["Composed from the code analysis, without AI"]}
+/repositories/1/assistant {"status": 200}
+/repositories/1/timeline {"status": 200, "wrongLang": ["Fișierele locale ale uneltelor de dezvoltare nu se mai urcă în repository", "Logo nou: iconița cu pana, commit-urile și cadranul de ceas", "Logo cu pana cronicarului, favicon și fonturile încărcate cu @fonts", "Faza 2 gata: verificare cap-coadă în browser, documentație la zi", "Test pentru pagina home"]}
+/repositories/1/media {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["Ce este", "gitchronicles — Un asistent AI care documentează repo-uri GitHub", "Asistent AI care documentează automat un repository GitHub", "Ce rezolvă", "Documentația rămâne la zi. Se procesează doar ce s-a schimbat."]}
+/repositories/1/consulting {"status": 200}
+/repositories/2 {"status": 200}
+/repositories/2/docs {"status": 200}
+/repositories/2/diagrams {"status": 200}
+/repositories/2/assistant {"status": 200}
+/repositories/2/timeline {"status": 200}
+/repositories/2/media {"status": 200}
+/repositories/2/consulting {"status": 200}
+/repositories/1/docs/overview {"status": 200}
+/repositories/1/docs/app-http {"status": 200}
+/repositories/1/docs/readme {"status": 200, "wrongLang": ["Despre proiect"], "overlap": ["h2#functionalitati.group.mt-12 \"Funcționalități\" x button.pressable.absolute \"AskCtrl I\""]}
+
+=== en light 1440  (lang switch ok=True)
+/ {"status": 200, "wrongLang": ["Asistent AI care documentează automat un repository GitHub și ține documentația "]}
+/discover {"status": 200}
+/login {"status": 200}
+/register {"status": 200}
+/github.com/octocat/hello-world {"status": 200}
+/no-such-page-xyz {"status": 404, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["Pagina nu există"]}
+/repositories/3 {"status": 200, "lowContrast": ["4.36 p \"+ 234 more modules\""]}
+/repositories/3/docs {"status": 200}
+/repositories/3/diagrams {"status": 200, "wrongLang": ["Composed from the code analysis, without AI"], "lowContrast": ["4.36 p \"+ 234 more modules\"", "1.11 b \"aws-lambda\""]}
+/repositories/3/assistant {"status": 200}
+/repositories/3/timeline {"status": 200}
+/repositories/3/media {"status": 200}
+/repositories/3/consulting {"status": 200}
+/repositories/1 {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": [", GitChronicle este un asistent AI care documentează automat un repository GitHu", "Funcționalitățile prevăzute în README:", "Documentație", "în stil DeepWiki: o pagină pentru fiecare modul, cu navigare și căutare.", "Diagrame de arhitectură C4"]}
+/repositories/1/docs {"status": 200, "wrongLang": ["Arhitectură", "Cum îl rulezi"], "overlap": ["a.rounded-sm.font-medium \"docs/plan-invatare.md (opens i\" x a.rounded-sm.font-medium \"docs/licenta.md (opens in a ne\""]}
+/repositories/1/diagrams {"status": 200, "wrongLang": ["Composed from the code analysis, without AI"], "lowContrast": ["1.11 b \"Actions\"", "4.36 p \"+ 1 more module\""]}
+/repositories/1/assistant {"status": 200}
+/repositories/1/timeline {"status": 200, "wrongLang": ["Fișierele locale ale uneltelor de dezvoltare nu se mai urcă în repository", "Logo nou: iconița cu pana, commit-urile și cadranul de ceas", "Logo cu pana cronicarului, favicon și fonturile încărcate cu @fonts", "Faza 2 gata: verificare cap-coadă în browser, documentație la zi", "Test pentru pagina home"], "lowContrast": ["4.50 time.text-info-ink/80 \"Nov 10, 2026, 12:05 PM\""]}
+/repositories/1/media {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["Ce este", "gitchronicles — Un asistent AI care documentează repo-uri GitHub", "Asistent AI care documentează automat un repository GitHub", "Ce rezolvă", "Documentația rămâne la zi. Se procesează doar ce s-a schimbat."]}
+/repositories/1/consulting {"status": 200}
+/repositories/2 {"status": 200}
+/repositories/2/docs {"status": 200}
+/repositories/2/diagrams {"status": 200}
+/repositories/2/assistant {"status": 200}
+/repositories/2/timeline {"status": 200}
+/repositories/2/media {"status": 200}
+/repositories/2/consulting {"status": 200}
+/repositories/1/docs/overview {"status": 200, "wrongLang": ["Arhitectură", "Cum îl rulezi"], "overlap": ["a.rounded-sm.font-medium \"docs/plan-invatare.md (opens i\" x a.rounded-sm.font-medium \"docs/licenta.md (opens in a ne\""]}
+/repositories/1/docs/app-http {"status": 200}
+/repositories/1/docs/readme {"status": 200, "wrongLang": ["Despre proiect", "Funcționalități", "Cerințe", "Licență"]}
+
+=== en light 390  (lang switch ok=True)
+/ {"status": 200, "wrongLang": ["Asistent AI care documentează automat un repository GitHub și ține documentația "]}
+/discover {"status": 200}
+/login {"status": 200}
+/register {"status": 200}
+/github.com/octocat/hello-world {"status": 200}
+/no-such-page-xyz {"status": 404, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["Pagina nu există"]}
+/repositories/3 {"status": 200, "lowContrast": ["4.36 p \"+ 234 more modules\""]}
+/repositories/3/docs {"status": 200}
+/repositories/3/diagrams {"status": 200, "wrongLang": ["Composed from the code analysis, without AI"], "lowContrast": ["4.36 p \"+ 234 more modules\"", "1.11 b \"aws-lambda\""]}
+/repositories/3/assistant {"status": 200}
+/repositories/3/timeline {"status": 200}
+/repositories/3/media {"status": 200}
+/repositories/3/consulting {"status": 200}
+/repositories/1 {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": [", GitChronicle este un asistent AI care documentează automat un repository GitHu", "Funcționalitățile prevăzute în README:", "Documentație", "în stil DeepWiki: o pagină pentru fiecare modul, cu navigare și căutare.", "Diagrame de arhitectură C4"], "overlap": ["button.group.relative \"0:32Play the video about excus\" x button.pressable.absolute \"AskCtrl I\""]}
+/repositories/1/docs {"status": 200}
+/repositories/1/diagrams {"status": 200, "wrongLang": ["Composed from the code analysis, without AI"], "lowContrast": ["1.11 b \"Actions\"", "4.36 p \"+ 1 more module\""]}
+/repositories/1/assistant {"status": 200}
+/repositories/1/timeline {"status": 200, "wrongLang": ["Fișierele locale ale uneltelor de dezvoltare nu se mai urcă în repository", "Logo nou: iconița cu pana, commit-urile și cadranul de ceas", "Logo cu pana cronicarului, favicon și fonturile încărcate cu @fonts", "Faza 2 gata: verificare cap-coadă în browser, documentație la zi", "Test pentru pagina home"], "lowContrast": ["4.50 time.text-info-ink/80 \"Nov 10, 2026, 12:05 PM\""]}
+/repositories/1/media {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)"], "failed": [".0.1:8063/repositories/1/media/captions?lang=ro&v=1794349228"], "wrongLang": ["Ce este", "gitchronicles — Un asistent AI care documentează repo-uri GitHub", "Asistent AI care documentează automat un repository GitHub", "Ce rezolvă", "Documentația rămâne la zi. Se procesează doar ce s-a schimbat."]}
+/repositories/1/consulting {"status": 200}
+/repositories/2 {"status": 200}
+/repositories/2/docs {"status": 200}
+/repositories/2/diagrams {"status": 200}
+/repositories/2/assistant {"status": 200}
+/repositories/2/timeline {"status": 200}
+/repositories/2/media {"status": 200}
+/repositories/2/consulting {"status": 200}
+/repositories/1/docs/overview {"status": 200}
+/repositories/1/docs/app-http {"status": 200}
+/repositories/1/docs/readme {"status": 200, "wrongLang": ["Despre proiect"], "overlap": ["h2#functionalitati.group.mt-12 \"Funcționalități\" x button.pressable.absolute \"AskCtrl I\""]}
+
+=== ro dark 1440  (lang switch ok=True)
+/ {"status": 200, "wrongLang": ["HyperFrames is a free, open-source framework for turning HTML, CSS, media, and s"]}
+/discover {"status": 200}
+/login {"status": 200}
+/register {"status": 200}
+/github.com/octocat/hello-world {"status": 200}
+/no-such-page-xyz {"status": 404, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"]}
+/repositories/3 {"status": 200, "wrongLang": ["HyperFrames is a free, open-source framework for turning HTML, CSS, media, and s"]}
+/repositories/3/docs {"status": 200}
+/repositories/3/diagrams {"status": 200, "wrongLang": ["The 22 biggest of the 518 modules with code, grouped into layers by folder name;", "The 15 biggest of the 518 modules with code, with their main classes; an arrow m"]}
+/repositories/3/assistant {"status": 200}
+/repositories/3/timeline {"status": 200}
+/repositories/3/media {"status": 200}
+/repositories/3/consulting {"status": 200}
+/repositories/1 {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["What is in the module config?"]}
+/repositories/1/docs {"status": 200, "overlap": ["a.rounded-sm.font-medium \"docs/plan-invatare.md (se desc\" x a.rounded-sm.font-medium \"docs/licenta.md (se deschide î\""]}
+/repositories/1/diagrams {"status": 200, "wrongLang": ["The modules with code (16 modules), grouped into layers by folder name; an arrow", "The 15 biggest of the 16 modules with code, with their main classes; an arrow me"]}
+/repositories/1/assistant {"status": 200, "wrongLang": ["What is in the module config?"]}
+/repositories/1/timeline {"status": 200}
+/repositories/1/media {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)"]}
+/repositories/1/consulting {"status": 200}
+/repositories/2 {"status": 200}
+/repositories/2/docs {"status": 200}
+/repositories/2/diagrams {"status": 200}
+/repositories/2/assistant {"status": 200}
+/repositories/2/timeline {"status": 200}
+/repositories/2/media {"status": 200}
+/repositories/2/consulting {"status": 200}
+/repositories/1/docs/overview {"status": 200, "overlap": ["a.rounded-sm.font-medium \"docs/plan-invatare.md (se desc\" x a.rounded-sm.font-medium \"docs/licenta.md (se deschide î\""]}
+/repositories/1/docs/app-http {"status": 200}
+/repositories/1/docs/readme {"status": 200}
+
+=== ro dark 390  (lang switch ok=True)
+/ {"status": 200, "wrongLang": ["HyperFrames is a free, open-source framework for turning HTML, CSS, media, and s"]}
+/discover {"status": 200}
+/login {"status": 200}
+/register {"status": 200}
+/github.com/octocat/hello-world {"status": 200}
+/no-such-page-xyz {"status": 404, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"]}
+/repositories/3 {"status": 200, "wrongLang": ["HyperFrames is a free, open-source framework for turning HTML, CSS, media, and s"]}
+/repositories/3/docs {"status": 200}
+/repositories/3/diagrams {"status": 200, "wrongLang": ["The 22 biggest of the 518 modules with code, grouped into layers by folder name;", "The 15 biggest of the 518 modules with code, with their main classes; an arrow m"]}
+/repositories/3/assistant {"status": 200}
+/repositories/3/timeline {"status": 200}
+/repositories/3/media {"status": 200}
+/repositories/3/consulting {"status": 200}
+/repositories/1 {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["What is in the module config?"], "overlap": ["button.group.relative \"0:32Pornește video-ul despre e\" x button.pressable.absolute \"ÎntreabăCtrl I\""]}
+/repositories/1/docs {"status": 200}
+/repositories/1/diagrams {"status": 200, "wrongLang": ["The modules with code (16 modules), grouped into layers by folder name; an arrow", "The 15 biggest of the 16 modules with code, with their main classes; an arrow me"]}
+/repositories/1/assistant {"status": 200, "wrongLang": ["What is in the module config?"]}
+/repositories/1/timeline {"status": 200}
+/repositories/1/media {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)"], "failed": ["7.0.0.1:8063/repositories/1/media/video?lang=ro&v=1794349228"]}
+/repositories/1/consulting {"status": 200}
+/repositories/2 {"status": 200}
+/repositories/2/docs {"status": 200}
+/repositories/2/diagrams {"status": 200}
+/repositories/2/assistant {"status": 200}
+/repositories/2/timeline {"status": 200}
+/repositories/2/media {"status": 200}
+/repositories/2/consulting {"status": 200}
+/repositories/1/docs/overview {"status": 200}
+/repositories/1/docs/app-http {"status": 200}
+/repositories/1/docs/readme {"status": 200, "overlap": ["h2#functionalitati.group.mt-12 \"Funcționalități\" x button.pressable.absolute \"ÎntreabăCtrl I\""]}
+
+=== ro light 1440  (lang switch ok=True)
+/ {"status": 200, "wrongLang": ["HyperFrames is a free, open-source framework for turning HTML, CSS, media, and s"]}
+/discover {"status": 200}
+/login {"status": 200}
+/register {"status": 200}
+/github.com/octocat/hello-world {"status": 200}
+/no-such-page-xyz {"status": 404, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"]}
+/repositories/3 {"status": 200, "wrongLang": ["HyperFrames is a free, open-source framework for turning HTML, CSS, media, and s"], "lowContrast": ["4.36 p \"+ 234 more modules\""]}
+/repositories/3/docs {"status": 200}
+/repositories/3/diagrams {"status": 200, "wrongLang": ["The 22 biggest of the 518 modules with code, grouped into layers by folder name;", "The 15 biggest of the 518 modules with code, with their main classes; an arrow m"], "lowContrast": ["4.36 p \"+ 234 more modules\"", "1.11 b \"aws-lambda\""]}
+/repositories/3/assistant {"status": 200}
+/repositories/3/timeline {"status": 200}
+/repositories/3/media {"status": 200}
+/repositories/3/consulting {"status": 200}
+/repositories/1 {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["What is in the module config?"]}
+/repositories/1/docs {"status": 200, "overlap": ["a.rounded-sm.font-medium \"docs/plan-invatare.md (se desc\" x a.rounded-sm.font-medium \"docs/licenta.md (se deschide î\""]}
+/repositories/1/diagrams {"status": 200, "wrongLang": ["The modules with code (16 modules), grouped into layers by folder name; an arrow", "The 15 biggest of the 16 modules with code, with their main classes; an arrow me"], "lowContrast": ["1.11 b \"Actions\"", "4.36 p \"+ 1 more module\""]}
+/repositories/1/assistant {"status": 200, "wrongLang": ["What is in the module config?"]}
+/repositories/1/timeline {"status": 200, "lowContrast": ["4.50 time.text-info-ink/80 \"10 nov. 2026, 12:05\""]}
+/repositories/1/media {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)"]}
+/repositories/1/consulting {"status": 200}
+/repositories/2 {"status": 200}
+/repositories/2/docs {"status": 200}
+/repositories/2/diagrams {"status": 200}
+/repositories/2/assistant {"status": 200}
+/repositories/2/timeline {"status": 200}
+/repositories/2/media {"status": 200}
+/repositories/2/consulting {"status": 200}
+/repositories/1/docs/overview {"status": 200, "overlap": ["a.rounded-sm.font-medium \"docs/plan-invatare.md (se desc\" x a.rounded-sm.font-medium \"docs/licenta.md (se deschide î\""]}
+/repositories/1/docs/app-http {"status": 200}
+/repositories/1/docs/readme {"status": 200}
+
+=== ro light 390  (lang switch ok=True)
+/ {"status": 200, "wrongLang": ["HyperFrames is a free, open-source framework for turning HTML, CSS, media, and s"]}
+/discover {"status": 200}
+/login {"status": 200}
+/register {"status": 200}
+/github.com/octocat/hello-world {"status": 200}
+/no-such-page-xyz {"status": 404, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"]}
+/repositories/3 {"status": 200, "wrongLang": ["HyperFrames is a free, open-source framework for turning HTML, CSS, media, and s"], "lowContrast": ["4.36 p \"+ 234 more modules\""]}
+/repositories/3/docs {"status": 200}
+/repositories/3/diagrams {"status": 200, "wrongLang": ["The 22 biggest of the 518 modules with code, grouped into layers by folder name;", "The 15 biggest of the 518 modules with code, with their main classes; an arrow m"], "lowContrast": ["4.36 p \"+ 234 more modules\"", "1.11 b \"aws-lambda\""]}
+/repositories/3/assistant {"status": 200}
+/repositories/3/timeline {"status": 200}
+/repositories/3/media {"status": 200}
+/repositories/3/consulting {"status": 200}
+/repositories/1 {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)"], "wrongLang": ["What is in the module config?"], "overlap": ["button.group.relative \"0:32Pornește video-ul despre e\" x button.pressable.absolute \"ÎntreabăCtrl I\""]}
+/repositories/1/docs {"status": 200}
+/repositories/1/diagrams {"status": 200, "wrongLang": ["The modules with code (16 modules), grouped into layers by folder name; an arrow", "The 15 biggest of the 16 modules with code, with their main classes; an arrow me"], "lowContrast": ["1.11 b \"Actions\"", "4.36 p \"+ 1 more module\""]}
+/repositories/1/assistant {"status": 200, "wrongLang": ["What is in the module config?"]}
+/repositories/1/timeline {"status": 200, "lowContrast": ["4.50 time.text-info-ink/80 \"10 nov. 2026, 12:05\""]}
+/repositories/1/media {"status": 200, "console": ["Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)", "Failed to load resource: the server responded with a status of 404 (Not Found)"]}
+/repositories/1/consulting {"status": 200}
+/repositories/2 {"status": 200}
+/repositories/2/docs {"status": 200}
+/repositories/2/diagrams {"status": 200}
+/repositories/2/assistant {"status": 200}
+/repositories/2/timeline {"status": 200}
+/repositories/2/media {"status": 200}
+/repositories/2/consulting {"status": 200}
+/repositories/1/docs/overview {"status": 200}
+/repositories/1/docs/app-http {"status": 200}
+/repositories/1/docs/readme {"status": 200, "overlap": ["h2#functionalitati.group.mt-12 \"Funcționalități\" x button.pressable.absolute \"ÎntreabăCtrl I\""]}
+
+PAGE-VARIANTS WITH FINDINGS PER CATEGORY: {'wrongLang': 60, 'console': 24, 'overlap': 16, 'lowContrast': 16, 'failed': 2}

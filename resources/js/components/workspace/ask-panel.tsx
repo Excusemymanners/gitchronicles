@@ -32,7 +32,7 @@ export function AskButton({ onClick, buttonRef }: ButtonProps) {
             onClick={onClick}
             aria-label={t('workspace.askPanel.open')}
             aria-keyshortcuts="Control+I Meta+I"
-            className={`pressable absolute right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-20 inline-flex cursor-pointer items-center gap-2 rounded-full bg-accent-strong p-3.5 text-on-accent shadow-float hover:bg-accent-strong-hover md:py-2.5 md:pr-3 md:pl-4 ${focusRing}`}
+            className={`pressable inline-flex xl:absolute xl:right-4 xl:bottom-[max(1rem,env(safe-area-inset-bottom))] z-20 cursor-pointer items-center gap-2 rounded-full bg-accent-strong p-3.5 text-on-accent shadow-float hover:bg-accent-strong-hover md:py-2.5 md:pr-3 md:pl-4 ${focusRing}`}
         >
             <AskIcon className="size-5" />
             <span className="text-sm font-semibold max-md:sr-only">{t('workspace.askPanel.button')}</span>

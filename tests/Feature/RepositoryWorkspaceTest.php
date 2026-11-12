@@ -126,6 +126,15 @@ class RepositoryWorkspaceTest extends TestCase
         );
     }
 
+    public function test_starter_questions_follow_the_interface_language(): void
+    {
+        $repository = Repository::factory()->ready()->analyzed()->create();
+        $this->module($repository, 'app/Http', 9, lines: 400);
+
+        $this->withUnencryptedCookie('locale', 'ro')->get("/repositories/{$repository->id}")
+            ->assertInertia(fn (Assert $page) => $page->where('workspace.assistant.starters', ['Ce conține modulul app/Http?']));
+    }
+
     public function test_generated_data_of_the_repository_adds_its_chapters_and_elements(): void
     {
         $repository = Repository::factory()->ready()->analyzed()->create();

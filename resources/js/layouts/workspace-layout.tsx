@@ -151,38 +151,46 @@ function WorkspaceFrame({ children }: Props) {
                 <SectionTabs sections={sections} activeKey={activeSection} />
             </header>
 
-            <div className="relative flex min-h-0 flex-1">
-                {pageShape === 'docs' ? (
-                    <DocsShape groups={workspace.chapters} isNavOpen={isDocsNavOpen} onOpenNav={() => setDocsNavOpen(true)} onCloseNav={() => setDocsNavOpen(false)}>
-                        {main}
-                    </DocsShape>
-                ) : (
-                    <div className="relative flex min-w-0 flex-1 flex-col">
-                        {/* scroll-region: Inertia scrolls this column back to the top on a new page and restores it on "Back". */}
-                        <div scroll-region="" className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain [view-transition-name:page]">
+            <div className="relative flex min-h-0 flex-1 flex-col">
+                <div className="relative flex min-h-0 flex-1">
+                    {pageShape === 'docs' ? (
+                        <DocsShape groups={workspace.chapters} isNavOpen={isDocsNavOpen} onOpenNav={() => setDocsNavOpen(true)} onCloseNav={() => setDocsNavOpen(false)}>
                             {main}
-                            {/* Room under the page for the floating button, so the last line never sits under it. */}
-                            {canUsePanel && <div aria-hidden="true" className="h-20" />}
-                        </div>
-
-                        {pageShape === 'ask' && (
-                            <div data-ask-composer="" className="shrink-0 border-t border-line bg-canvas">
-                                <div className="mx-auto w-full max-w-190 px-4 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-8">
-                                    <AssistantBar
-                                        assistant={conversation}
-                                        repository={repository}
-                                        isIndexed={workspace.assistant.is_indexed}
-                                        starters={workspace.assistant.starters}
-                                    />
-                                </div>
+                        </DocsShape>
+                    ) : (
+                        <div className="relative flex min-w-0 flex-1 flex-col">
+                            {/* scroll-region: Inertia scrolls this column back to the top on a new page and restores it on "Back". */}
+                            <div scroll-region="" className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain [view-transition-name:page]">
+                                {main}
+                                {/* From 1280 px the button floats over the page: room under it so the last line never sits under it. */}
+                                {canUsePanel && <div aria-hidden="true" className="h-20 max-xl:hidden" />}
                             </div>
-                        )}
+
+                            {pageShape === 'ask' && (
+                                <div data-ask-composer="" className="shrink-0 border-t border-line bg-canvas">
+                                    <div className="mx-auto w-full max-w-190 px-4 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-8">
+                                        <AssistantBar
+                                            assistant={conversation}
+                                            repository={repository}
+                                            isIndexed={workspace.assistant.is_indexed}
+                                            starters={workspace.assistant.starters}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {canUsePanel && <AskPanel repository={repository} assistant={workspace.assistant} isOpen={isPanelOpen} onClose={() => setAskOpen(false)} />}
+                </div>
+
+                {/* Below 1280 px the button sits in its own bar under the page, so it never covers the text being read;
+                    from 1280 px the bar disappears (contents) and the button floats in the corner. */}
+                {canUsePanel && !isHeroAskVisible && (
+                    <div className="flex shrink-0 justify-end border-t border-line bg-canvas px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] xl:contents">
+                        {!isPanelOpen && <AskButton buttonRef={askButtonRef} onClick={() => setAskOpen(true)} />}
                     </div>
                 )}
-
-                {canUsePanel && !isPanelOpen && !isHeroAskVisible && <AskButton buttonRef={askButtonRef} onClick={() => setAskOpen(true)} />}
-
-                {canUsePanel && <AskPanel repository={repository} assistant={workspace.assistant} isOpen={isPanelOpen} onClose={() => setAskOpen(false)} />}
             </div>
 
             <CommandPalette

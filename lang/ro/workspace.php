@@ -48,4 +48,10 @@ return [
         'context' => 'Contextul (C4)',
     ],
 
+    'starter' => [
+        'most_used' => 'Ce face modulul :module?',
+        'dependency' => 'Cum folosește :from modulul :to?',
+        'biggest' => 'Ce conține modulul :module?',
+    ],
+
 ];

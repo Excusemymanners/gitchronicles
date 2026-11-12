@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
         ]);
 
+        // A URL that matches no route skips the "web" group, so the 404 page would use the server's default language:
+        // SetLocale also runs globally, which makes every error page follow the visitor's language too.
+        $middleware->append(SetLocale::class);
+
         // The language cookie is plain text: it is not a secret and SetLocale checks its value on every request.
         $middleware->encryptCookies(except: [SetLocale::COOKIE]);
 

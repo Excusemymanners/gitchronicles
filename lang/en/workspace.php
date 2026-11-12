@@ -48,4 +48,11 @@ return [
         'context' => 'Context (C4)',
     ],
 
+    // The three starter questions offered on the Ask page; they are sent to the assistant as typed.
+    'starter' => [
+        'most_used' => 'What does the module :module do?',
+        'dependency' => 'How does :from use the module :to?',
+        'biggest' => 'What is in the module :module?',
+    ],
+
 ];

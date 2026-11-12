@@ -655,6 +655,12 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Tot ce generează aplicația e în engleză (decizia din 11 noiembrie): raportul descărcat, rezumatul AI și mesajele regulilor; în baza de date erorile se salvează ca coduri (`timed_out 300`, `not_installed`), iar pagina le formulează.
   - Rezumatul AI e verificat de server: fiecare număr din el trebuie să apară exact în datele trimise, fără legături sau Markdown; altfel nu se arată. Textele din repository intră în prompt ca JSON cu `<` și `>` codate, ca să nu poată închide blocul de date.
   - De știut: OSV-Scanner citește și `.gitignore`-ul folderelor de deasupra clonei (aplicația ignoră `storage/`), de aceea rulează cu `--no-ignore` — clona are oricum doar fișierele urmărite de git.
+- 2026-11-12 — Trecerea de calitate peste toată interfața. Decizii și motivele lor:
+  - Un singur script (`shots/qa/walk.py`) parcurge fiecare pagină în engleză și română, temă închisă și deschisă, la 1440 și 390 px și afișează fapte (erori, depășiri, imagini rupte, text în limba greșită, suprapuneri, nume lipsă, contrast), nu capturi de ecran; `keys.py` face trecerea de tastatură. Un script care se poate rula din nou prinde mai multe defecte decât un ochi, și costă mult mai puțin decât capturile.
+  - Citirea diagramelor compusă fără AI folosea numere goale în fraze cu verbe acordate pe loc („1 arrows”, „1 file import it”). Am reformulat frazele să nu mai depindă de acord („Arrows between them: 1 arrow, backed by 1 import”) și numerele trec prin același ajutor de plural în ambele limbi.
+  - Butonul „Întreabă” plutea peste text sub 1280 px. Acolo stă acum într-o bară proprie sub pagină, deci nu mai acoperă niciodată ce se citește; de la 1280 px rămâne plutitor, în colț, cu loc rezervat sub pagină.
+  - Întrebările de start ale asistentului erau scrise în cod, în engleză; acum vin din `lang/` și urmează limba interfeței.
+  - Pagina 404 a unui URL fără rută nu trecea prin grupul `web`, deci ignora limba aleasă; `SetLocale` rulează acum și global.
 
 ---
 
