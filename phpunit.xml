@@ -33,6 +33,7 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="GIT_PROTOCOLS" value="https,file" force="true"/>
         <env name="AI_DRIVER" value="none" force="true"/>
         <env name="ANTHROPIC_API_KEY" value="" force="true"/>
         <env name="MEDIA_AUTO_GENERATE" value="false" force="true"/>

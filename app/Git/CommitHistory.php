@@ -7,7 +7,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
 /**
@@ -109,6 +111,7 @@ final class CommitHistory
     private static function parse(string $output, bool $withLineCounts): array
     {
         $pieces = explode("\0", $output);
+        $maxFiles = (int) config('gitchronicle.history.max_files_per_commit');
         $commits = [];
         $commit = null;
         $isFirstFile = false;
@@ -135,6 +138,9 @@ final class CommitHistory
                     'authored_at' => CarbonImmutable::parse($date)->utc(),
                     'subject' => mb_substr(mb_scrub($subject, 'UTF-8'), 0, 500),
                     'files' => [],
+                    'file_count' => 0,
+                    'insertions' => 0,
+                    'deletions' => 0,
                 ];
                 $isFirstFile = true;
 
@@ -153,7 +159,16 @@ final class CommitHistory
             $isFirstFile = false;
             $file = $withLineCounts ? self::parseLineCounts($piece) : ['path' => $piece, 'insertions' => null, 'deletions' => null];
 
-            if ($file !== null && strlen($file['path']) <= 1024) {
+            if ($file === null || strlen($file['path']) > 1024) {
+                continue;
+            }
+
+            // The counters count every file; only the first paths are kept (a hostile commit may touch a million).
+            $commit['file_count']++;
+            $commit['insertions'] += $file['insertions'] ?? 0;
+            $commit['deletions'] += $file['deletions'] ?? 0;
+
+            if ($commit['file_count'] <= $maxFiles) {
                 $commit['files'][] = [...$file, 'path' => mb_scrub($file['path'], 'UTF-8')];
             }
         }
@@ -192,20 +207,23 @@ final class CommitHistory
      * Add a commit's counters: files changed and the sum of the lines added and removed.
      * A merge commit gets none; without line counts only the number of files is known.
      *
-     * @param  array{sha: string, parent_sha: string|null, is_merge: bool, author_name: string, authored_at: CarbonImmutable, subject: string, files: list<array{path: string, insertions: int|null, deletions: int|null}>}  $commit
+     * @param  array{sha: string, parent_sha: string|null, is_merge: bool, author_name: string, authored_at: CarbonImmutable, subject: string, files: list<array{path: string, insertions: int|null, deletions: int|null}>, file_count: int, insertions: int, deletions: int}  $commit
      * @return array{sha: string, parent_sha: string|null, is_merge: bool, author_name: string, authored_at: CarbonImmutable, subject: string, files_changed: int|null, insertions: int|null, deletions: int|null, files: list<array{path: string, insertions: int|null, deletions: int|null}>}
      */
     private static function withTotals(array $commit, bool $withLineCounts): array
     {
+        $counters = Arr::only($commit, ['file_count', 'insertions', 'deletions']);
+        $commit = Arr::except($commit, ['file_count', 'insertions', 'deletions']);
+
         if ($commit['is_merge']) {
             return [...$commit, 'files_changed' => null, 'insertions' => null, 'deletions' => null];
         }
 
         return [
             ...$commit,
-            'files_changed' => count($commit['files']),
-            'insertions' => $withLineCounts ? array_sum(array_column($commit['files'], 'insertions')) : null,
-            'deletions' => $withLineCounts ? array_sum(array_column($commit['files'], 'deletions')) : null,
+            'files_changed' => $counters['file_count'],
+            'insertions' => $withLineCounts ? $counters['insertions'] : null,
+            'deletions' => $withLineCounts ? $counters['deletions'] : null,
         ];
     }
 
@@ -271,14 +289,40 @@ final class CommitHistory
      */
     private function log(string $clonePath, array $revisions, int $limit, string $filesOption): ProcessResult
     {
-        return $this->git($clonePath, ['GIT_NO_LAZY_FETCH' => '1'])
+        $maxBytes = (int) config('gitchronicle.history.max_log_bytes');
+        $output = '';
+
+        // The output is read as it comes and git is stopped past the byte limit: one commit that touches a million
+        // files must not put gigabytes in memory. The piece cut at the limit is dropped by parse().
+        $process = $this->git($clonePath, ['GIT_NO_LAZY_FETCH' => '1'])
             ->timeout(self::LOG_TIMEOUT_SECONDS)
-            ->run([
+            ->start([
                 'git', '-c', 'log.showSignature=false', 'log',
                 '-z', '--topo-order', "--max-count={$limit}", '--no-renames',
                 '--format='.self::FORMAT, $filesOption,
                 ...$revisions, '--',
-            ]);
+            ], function (string $type, string $buffer) use (&$output, $maxBytes): void {
+                if ($type === 'out' && strlen($output) <= $maxBytes) {
+                    $output .= $buffer;
+                }
+            });
+
+        while ($process->running() && strlen($output) <= $maxBytes) {
+            $process->ensureNotTimedOut();
+            usleep(10_000);
+        }
+
+        if (strlen($output) > $maxBytes) {
+            $process->stop();
+
+            Log::warning('git log output is over the limit: the newest commits are kept.', ['clone' => $clonePath, 'max_bytes' => $maxBytes]);
+
+            return Process::result(output: substr($output, 0, (int) strrpos(substr($output, 0, $maxBytes), self::COMMIT_MARKER)));
+        }
+
+        $result = $process->wait();
+
+        return $result->successful() ? Process::result(output: $output) : $result;
     }
 
     /**

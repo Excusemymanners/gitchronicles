@@ -140,4 +140,44 @@ class CodeChunkerTest extends TestCase
     {
         return array_map(fn (array $chunk): array => [$chunk['start_line'], $chunk['end_line'], $chunk['symbol_name']], $chunks);
     }
+
+    public function test_thousands_of_symbols_are_chunked_in_a_moment_not_in_seconds(): void
+    {
+        $count = 4000;
+        $content = collect(range(1, $count))->map(fn (int $i) => "function f{$i}() {}")->implode("\n");
+        $symbols = collect(range(1, $count))->map(fn (int $i) => ['name' => "f{$i}", 'start_line' => $i, 'end_line' => $i])->all();
+
+        $start = microtime(true);
+        $chunks = CodeChunker::chunk($content, $symbols);
+
+        $this->assertCount($count, $chunks);
+        // Comparing every symbol with every other one took 1 s for 4,000 symbols; one pass takes a few ms.
+        $this->assertLessThan(0.5, microtime(true) - $start);
+    }
+
+    public function test_nested_symbols_are_named_after_their_smallest_parent_and_the_outer_class_keeps_only_its_own_lines(): void
+    {
+        $content = implode("\n", ['class A {', '  function one() {', '    return 1;', '  }', '  function two() {', '    return 2;', '  }', '}']);
+        $symbols = [
+            ['name' => 'A', 'start_line' => 1, 'end_line' => 8],
+            ['name' => 'one', 'start_line' => 2, 'end_line' => 4],
+            ['name' => 'two', 'start_line' => 5, 'end_line' => 7],
+        ];
+
+        $names = array_column(CodeChunker::chunk($content, $symbols), 'symbol_name');
+
+        $this->assertSame(['A', 'A.one', 'A.two'], $names);
+    }
+
+    public function test_a_file_with_more_symbols_than_any_real_file_is_cut_into_plain_windows(): void
+    {
+        $count = CodeChunker::MAX_SYMBOLS + 1;
+        $content = collect(range(1, $count))->map(fn (int $i) => "x{$i}")->implode("\n");
+        $symbols = collect(range(1, $count))->map(fn (int $i) => ['name' => "f{$i}", 'start_line' => $i, 'end_line' => $i])->all();
+
+        $chunks = CodeChunker::chunk($content, $symbols);
+
+        $this->assertCount((int) ceil($count / CodeChunker::WINDOW_LINES), $chunks);
+        $this->assertNull($chunks[0]['symbol_name']);
+    }
 }

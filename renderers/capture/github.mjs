@@ -115,9 +115,31 @@ async function downloadImage(url, baseName) {
                 return null;
             }
 
-            const bytes = Buffer.from(await response.arrayBuffer());
+            /* Citim în bucăți și ne oprim la limită: un răspuns fără sfârșit nu trebuie să umple memoria. */
+            if (Number(response.headers.get('content-length') ?? 0) > MAX_DOWNLOAD_BYTES) {
+                return null;
+            }
 
-            if (bytes.length === 0 || bytes.length > MAX_DOWNLOAD_BYTES) {
+            const chunks = [];
+            let total = 0;
+
+            for await (const chunk of response.body) {
+                total += chunk.length;
+
+                if (total > MAX_DOWNLOAD_BYTES) {
+                    return null;
+                }
+
+                chunks.push(chunk);
+            }
+
+            const bytes = Buffer.concat(chunks);
+
+            /* Tipul declarat nu e de ajuns: octeții trebuie să fie într-adevăr PNG sau JPEG. */
+            const isPng = bytes.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+            const isJpeg = bytes.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
+
+            if (bytes.length === 0 || !(isPng || isJpeg)) {
                 return null;
             }
 

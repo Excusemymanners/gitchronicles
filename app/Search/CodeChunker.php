@@ -30,6 +30,11 @@ final class CodeChunker
     public const MAX_SYMBOL_LINES = 120;
 
     /**
+     * A file with more symbols than this is cut into plain windows, without looking at its symbols.
+     */
+    public const MAX_SYMBOLS = 5000;
+
+    /**
      * How a comment, a docblock line, an attribute or a decorator starts (after the indentation).
      */
     private const COMMENT_STARTS = ['//', '/*', '*', '#', '@', '"""', "'''"];
@@ -44,6 +49,11 @@ final class CodeChunker
     {
         $lines = self::lines($content);
         $symbols = self::validSymbols($symbols, count($lines));
+
+        // More symbols than any real file has: plain windows are enough (and cost time linear in the lines).
+        if (count($symbols) > self::MAX_SYMBOLS) {
+            $symbols = [];
+        }
 
         $chunks = [];
         $nextUncoveredLine = 1;
@@ -97,24 +107,29 @@ final class CodeChunker
     /**
      * The line ranges of the innermost symbols, sorted, never overlapping, as [start, end, name].
      *
+     * The symbols are visited once, outer ones before inner ones, with a stack of the symbols still open (the
+     * ones that contain the line being visited): the symbol on top of the stack is the smallest one that contains
+     * the new symbol, so it is its parent (for the name "Parent.child") and it is not innermost. Comparing every
+     * symbol with every other one would take time with the square of the number of symbols.
+     *
      * @param  list<string>  $lines
      * @param  list<array{name: string, start_line: int, end_line: int}>  $symbols
      * @return list<array{int, int, string}>
      */
     private static function symbolRanges(array $lines, array $symbols): array
     {
+        [$parentOf, $hasSymbolInside] = self::nesting($symbols);
+
         $ranges = [];
 
         foreach ($symbols as $index => $symbol) {
-            $hasSymbolInside = collect($symbols)->contains(
-                fn (array $other, int $otherIndex): bool => self::contains($symbol, $index, $other, $otherIndex),
-            );
+            if (! isset($hasSymbolInside[$index])) {
+                $parent = $parentOf[$index] ?? null;
 
-            if (! $hasSymbolInside) {
                 $ranges[] = [
                     self::startWithCommentAbove($lines, $symbol['start_line']),
                     $symbol['end_line'],
-                    self::qualifiedName($symbols, $index),
+                    $parent === null ? $symbol['name'] : "{$symbols[$parent]['name']}.{$symbol['name']}",
                 ];
             }
         }
@@ -138,52 +153,72 @@ final class CodeChunker
     }
 
     /**
-     * Whether the outer symbol contains the inner one. Two symbols on exactly the same lines:
-     * the first one counts as the outer one, so exactly one of them is innermost.
-     *
-     * @param  array{name: string, start_line: int, end_line: int}  $outer
-     * @param  array{name: string, start_line: int, end_line: int}  $inner
-     */
-    private static function contains(array $outer, int $outerIndex, array $inner, int $innerIndex): bool
-    {
-        if ($outerIndex === $innerIndex || $inner['start_line'] < $outer['start_line'] || $inner['end_line'] > $outer['end_line']) {
-            return false;
-        }
-
-        $sameLines = $inner['start_line'] === $outer['start_line'] && $inner['end_line'] === $outer['end_line'];
-
-        return ! $sameLines || $outerIndex < $innerIndex;
-    }
-
-    /**
-     * The name of a symbol, after the name of the smallest symbol that contains it: "ProductController.show".
+     * Which symbol contains which, in one pass: the index of the smallest symbol that contains each symbol (its
+     * parent; a symbol on exactly the same lines is a duplicate, not a parent), and the set of the symbols that
+     * have another symbol inside. Two symbols on exactly the same lines: the first one counts as the outer one,
+     * so exactly one of them is innermost.
      *
      * @param  list<array{name: string, start_line: int, end_line: int}>  $symbols
+     * @return array{array<int, int>, array<int, true>} parents by index, and the indexes that contain a symbol
      */
-    private static function qualifiedName(array $symbols, int $index): string
+    private static function nesting(array $symbols): array
     {
-        $parent = self::smallestContaining($symbols, $symbols[$index]['start_line'], $symbols[$index]['end_line'], except: $index);
+        $order = array_keys($symbols);
 
-        return $parent === null ? $symbols[$index]['name'] : "{$parent['name']}.{$symbols[$index]['name']}";
+        // Outer symbols first: earlier start, then later end, then the order they were found in.
+        usort($order, fn (int $a, int $b): int => [$symbols[$a]['start_line'], $symbols[$b]['end_line'], $a] <=> [$symbols[$b]['start_line'], $symbols[$a]['end_line'], $b]);
+
+        $open = [];
+        $parentOf = [];
+        $hasSymbolInside = [];
+
+        foreach ($order as $index) {
+            $symbol = $symbols[$index];
+
+            while ($open !== [] && $symbols[end($open)]['end_line'] < $symbol['start_line']) {
+                array_pop($open);
+            }
+
+            $parentLength = null;
+
+            for ($position = count($open) - 1; $position >= 0; $position--) {
+                $outer = $symbols[$open[$position]];
+
+                if ($outer['end_line'] < $symbol['end_line']) {
+                    continue; // starts before and ends inside: overlaps, does not contain
+                }
+
+                $hasSymbolInside[$open[$position]] = true;
+
+                // The parent is the smallest container; one on exactly the same lines is a duplicate, not a parent.
+                $isDuplicate = $outer['start_line'] === $symbol['start_line'] && $outer['end_line'] === $symbol['end_line'];
+                $length = $outer['end_line'] - $outer['start_line'];
+
+                if (! $isDuplicate && ($parentLength === null || $length < $parentLength || ($length === $parentLength && $open[$position] < $parentOf[$index]))) {
+                    $parentOf[$index] = $open[$position];
+                    $parentLength = $length;
+                }
+            }
+
+            $open[] = $index;
+        }
+
+        return [$parentOf, $hasSymbolInside];
     }
 
     /**
-     * The smallest symbol that contains the lines from $start to $end, or null.
+     * The smallest symbol that contains the lines from $start to $end, or null (used for the name of a window,
+     * and a file has few windows).
      *
      * @param  list<array{name: string, start_line: int, end_line: int}>  $symbols
      * @return array{name: string, start_line: int, end_line: int}|null
      */
-    private static function smallestContaining(array $symbols, int $start, int $end, ?int $except = null): ?array
+    private static function smallestContaining(array $symbols, int $start, int $end): ?array
     {
         $smallest = null;
 
-        foreach ($symbols as $index => $symbol) {
-            if ($index === $except || $symbol['start_line'] > $start || $symbol['end_line'] < $end) {
-                continue;
-            }
-
-            // A symbol on exactly the same lines as the excluded one is a duplicate of it, not its parent.
-            if ($except !== null && $symbol['start_line'] === $start && $symbol['end_line'] === $end) {
+        foreach ($symbols as $symbol) {
+            if ($symbol['start_line'] > $start || $symbol['end_line'] < $end) {
                 continue;
             }
 

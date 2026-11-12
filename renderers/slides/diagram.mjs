@@ -64,6 +64,11 @@ const browser = await puppeteer.launch({
 
 try {
     const page = await browser.newPage();
+
+    /* Textele diagramei vin dintr-un repository străin: pagina nu are voie să ceară nimic în afară de ea însăși. */
+    await page.setRequestInterception(true);
+    page.on('request', (request) => (/^(data:|about:)/.test(request.url()) ? request.continue() : request.abort()));
+
     await page.setViewport({ width: 1800, height: 1200, deviceScaleFactor: 4 });
     await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>
         ${fontFace(400, 'latin')} ${fontFace(400, 'latin-ext')} ${fontFace(600, 'latin')} ${fontFace(600, 'latin-ext')}

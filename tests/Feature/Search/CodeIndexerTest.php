@@ -35,7 +35,7 @@ class CodeIndexerTest extends TestCase
 
         $summary = app(CodeIndexer::class)->index($repository);
 
-        $this->assertSame(['files_indexed' => 13, 'chunks_total' => 27], $summary);
+        $this->assertSame(['files_indexed' => 13, 'chunks_total' => 27, 'files_left_out' => 0], $summary);
         $this->assertSame([
             [1, 11, null],
             [12, 18, 'ProductController.show'],
@@ -158,5 +158,35 @@ class CodeIndexerTest extends TestCase
     private function indexRowsOf(Repository $repository): int
     {
         return DB::table('code_chunks_fts')->where('repository_id', $repository->id)->count();
+    }
+
+    public function test_files_over_the_chunk_limit_are_left_out_and_counted(): void
+    {
+        config(['gitchronicle.search.max_chunks' => 10]);
+        $repository = $this->analyzedFixtureProject();
+
+        $summary = app(CodeIndexer::class)->index($repository);
+
+        $this->assertLessThanOrEqual(10, $summary['chunks_total']);
+        $this->assertGreaterThan(0, $summary['files_left_out']);
+        $this->assertSame(13, $summary['files_indexed'] + $summary['files_left_out']);
+    }
+
+    public function test_a_file_inside_a_folder_that_is_a_link_out_of_the_clone_is_not_indexed(): void
+    {
+        $repository = $this->analyzedFixtureProject();
+        $outside = sys_get_temp_dir().'/gc-outside-'.bin2hex(random_bytes(4));
+        mkdir($outside);
+        file_put_contents("{$outside}/Secret.php", "<?php\nfunction secret() { return 'x'; }\n");
+        $file = $repository->files()->where('path', 'like', 'src/%')->first();
+        $folder = dirname($repository->clonePath().'/'.$file->path);
+        File::deleteDirectory($folder);
+        symlink($outside, $folder);
+        File::put("{$outside}/".basename($file->path), "<?php\nfunction leaked() { return 'secret'; }\n");
+
+        app(CodeIndexer::class)->index($repository);
+
+        $this->assertFalse($repository->codeChunks()->where('content', 'like', '%leaked%')->exists());
+        File::deleteDirectory($outside);
     }
 }

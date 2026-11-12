@@ -48,6 +48,9 @@ return [
         'analyzer_missing' => 'The code analyzer is not installed on the server, so the code could not be analyzed.',
         'analysis_timeout' => 'The code analysis took more than :minutes minutes, so it was stopped. The repository is probably too large.',
         'analysis_failed' => 'The code of the repository could not be analyzed. Try again.',
+        'too_many_files' => 'The repository has more than :max files, which is more than GitChronicle can process. Nothing was kept.',
+        'too_large' => 'The repository is larger than :max MB, which is more than GitChronicle can process. Nothing was kept.',
+        'storage_full' => 'GitChronicle has no free space for another repository right now. Try again later.',
     ],
 
 ];

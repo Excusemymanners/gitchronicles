@@ -343,4 +343,88 @@ return [
         'hsts_seconds' => (int) env('HSTS_SECONDS', 31536000),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Hostile repositories (git and the clone)
+    |--------------------------------------------------------------------------
+    |
+    | Every repository is written by a stranger. These limits keep a small one from filling the disk
+    | or stopping the worker; a repository over a limit fails with a clear message (repositories.errors).
+    |
+    | - protocols: the only git protocols that may be used (comma separated); tests add "file" to clone
+    |   a local repository;
+    | - max_files, max_bytes: checked on the file list of the newest commit BEFORE the files are written
+    |   to disk (git ls-tree), and again on the real folder after the checkout;
+    | - max_disk_bytes: the most one clone folder (history included) may use; watched while git downloads;
+    | - max_path_bytes: a longer file path is ignored;
+    | - storage_budget_bytes: the most that all clones together may use; 0 = no limit;
+    | - clone_seconds: git is stopped after this long.
+    |
+    */
+
+    'git' => [
+        'protocols' => env('GIT_PROTOCOLS', 'https'),
+        'max_files' => (int) env('REPO_MAX_FILES', 20000),
+        'max_bytes' => (int) env('REPO_MAX_BYTES', 300 * 1024 * 1024),
+        'max_disk_bytes' => (int) env('REPO_MAX_DISK_BYTES', 800 * 1024 * 1024),
+        'max_path_bytes' => (int) env('REPO_MAX_PATH_BYTES', 1024),
+        'storage_budget_bytes' => (int) env('REPO_STORAGE_BUDGET_BYTES', 20 * 1024 * 1024 * 1024),
+        'clone_seconds' => (int) env('REPO_CLONE_SECONDS', 240),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Limits of the code analysis
+    |--------------------------------------------------------------------------
+    |
+    | A hostile repository can be tiny and still ask for a lot: millions of symbols, thousands of files,
+    | a file that makes the parser run for minutes. When a limit is passed, the repository is still analyzed
+    | with what fits, and the run says what was left out (processing_runs.change_summary.left_out).
+    |
+    | - max_files: files analyzed (the rest are left out, counted);
+    | - max_symbols_per_file, max_imports_per_file, max_symbols_total: kept per file and per repository;
+    | - seconds_per_file, seconds_total: time limits of the analyzer (analyzer/analyze.py); the PHP process
+    |   timeout (RepositoryAnalyzer::TIMEOUT_SECONDS) is longer, so the analyzer ends first and cleanly;
+    | - max_file_bytes: bigger files are not read (RepositoryAnalyzer::MAX_FILE_BYTES is the default).
+    |
+    */
+
+    'analysis' => [
+        'max_files' => (int) env('ANALYSIS_MAX_FILES', 20000),
+        'max_symbols_per_file' => (int) env('ANALYSIS_MAX_SYMBOLS_PER_FILE', 2000),
+        'max_imports_per_file' => (int) env('ANALYSIS_MAX_IMPORTS_PER_FILE', 500),
+        'max_symbols_total' => (int) env('ANALYSIS_MAX_SYMBOLS_TOTAL', 60000),
+        'seconds_per_file' => (float) env('ANALYSIS_SECONDS_PER_FILE', 10),
+        'seconds_total' => (float) env('ANALYSIS_SECONDS_TOTAL', 150),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Limits of the git history import
+    |--------------------------------------------------------------------------
+    |
+    | - max_files_per_commit: the paths kept for one commit (its counters still count every file);
+    | - max_log_bytes: the most `git log --numstat` may print; the newest commits that fit are kept.
+    |
+    */
+
+    'history' => [
+        'max_files_per_commit' => (int) env('HISTORY_MAX_FILES_PER_COMMIT', 300),
+        'max_log_bytes' => (int) env('HISTORY_MAX_LOG_BYTES', 32 * 1024 * 1024),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | The code index of the assistant
+    |--------------------------------------------------------------------------
+    |
+    | - max_chunks: the most pieces of code (code_chunks rows) kept for one repository; the files that do not
+    |   fit are left out and counted (CodeIndexer); 0 = no limit.
+    |
+    */
+
+    'search' => [
+        'max_chunks' => (int) env('SEARCH_MAX_CHUNKS', 100000),
+    ],
+
 ];

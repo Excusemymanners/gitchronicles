@@ -6,6 +6,7 @@ use App\Analysis\RepositoryAnalyzer;
 use App\Models\Repository;
 use App\Models\RepositoryFile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Tests\Concerns\RunsGit;
 use Tests\TestCase;
@@ -34,7 +35,8 @@ class RepositoryAnalyzerTest extends TestCase
 
         $summary = app(RepositoryAnalyzer::class)->analyze($repository);
 
-        $this->assertSame(['files_total' => 16, 'files_analyzed' => 13, 'files_parsed' => 13, 'modules_total' => 9], $summary);
+        $this->assertSame(['files_total' => 16, 'files_analyzed' => 13, 'files_parsed' => 13, 'modules_total' => 9], Arr::except($summary, 'left_out'));
+        $this->assertSame(['files' => 0, 'symbols' => 0, 'imports' => 0], $summary['left_out']);
         $this->assertDatabaseHas('repository_files', [
             'repository_id' => $repository->id,
             'path' => 'src/Http/ProductController.php',
@@ -180,7 +182,7 @@ class RepositoryAnalyzerTest extends TestCase
         $summary = app(RepositoryAnalyzer::class)->analyze($repository);
 
         // Nothing is parsed again: the 12 files left have the same content as at the first analysis.
-        $this->assertSame(['files_total' => 15, 'files_analyzed' => 12, 'files_parsed' => 0, 'modules_total' => 8], $summary);
+        $this->assertSame(['files_total' => 15, 'files_analyzed' => 12, 'files_parsed' => 0, 'modules_total' => 8], Arr::except($summary, 'left_out'));
         $this->assertSame(12, $repository->files()->count());
         $this->assertDatabaseMissing('repository_files', ['path' => 'frontend/app.ts']);
         $this->assertDatabaseMissing('modules', ['repository_id' => $repository->id, 'path' => 'frontend']);

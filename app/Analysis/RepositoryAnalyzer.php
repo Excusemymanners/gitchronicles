@@ -2,6 +2,7 @@
 
 namespace App\Analysis;
 
+use App\Documentation\CloneFiles;
 use App\Exceptions\RepositoryProcessingException;
 use App\Git\Git;
 use App\Models\CodeSymbol;
@@ -10,6 +11,7 @@ use App\Models\Module;
 use App\Models\ModuleDependency;
 use App\Models\Repository;
 use App\Models\RepositoryFile;
+use App\Support\ChildEnvironment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Support\Collection;
@@ -46,7 +48,7 @@ final class RepositoryAnalyzer
     /**
      * After this many seconds the analyzer is stopped.
      */
-    public const TIMEOUT_SECONDS = 240;
+    public const TIMEOUT_SECONDS = 200;
 
     /**
      * Bigger files are not code someone wrote by hand (data, generated files), so they are skipped.
@@ -80,12 +82,17 @@ final class RepositoryAnalyzer
      * read in this call (the others had the same content as last time and came from the cache).
      *
      * @param  bool  $fromScratch  forget the cache and parse every file again (a full reprocessing)
-     * @return array{files_total: int, files_analyzed: int, files_parsed: int, modules_total: int}
+     * @return array{files_total: int, files_analyzed: int, files_parsed: int, modules_total: int, left_out: array{files: int, symbols: int, imports: int}}
      */
     public function analyze(Repository $repository, bool $fromScratch = false): array
     {
         $trackedFiles = $this->listFiles($repository);
         $filesToAnalyze = array_values(array_filter($trackedFiles, $this->shouldAnalyze(...)));
+
+        // Only so many files are analyzed (config gitchronicle.analysis.max_files); the others are counted as left out.
+        $maxFiles = (int) config('gitchronicle.analysis.max_files');
+        $filesLeftOut = max(0, count($filesToAnalyze) - $maxFiles);
+        $filesToAnalyze = array_slice($filesToAnalyze, 0, $maxFiles);
 
         if ($fromScratch) {
             Storage::disk('local')->delete($repository->analysisCacheFile());
@@ -95,7 +102,11 @@ final class RepositoryAnalyzer
 
         $modulesTotal = DB::transaction(fn (): int => $this->save($repository, $filesToAnalyze, $analysis['files'], $fromScratch));
 
+        $leftOut = $analysis['left_out'] ?? [];
+        $leftOut['files'] = ($leftOut['files'] ?? 0) + $filesLeftOut;
+
         return [
+            'left_out' => array_map(intval(...), $leftOut),
             'files_total' => count($trackedFiles),
             'files_analyzed' => count($analysis['files']),
             'files_parsed' => (int) ($analysis['parsed'] ?? count($analysis['files'])),
@@ -159,8 +170,10 @@ final class RepositoryAnalyzer
             && array_intersect($folders, self::SKIPPED_FOLDERS) === []
             && ! Str::endsWith($file['path'], self::SKIPPED_SUFFIXES)
             && ! in_array(basename($file['path']), self::LOCK_FILES, true)
-            && strlen($file['path']) <= 1024
-            && ! str_contains($file['path'], "\n");
+            && strlen($file['path']) <= (int) config('gitchronicle.git.max_path_bytes')
+            && ! str_contains($file['path'], "\n")
+            // A name in another encoding (Latin-1 in old repositories) cannot be sent to the analyzer or to the browser.
+            && mb_check_encoding($file['path'], 'UTF-8');
     }
 
     /**
@@ -186,11 +199,13 @@ final class RepositoryAnalyzer
 
         try {
             $result = Process::timeout(self::TIMEOUT_SECONDS)
+                ->env(ChildEnvironment::onlyKeeping())
                 ->input(implode("\n", $paths))
                 ->run([
                     $python, '-I', base_path('analyzer/analyze.py'), $repository->clonePath(),
                     '--files-from', '-',
                     '--cache', Storage::disk('local')->path($repository->analysisCacheFile()),
+                    ...$this->limitArguments(),
                 ]);
         } catch (ProcessTimedOutException) {
             Log::warning('The code analyzer timed out.', [
@@ -224,6 +239,23 @@ final class RepositoryAnalyzer
         }
 
         return $analysis;
+    }
+
+    /**
+     * The limits of the analyzer as command line options (see config gitchronicle.analysis).
+     *
+     * @return list<string>
+     */
+    private function limitArguments(): array
+    {
+        return [
+            '--max-symbols-per-file', (string) config('gitchronicle.analysis.max_symbols_per_file'),
+            '--max-imports-per-file', (string) config('gitchronicle.analysis.max_imports_per_file'),
+            '--max-symbols-total', (string) config('gitchronicle.analysis.max_symbols_total'),
+            '--seconds-per-file', (string) config('gitchronicle.analysis.seconds_per_file'),
+            '--seconds-total', (string) config('gitchronicle.analysis.seconds_total'),
+            '--max-file-bytes', (string) self::MAX_FILE_BYTES,
+        ];
     }
 
     /**
@@ -476,7 +508,9 @@ final class RepositoryAnalyzer
             return null;
         }
 
-        return ReadmeDescription::fromMarkdown(File::get($repository->clonePath().'/'.$readme));
+        $markdown = (new CloneFiles($repository))->read($readme);
+
+        return $markdown === null ? null : ReadmeDescription::fromMarkdown($markdown);
     }
 
     /**

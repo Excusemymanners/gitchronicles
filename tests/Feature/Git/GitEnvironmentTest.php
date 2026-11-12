@@ -4,6 +4,7 @@ namespace Tests\Feature\Git;
 
 use App\Git\ChangeSet;
 use App\Git\CommitHistory;
+use App\Git\Git;
 use App\Git\LocalClone;
 use App\Git\RemoteHead;
 use Illuminate\Process\PendingProcess;
@@ -36,6 +37,58 @@ class GitEnvironmentTest extends TestCase
             && (($process->environment['GIT_TERMINAL_PROMPT'] ?? null) !== '0' || ($process->environment['GIT_ASKPASS'] ?? null) !== ''));
         // The offline commands keep their own variable next to the two common ones.
         Process::assertRan(fn (PendingProcess $process): bool => ($process->command[1] ?? null) === 'diff'
-            && $process->environment === ['GIT_TERMINAL_PROMPT' => '0', 'GIT_ASKPASS' => '', 'GIT_NO_LAZY_FETCH' => '1']);
+            && ($process->environment['GIT_NO_LAZY_FETCH'] ?? null) === '1');
+    }
+
+    public function test_git_runs_in_a_closed_room_without_the_workers_secrets_or_the_computers_settings(): void
+    {
+        putenv('APP_KEY=base64:secret');
+        $_ENV['DB_PASSWORD'] = 'hunter2';
+        $_ENV['ANTHROPIC_API_KEY'] = 'sk-ant-1';
+
+        try {
+            $environment = Git::environment();
+        } finally {
+            putenv('APP_KEY');
+            unset($_ENV['DB_PASSWORD'], $_ENV['ANTHROPIC_API_KEY']);
+        }
+
+        // false = removed from the child process.
+        $this->assertFalse($environment['DB_PASSWORD']);
+        $this->assertFalse($environment['ANTHROPIC_API_KEY']);
+        $this->assertFalse($environment['APP_KEY']);
+        $this->assertSame('/dev/null', $environment['GIT_CONFIG_GLOBAL']);
+        $this->assertSame('1', $environment['GIT_CONFIG_NOSYSTEM']);
+        $this->assertSame('1', $environment['GIT_LFS_SKIP_SMUDGE']);
+        $this->assertArrayNotHasKey('PATH', array_filter($environment, fn ($value) => $value === false));
+    }
+
+    public function test_hooks_symlinks_and_unlisted_protocols_are_turned_off_for_every_command(): void
+    {
+        config(['gitchronicle.git.protocols' => 'https']);
+        $environment = Git::environment();
+        $settings = [];
+
+        for ($i = 0; $i < (int) $environment['GIT_CONFIG_COUNT']; $i++) {
+            $settings[$environment["GIT_CONFIG_KEY_{$i}"]] = $environment["GIT_CONFIG_VALUE_{$i}"];
+        }
+
+        $this->assertSame('/dev/null', $settings['core.hooksPath']);
+        $this->assertSame('false', $settings['core.symlinks']);
+        $this->assertSame('never', $settings['protocol.allow']);
+        $this->assertSame('always', $settings['protocol.https.allow']);
+        $this->assertArrayNotHasKey('protocol.file.allow', $settings);
+    }
+
+    public function test_real_git_refuses_the_ssh_and_ext_protocols_and_does_not_run_the_users_global_filters(): void
+    {
+        config(['gitchronicle.git.protocols' => 'https']);
+
+        $ext = Git::process()->timeout(20)->run(['git', 'ls-remote', '--', 'ext::sh -c "touch /tmp/gc-pwned"', 'HEAD']);
+        $this->assertTrue($ext->failed());
+        $this->assertFileDoesNotExist('/tmp/gc-pwned');
+
+        $file = Git::process()->timeout(20)->run(['git', 'ls-remote', '--', sys_get_temp_dir(), 'HEAD']);
+        $this->assertStringContainsString('not allowed', $file->errorOutput());
     }
 }

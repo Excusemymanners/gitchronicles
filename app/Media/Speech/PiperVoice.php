@@ -2,6 +2,7 @@
 
 namespace App\Media\Speech;
 
+use App\Support\ChildEnvironment;
 use Illuminate\Support\Facades\Process;
 use RuntimeException;
 
@@ -43,7 +44,8 @@ final class PiperVoice implements SpeechSynthesizer
     {
         foreach ($clips as $wavPath => $text) {
             $result = Process::timeout(120)
-                ->input($text)
+                ->env(ChildEnvironment::withoutSecrets())
+                ->input(SpokenInput::limit($text))
                 ->run([
                     $this->python, '-m', 'piper',
                     '--model', $this->model,

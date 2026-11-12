@@ -7,6 +7,8 @@ use App\Ai\TextGenerator;
 use App\Enums\ProcessingRunStatus;
 use App\Enums\RepositoryStatus;
 use App\Exceptions\RepositoryProcessingException;
+use App\Exceptions\RepositoryTooLarge;
+use App\Git\DiskUsage;
 use App\Git\LocalClone;
 use App\Models\Document;
 use App\Models\ProcessingRun;
@@ -84,7 +86,7 @@ class CloneRepository implements ShouldQueue
     {
         $this->repository->update(['status' => $this->run->statusFor(RepositoryStatus::Cloning)]);
 
-        $clone = LocalClone::of($this->repository);
+        $clone = $this->localClone();
 
         // Only the first attempt trusts an existing clone: if updating it failed, the second one starts clean.
         $isUpdate = $this->attempts() === 1 && $clone->isHealthy($this->repository->url);
@@ -93,10 +95,25 @@ class CloneRepository implements ShouldQueue
             Storage::disk('local')->deleteDirectory($this->repository->cloneDirectory());
         }
 
-        $worked = $isUpdate
-            ? $this->git(fn () => $clone->fetch(self::CLONE_TIMEOUT_SECONDS), isUpdate: true)
-                && $this->git(fn () => $clone->moveTo('FETCH_HEAD', self::CLONE_TIMEOUT_SECONDS), isUpdate: true)
-            : $this->git(fn () => $clone->clone($this->repository->url, self::CLONE_TIMEOUT_SECONDS), isUpdate: false);
+        if (! $isUpdate && $this->storageIsFull()) {
+            $this->fail(RepositoryTooLarge::because('storage_full'));
+
+            return;
+        }
+
+        try {
+            // The files are written to disk only after the size of the commit was checked (TreeInspector).
+            $worked = $isUpdate
+                ? $this->git(fn () => $clone->fetch(self::CLONE_TIMEOUT_SECONDS), isUpdate: true)
+                    && $this->checkOut($clone, 'FETCH_HEAD', isUpdate: true)
+                : $this->git(fn () => $clone->clone($this->repository->url, self::CLONE_TIMEOUT_SECONDS), isUpdate: false)
+                    && $this->checkOut($clone, 'HEAD', isUpdate: false);
+        } catch (RepositoryTooLarge $exception) {
+            $this->discardClone();
+            $this->fail($exception);
+
+            return;
+        }
 
         if (! $worked) {
             return;
@@ -124,6 +141,60 @@ class CloneRepository implements ShouldQueue
         if ($this->run->isIncremental() && $sha === $this->run->from_sha && ! $this->canRetryStalePages()) {
             $this->finishWithNothingNew();
         }
+    }
+
+    /**
+     * The clone folder of the repository (a method of its own so a test can replace it).
+     */
+    protected function localClone(): LocalClone
+    {
+        return LocalClone::of($this->repository);
+    }
+
+    /**
+     * Check the size of the commit, then write its files to disk. A repository over the limits is refused
+     * before it touches the disk.
+     *
+     * @throws RepositoryTooLarge
+     */
+    private function checkOut(LocalClone $clone, string $commit, bool $isUpdate): bool
+    {
+        if ($clone->head() === null && ! $isUpdate) {
+            return true;
+        }
+
+        $clone->assertCommitFits($commit);
+
+        if (! $this->git(fn () => $clone->moveTo($commit, self::CLONE_TIMEOUT_SECONDS), $isUpdate)) {
+            return false;
+        }
+
+        // The real folder, as the disk counts it, is checked once more after the checkout.
+        $limit = (int) config('gitchronicle.git.max_disk_bytes');
+
+        if ($limit > 0 && DiskUsage::of($this->repository->clonePath()) > $limit) {
+            throw RepositoryTooLarge::because('too_large', ['max' => intdiv($limit, 1024 * 1024)]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether all the clones together already use the storage budget (config gitchronicle.git.storage_budget_bytes).
+     */
+    private function storageIsFull(): bool
+    {
+        $budget = (int) config('gitchronicle.git.storage_budget_bytes');
+
+        return $budget > 0 && DiskUsage::of(Storage::disk('local')->path('repositories')) >= $budget;
+    }
+
+    /**
+     * Delete what a failed or stopped clone left on disk: nobody can use it, and it would keep taking space.
+     */
+    private function discardClone(): void
+    {
+        Storage::disk('local')->deleteDirectory($this->repository->cloneDirectory());
     }
 
     /**
@@ -168,6 +239,7 @@ class CloneRepository implements ShouldQueue
                 'timeout_seconds' => self::CLONE_TIMEOUT_SECONDS,
             ]);
 
+            $this->discardClone();
             $minutes = intdiv(self::CLONE_TIMEOUT_SECONDS, 60);
             $this->fail(RepositoryProcessingException::because($isUpdate ? 'fetch_timeout' : 'clone_timeout', ['minutes' => $minutes]));
 

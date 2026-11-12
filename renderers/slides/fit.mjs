@@ -31,7 +31,13 @@ const browser = await puppeteer.launch({
 try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 720 });
-    await page.goto(pathToFileURL(resolve(htmlPath)).href, { waitUntil: 'load' });
+
+    /* Prezentarea conține texte dintr-un repository străin: se citește doar ea însăși, nimic de pe internet sau din alte fișiere. */
+    const deckUrl = pathToFileURL(resolve(htmlPath)).href;
+    await page.setRequestInterception(true);
+    page.on('request', (request) => (request.url() === deckUrl || /^(data:|about:|blob:)/.test(request.url()) ? request.continue() : request.abort()));
+
+    await page.goto(deckUrl, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
 
     const result = await page.evaluate((bottomLimit, rightLimit) => {

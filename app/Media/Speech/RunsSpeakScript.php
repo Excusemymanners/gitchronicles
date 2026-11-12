@@ -2,12 +2,14 @@
 
 namespace App\Media\Speech;
 
+use App\Support\ChildEnvironment;
 use Illuminate\Support\Facades\Process;
 use RuntimeException;
 
 /**
  * The neural engines run as one Python process for all the sentences of a video (renderers/tts/speak.py):
- * the sentences go on the standard input as a JSON list of {text, path}, never on the command line.
+ * the sentences go on the standard input as a JSON list of {text, path}, never on the command line. The sentences
+ * are cut to SpokenInput::MAX_CHARACTERS, and the engine does not see the worker's keys and passwords.
  */
 trait RunsSpeakScript
 {
@@ -25,10 +27,11 @@ trait RunsSpeakScript
         $list = [];
 
         foreach ($clips as $path => $text) {
-            $list[] = ['text' => $text, 'path' => $path, 'rate' => $shapes[$path]['rate'] ?? 0.0, 'pitch' => $shapes[$path]['pitch'] ?? 0.0];
+            $list[] = ['text' => SpokenInput::limit($text), 'path' => $path, 'rate' => $shapes[$path]['rate'] ?? 0.0, 'pitch' => $shapes[$path]['pitch'] ?? 0.0];
         }
 
         $result = Process::timeout(60 + $secondsPerClip * count($clips))
+            ->env(ChildEnvironment::withoutSecrets())
             ->input(json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR))
             ->run($command);
 

@@ -15,7 +15,13 @@ The result is printed as JSON on stdout:
                 "symbols": [{"kind", "name", "start_line", "end_line"}],
                 "imports": [{"raw", "resolved_path", "external"}]}],
      "errors": [{"path", "message"}],
-     "parsed": 12}
+     "parsed": 12,
+     "left_out": {"files": 0, "symbols": 0, "imports": 0}}
+
+A repository is written by a stranger, so the analysis has limits (the defaults below, set by the caller with
+--max-* options): at most so many symbols and imports per file and in total, a time limit per file and for
+the whole run, and a size limit for every file read from the clone. What does not fit is left out and counted in
+"left_out"; the analysis itself never fails because of it.
 
 With --cache the analyzer remembers, in that JSON file, what it parsed from every file together
 with the hash of the file's content. At the next run a file with the same content is not parsed
@@ -34,6 +40,7 @@ import os
 import posixpath
 import re
 import sys
+import time
 import tomllib
 from pathlib import Path
 
@@ -44,6 +51,17 @@ GRAMMARS_DIR = Path(__file__).resolve().parent / ".venv" / "grammars"
 
 # The tree-sitter grammars we use: one for each language whose symbols and imports we read.
 GRAMMARS = ["php", "javascript", "typescript", "tsx", "python", "go", "java", "bash", "rust"]
+
+# Limits against hostile repositories (the caller overrides them from config/gitchronicle.php).
+LIMITS = {
+    "max_symbols_per_file": 2000,
+    "max_imports_per_file": 500,
+    "max_symbols_total": 60000,
+    "seconds_per_file": 10.0,
+    "seconds_total": 150.0,
+    "max_file_bytes": 1024 * 1024,
+    "max_config_bytes": 256 * 1024,
+}
 
 # File extension -> (language name shown in the app, grammar). Without a grammar we count lines only.
 LANGUAGES = {
@@ -172,6 +190,8 @@ def main() -> int:
     parser.add_argument("repository", nargs="?", help="the folder of the cloned repository")
     parser.add_argument("--files-from", help='file with one relative path per line ("-" = stdin)')
     parser.add_argument("--cache", help="JSON file that remembers the parsed files between runs")
+    for option, default in LIMITS.items():
+        parser.add_argument("--" + option.replace("_", "-"), type=type(default), default=default)
     parser.add_argument("--install-grammars", action="store_true", help="download the grammars (needs the network)")
     arguments = parser.parse_args()
 
@@ -191,6 +211,7 @@ def main() -> int:
         print(f"Missing tree-sitter grammars: {', '.join(missing)}. Run: composer analyzer:install", file=sys.stderr)
         return 2
 
+    LIMITS.update({option: getattr(arguments, option) for option in LIMITS})
     root = Path(arguments.repository).resolve()
     paths = read_file_list(arguments.files_from)
     cache_path = Path(arguments.cache) if arguments.cache else None
@@ -205,7 +226,10 @@ def main() -> int:
 
 def read_file_list(files_from: str) -> list[str]:
     """The paths to analyze, relative to the repository, without empty lines."""
-    text = sys.stdin.read() if files_from == "-" else Path(files_from).read_text(encoding="utf-8")
+    # File names are bytes in git: a name that is not UTF-8 must not stop the analysis, so it is decoded loosely
+    # (it will not match a file and ends up in "errors").
+    raw = sys.stdin.buffer.read() if files_from == "-" else Path(files_from).read_bytes()
+    text = raw.decode("utf-8", errors="replace")
 
     return [line for line in text.split("\n") if line.strip() != ""]
 
@@ -251,8 +275,16 @@ def analyze_repository(root: Path, paths: list[str], cache: dict) -> tuple[dict,
     errors = []
     parsed_files = {}
     parsed_count = 0
+    left_out = {"files": 0, "symbols": 0, "imports": 0}
+    symbols_kept = 0
+    started = time.monotonic()
 
     for path in paths:
+        # The whole run has a time budget: the files that do not fit are counted, not analyzed.
+        if time.monotonic() - started > LIMITS["seconds_total"]:
+            left_out["files"] += 1
+            continue
+
         try:
             parsed, was_cached = parse_file(root, path, parsers, cache.get(path))
         except Exception as error:  # one broken file must never stop the analysis
@@ -262,6 +294,12 @@ def analyze_repository(root: Path, paths: list[str], cache: dict) -> tuple[dict,
 
         parsed_files[path] = parsed
         parsed_count += 0 if was_cached else 1
+
+        # The symbols of the whole repository have a budget too (a file may already have been cut to its own limit).
+        symbols = parsed["symbols"][: max(0, LIMITS["max_symbols_total"] - symbols_kept)]
+        symbols_kept += len(symbols)
+        left_out["symbols"] += parsed.get("symbols_dropped", 0) + len(parsed["symbols"]) - len(symbols)
+        left_out["imports"] += parsed.get("imports_dropped", 0)
 
         # The imports are resolved at every run: an import may point to a file added or deleted since.
         resolved_imports = [
@@ -274,24 +312,18 @@ def analyze_repository(root: Path, paths: list[str], cache: dict) -> tuple[dict,
             "language": parsed["language"],
             "lines": parsed["lines"],
             "cached": was_cached,
-            "symbols": parsed["symbols"],
+            "symbols": symbols,
             # A file never imports itself (`use crate::Item` in lib.rs, `use self::x` ...): nothing to show.
             "imports": [item for item in resolved_imports if item["resolved_path"] != path],
         })
 
-    return {"files": files, "errors": errors, "parsed": parsed_count}, parsed_files
+    return {"files": files, "errors": errors, "parsed": parsed_count, "left_out": left_out}, parsed_files
 
 
 def parse_file(root: Path, path: str, parsers: dict, remembered: dict | None) -> tuple[dict, bool]:
     """What one file contains: its language, lines, symbols and imports as written in the code
     (not resolved yet). When the previous run saw the same content, its answer is reused."""
-    absolute_path = root / path
-
-    # A symbolic link could point outside the clone (for example to /etc/passwd): never follow it.
-    if absolute_path.is_symlink() or not absolute_path.resolve().is_relative_to(root):
-        raise ValueError("the path leaves the repository")
-
-    source = absolute_path.read_bytes()
+    source = read_clone_file(root, path, LIMITS["max_file_bytes"])
     content_hash = hashlib.sha1(source).hexdigest()
 
     if remembered is not None and remembered.get("hash") == content_hash:
@@ -306,11 +338,47 @@ def parse_file(root: Path, path: str, parsers: dict, remembered: dict | None) ->
     if grammar not in parsers:
         parsers[grammar] = language_pack.get_parser(grammar)
 
-    tree = parsers[grammar].parse(source)
-    parsed["symbols"] = find_symbols(tree.root_node, grammar)
-    parsed["imports"] = [[raw, names] for raw, names in unique_imports(find_imports(tree.root_node, grammar))]
+    tree = parse_with_time_limit(parsers[grammar], source)
+    symbols = find_symbols(tree.root_node, grammar)
+    imports = [[raw, names] for raw, names in unique_imports(find_imports(tree.root_node, grammar))]
+
+    # A file with more symbols or imports than the limits is cut; the numbers left out are remembered and reported.
+    parsed["symbols"] = symbols[: LIMITS["max_symbols_per_file"]]
+    parsed["imports"] = imports[: LIMITS["max_imports_per_file"]]
+    parsed["symbols_dropped"] = len(symbols) - len(parsed["symbols"])
+    parsed["imports_dropped"] = len(imports) - len(parsed["imports"])
 
     return parsed, False
+
+
+def read_clone_file(root: Path, relative: str, limit: int) -> bytes:
+    """The bytes of a file of the clone, or an error. The clone is written by a stranger, so a symbolic link
+    (in the file name or in a folder on the way) is never followed, the path may not leave the clone, and a file
+    over `limit` bytes is not read (only its size is asked)."""
+    absolute = root / relative
+
+    if absolute.is_symlink() or not absolute.resolve().is_relative_to(root):
+        raise ValueError("the path leaves the repository")
+
+    if not absolute.is_file():
+        raise ValueError("not a regular file")
+
+    if absolute.stat().st_size > limit:
+        raise ValueError(f"the file is larger than {limit} bytes")
+
+    with absolute.open("rb") as handle:
+        return handle.read(limit + 1)[:limit]
+
+
+def parse_with_time_limit(parser, source: bytes):
+    """Parse the source; stop after LIMITS["seconds_per_file"] seconds (tree-sitter calls the progress callback
+    while it works, and a callback that returns True cancels the parse)."""
+    deadline = time.monotonic() + LIMITS["seconds_per_file"]
+
+    try:
+        return parser.parse(lambda offset, point: source[offset:offset + 65536], progress_callback=lambda *_: time.monotonic() > deadline)
+    except ValueError as error:
+        raise TimeoutError("parsing took too long") from error
 
 
 def detect_language(path: str, source: bytes = b"") -> tuple[str | None, str | None]:
@@ -333,7 +401,8 @@ def shebang_language(source: bytes) -> tuple[str | None, str | None]:
     if not source.startswith(b"#!"):
         return None, None
 
-    words = source[2:].split(b"\n", 1)[0].decode("utf-8", errors="replace").split()
+    # Only the start of the line counts: a "shebang" that is megabytes long is not one.
+    words = source[2:512].split(b"\n", 1)[0].decode("utf-8", errors="replace").split()
     if not words:
         return None, None
 
@@ -342,7 +411,7 @@ def shebang_language(source: bytes) -> tuple[str | None, str | None]:
         rest = [word for word in words[1:] if not word.startswith("-") and "=" not in word]
         interpreter = posixpath.basename(rest[0]) if rest else ""
 
-    return SHEBANG_LANGUAGES.get(re.sub(r"[\d.]+$", "", interpreter), (None, None))
+    return SHEBANG_LANGUAGES.get(interpreter.rstrip("0123456789."), (None, None))
 
 
 def count_lines(source: bytes) -> int:
@@ -966,7 +1035,7 @@ class ImportResolver:
 
         for manifest in sorted(path for path in paths if posixpath.basename(path) == "Cargo.toml"):
             try:
-                data = tomllib.loads((root / manifest).read_text(encoding="utf-8", errors="replace"))
+                data = tomllib.loads(read_clone_file(root, manifest, LIMITS["max_config_bytes"]).decode("utf-8", errors="replace"))
             except (OSError, ValueError):
                 continue
 
@@ -1034,10 +1103,11 @@ class ImportResolver:
 
     @staticmethod
     def read_go_module(root: Path) -> str | None:
-        go_mod = root / "go.mod"
-        if not go_mod.is_file():
+        try:
+            content = read_clone_file(root, "go.mod", LIMITS["max_config_bytes"]).decode("utf-8", errors="replace")
+        except (OSError, ValueError):
             return None
-        match = re.search(r"^module\s+(\S+)", go_mod.read_text(encoding="utf-8", errors="replace"), re.MULTILINE)
+        match = re.search(r"^module\s+(\S+)", content, re.MULTILINE)
 
         return match.group(1) if match else None
 
@@ -1059,13 +1129,13 @@ def normalize(path: str) -> str:
 
 
 def read_json(path: Path) -> dict:
-    """A JSON file as a dict, or {} when it is missing or invalid. tsconfig.json may contain comments."""
-    if not path.is_file() or path.is_symlink():
+    """A JSON file as a dict, or {} when it is missing, too big, a link or invalid. tsconfig.json may contain comments."""
+    try:
+        content = read_clone_file(path.parent, path.name, LIMITS["max_config_bytes"]).decode("utf-8", errors="replace")
+    except (OSError, ValueError):
         return {}
 
-    content = path.read_text(encoding="utf-8", errors="replace")
-    without_comments = re.sub(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/', lambda match: match.group(0) if match.group(0).startswith('"') else "", content, flags=re.DOTALL)
-    without_trailing_commas = re.sub(r",(\s*[}\]])", r"\1", without_comments)
+    without_trailing_commas = re.sub(r",(\s*[}\]])", r"\1", strip_json_comments(content))
 
     try:
         data = json.loads(without_trailing_commas)
@@ -1073,6 +1143,39 @@ def read_json(path: Path) -> dict:
         return {}
 
     return data if isinstance(data, dict) else {}
+
+
+def strip_json_comments(content: str) -> str:
+    """The text without `// ...` and `/* ... */` comments, in one pass over it (strings are kept as they are).
+    A regular expression with a lazy `/\\*.*?\\*/` rescans the rest of the text for every `/*` that is never closed,
+    so a file made of them takes time with the square of its size; here every character is looked at once."""
+    pieces = []
+    length = len(content)
+    position = 0  # the start of the text not copied yet
+    index = 0
+
+    while index < length:
+        character = content[index]
+
+        if character == '"':  # a string: skip to its closing quote, a backslash escapes the next character
+            index += 1
+            while index < length and content[index] != '"':
+                index += 2 if content[index] == "\\" else 1
+            index += 1
+        elif content.startswith("//", index):
+            pieces.append(content[position:index])
+            end = content.find("\n", index)
+            index = position = length if end == -1 else end
+        elif content.startswith("/*", index):
+            pieces.append(content[position:index])
+            end = content.find("*/", index + 2)
+            index = position = length if end == -1 else end + 2
+        else:
+            index += 1
+
+    pieces.append(content[position:])
+
+    return "".join(pieces)
 
 
 if __name__ == "__main__":

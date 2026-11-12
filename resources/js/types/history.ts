@@ -55,6 +55,8 @@ export type RunChanges = {
     modules_removed: string[];
     /** De ce o rulare a procesat totul în loc să fie incrementală; `null` altfel. */
     full_reason: string | null;
+    /** Ce a lăsat deoparte o limită a analizei (repository neobișnuit de mare); `null` când nu s-a lăsat nimic. */
+    left_out?: { files: number; symbols: number; imports: number } | null;
 };
 
 /** Ultima procesare completă de dinaintea unei actualizări incrementale: cu ea se compară economia. */

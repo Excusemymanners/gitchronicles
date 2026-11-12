@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
@@ -143,6 +144,12 @@ class ProcessRepository implements ShouldBeUnique, ShouldQueue
 
             $repository->update(['status' => RepositoryStatus::Failed, 'error' => $message]);
             $run->finish(ProcessingRunStatus::Failed, $message);
+
+            // A repository that never finished a run has nothing on the page that needs its files: the clone
+            // would only take disk space until somebody retries. (An earlier success keeps its clone for the update.)
+            if ($repository->lastSuccessfulRun() === null) {
+                Storage::disk('local')->deleteDirectory($repository->cloneDirectory());
+            }
         })->dispatch();
     }
 }

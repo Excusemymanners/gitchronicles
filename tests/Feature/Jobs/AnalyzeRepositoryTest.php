@@ -40,7 +40,7 @@ class AnalyzeRepositoryTest extends TestCase
             : Process::result(output: json_encode(['files' => [
                 $this->analyzedFile('app/Http/HomeController.php', imports: [['raw' => 'App\Models\User', 'resolved_path' => 'app/Models/User.php', 'external' => false]]),
                 $this->analyzedFile('app/Models/User.php'),
-            ], 'errors' => []])));
+            ], 'errors' => [], 'left_out' => ['files' => 0, 'symbols' => 0, 'imports' => 0]])));
         $repository = Repository::factory()->ready()->create();
         $run = ProcessingRun::factory()->for($repository)->create();
 
@@ -57,9 +57,11 @@ class AnalyzeRepositoryTest extends TestCase
         Process::assertRan(fn (PendingProcess $process) => $process->command === [
             PHP_BINARY, '-I', base_path('analyzer/analyze.py'), $repository->clonePath(), '--files-from', '-',
             '--cache', Storage::disk('local')->path("analysis-cache/{$repository->id}.json"),
+            '--max-symbols-per-file', '2000', '--max-imports-per-file', '500', '--max-symbols-total', '60000',
+            '--seconds-per-file', '10', '--seconds-total', '150', '--max-file-bytes', '1048576',
         ]
             && $process->input === "app/Http/HomeController.php\napp/Models/User.php"
-            && $process->timeout === 240);
+            && $process->timeout === 200);
     }
 
     public function test_fails_with_a_clear_message_when_the_analyzer_is_not_installed(): void
@@ -107,7 +109,7 @@ class AnalyzeRepositoryTest extends TestCase
         $this->assertThrows(
             fn () => (new AnalyzeRepository($repository, $run))->handle(app(RepositoryAnalyzer::class)),
             RepositoryProcessingException::class,
-            StoredMessage::make('repositories.errors.analysis_timeout', ['minutes' => 4]),
+            StoredMessage::make('repositories.errors.analysis_timeout', ['minutes' => 3]),
         );
     }
 

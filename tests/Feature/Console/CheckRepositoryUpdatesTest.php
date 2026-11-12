@@ -41,7 +41,9 @@ class CheckRepositoryUpdatesTest extends TestCase
         Process::assertRan(fn (PendingProcess $process): bool => $process->command === [
             'git', '-c', 'credential.helper=', '-c', 'core.askPass=', 'ls-remote', '--', 'https://github.com/acme/magazin', 'HEAD',
         ]
-            && $process->environment === ['GIT_TERMINAL_PROMPT' => '0', 'GIT_ASKPASS' => '']
+            && $process->environment['GIT_TERMINAL_PROMPT'] === '0'
+            && $process->environment['GIT_ASKPASS'] === ''
+            && $process->environment['GIT_CONFIG_NOSYSTEM'] === '1'
             && $process->timeout === 20);
     }
 

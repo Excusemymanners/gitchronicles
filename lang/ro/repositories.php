@@ -48,6 +48,9 @@ return [
         'analyzer_missing' => 'Analizorul de cod nu este instalat pe server, așa că nu am putut analiza codul.',
         'analysis_timeout' => 'Analiza codului a durat mai mult de :minutes minute, așa că am oprit-o. Repository-ul este probabil prea mare.',
         'analysis_failed' => 'Nu am putut analiza codul repository-ului. Încearcă din nou.',
+        'too_many_files' => 'Repository-ul are mai mult de :max fișiere, mai mult decât poate procesa GitChronicle. Nu am păstrat nimic.',
+        'too_large' => 'Repository-ul este mai mare de :max MB, mai mult decât poate procesa GitChronicle. Nu am păstrat nimic.',
+        'storage_full' => 'GitChronicle nu mai are loc pentru un alt repository în acest moment. Încearcă mai târziu.',
     ],
 
 ];

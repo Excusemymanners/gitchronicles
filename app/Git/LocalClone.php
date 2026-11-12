@@ -2,6 +2,7 @@
 
 namespace App\Git;
 
+use App\Exceptions\RepositoryTooLarge;
 use App\Models\Repository;
 use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Process\PendingProcess;
@@ -17,7 +18,7 @@ use Illuminate\Process\PendingProcess;
  * so only public repositories work, even when the worker runs in a terminal logged in to GitHub
  * (VS Code sets GIT_ASKPASS).
  */
-final class LocalClone
+class LocalClone
 {
     /**
      * git options that keep it from finding saved credentials.
@@ -53,15 +54,16 @@ final class LocalClone
     }
 
     /**
-     * `git clone` into the folder: --filter=blob:none downloads file contents only for the latest
+     * `git clone` into the folder, without writing the files yet (--no-checkout): the job first checks the size
+     * of the commit (TreeInspector) and only then calls moveTo(). --filter=blob:none downloads file contents only for the latest
      * commit and --no-tags skips the tags, so the clone is small and fast; every commit is still there.
      * "--" tells git that what follows is the URL and the folder, never an option.
      */
     public function clone(string $url, int $timeoutSeconds): ProcessResult
     {
-        return $this->network($timeoutSeconds)->run([
+        return $this->watched($timeoutSeconds, [
             'git', ...self::NO_CREDENTIALS,
-            'clone', '--filter=blob:none', '--no-tags', '--quiet',
+            'clone', '--no-checkout', '--filter=blob:none', '--no-tags', '--quiet',
             '--', $url, $this->path,
         ]);
     }
@@ -72,7 +74,7 @@ final class LocalClone
      */
     public function fetch(int $timeoutSeconds): ProcessResult
     {
-        return $this->network($timeoutSeconds)->path($this->path)->run([
+        return $this->watched($timeoutSeconds, [
             'git', ...self::NO_CREDENTIALS,
             'fetch', '--filter=blob:none', '--no-tags', '--quiet', 'origin', 'HEAD',
         ]);
@@ -85,7 +87,7 @@ final class LocalClone
      */
     public function moveTo(string $commit, int $timeoutSeconds): ProcessResult
     {
-        return $this->network($timeoutSeconds)->path($this->path)->run([
+        return $this->watched($timeoutSeconds, [
             'git', ...self::NO_CREDENTIALS,
             'reset', '--hard', '--quiet', $commit, '--',
         ]);
@@ -115,6 +117,52 @@ final class LocalClone
     public function trackedFileCount(): int
     {
         return substr_count(Git::process($this->path)->run(['git', 'ls-files', '-z'])->throw()->output(), "\0");
+    }
+
+    /**
+     * Whether the commit is small enough to be written to disk: at most gitchronicle.git.max_files files and
+     * max_bytes bytes (TreeInspector).
+     *
+     * @throws RepositoryTooLarge
+     */
+    public function assertCommitFits(string $commit): void
+    {
+        TreeInspector::assertWithinLimits(
+            $this->path,
+            $commit,
+            (int) config('gitchronicle.git.max_files'),
+            (int) config('gitchronicle.git.max_bytes'),
+        );
+    }
+
+    /**
+     * Run a git command that talks to GitHub and watch the folder while it works: when the clone grows past
+     * the disk limit (the history of a repository can be big even without file contents) git is stopped.
+     * The time limit is checked here too.
+     *
+     * @param  list<string>  $command
+     *
+     * @throws RepositoryTooLarge
+     */
+    private function watched(int $timeoutSeconds, array $command): ProcessResult
+    {
+        $pending = $this->network($timeoutSeconds);
+        $process = (is_dir($this->path) ? $pending->path($this->path) : $pending)->start($command);
+        $limit = (int) config('gitchronicle.git.max_disk_bytes');
+
+        while ($process->running()) {
+            $process->ensureNotTimedOut();
+
+            if ($limit > 0 && DiskUsage::of($this->path) > $limit) {
+                $process->stop();
+
+                throw RepositoryTooLarge::because('too_large', ['max' => intdiv($limit, 1024 * 1024)]);
+            }
+
+            usleep(250_000);
+        }
+
+        return $process->wait();
     }
 
     /**

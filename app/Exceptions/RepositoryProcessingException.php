@@ -26,7 +26,7 @@ class RepositoryProcessingException extends RuntimeException
      */
     public static function because(string $key, array $params = []): self
     {
-        return new self(StoredMessage::make('repositories.errors.'.$key, $params));
+        return new static(StoredMessage::make('repositories.errors.'.$key, $params));
     }
 
     /**

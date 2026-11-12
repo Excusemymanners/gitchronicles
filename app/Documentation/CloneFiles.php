@@ -18,6 +18,11 @@ final class CloneFiles
     private ?string $root;
 
     /**
+     * The most bytes read from one file (a README or a manifest is never this big; a hostile file may be).
+     */
+    public const MAX_BYTES = 2 * 1024 * 1024;
+
+    /**
      * Prepare reading the clone of the repository.
      */
     public function __construct(Repository $repository)
@@ -39,13 +44,18 @@ final class CloneFiles
             return null;
         }
 
-        $content = file_get_contents($fullPath);
+        // A tracked file may be as big as the clone is allowed to be: only the first MAX_BYTES are read.
+        $content = file_get_contents($fullPath, false, null, 0, self::MAX_BYTES + 4);
 
-        if ($content === false || ! mb_check_encoding($content, 'UTF-8')) {
+        if ($content === false) {
             return null;
         }
 
-        return $content;
+        if (strlen($content) > self::MAX_BYTES) {
+            $content = mb_strcut($content, 0, self::MAX_BYTES, 'UTF-8');
+        }
+
+        return mb_check_encoding($content, 'UTF-8') ? $content : null;
     }
 
     /**

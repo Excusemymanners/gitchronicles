@@ -132,6 +132,41 @@ class CommitHistoryTest extends TestCase
         $this->assertSame([1, null, null], [$commits[0]['files_changed'], $commits[0]['insertions'], $commits[0]['deletions']]);
     }
 
+    public function test_a_commit_touching_thousands_of_files_keeps_only_the_first_paths_but_counts_all(): void
+    {
+        config(['gitchronicle.history.max_files_per_commit' => 10]);
+        $path = $this->newRepository();
+
+        foreach (range(1, 60) as $number) {
+            $this->writeFile("generated/f{$number}.txt", "line {$number}\n");
+        }
+
+        $this->commit($path, ['Generated files']);
+
+        [$commit] = app(CommitHistory::class)->read($path, 500);
+
+        $this->assertCount(10, $commit['files']);
+        $this->assertSame(60, $commit['files_changed']);
+        $this->assertSame(60, $commit['insertions']);
+    }
+
+    public function test_git_log_output_over_the_byte_limit_is_cut_and_the_newest_commits_are_kept(): void
+    {
+        config(['gitchronicle.history.max_log_bytes' => 600]);
+        $path = $this->newRepository();
+
+        foreach (range(1, 40) as $number) {
+            $this->writeFile('jurnal.txt', str_repeat("rândul {$number}\n", 3));
+            $this->commit($path, ["Commit numărul {$number}"]);
+        }
+
+        $commits = app(CommitHistory::class)->read($path, 500);
+
+        $this->assertGreaterThan(0, count($commits));
+        $this->assertLessThan(40, count($commits));
+        $this->assertSame('Commit numărul 40', $commits[0]['subject']);
+    }
+
     /**
      * An empty git repository on "main" in the fake "local" disk, at "repo".
      */

@@ -5,8 +5,7 @@ namespace App\Media\Slides;
 use App\Documentation\CloneFiles;
 use App\Media\ToolEnvironment;
 use App\Models\Repository;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
+use App\Support\SafeDownload;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,6 +18,13 @@ use Illuminate\Support\Facades\Storage;
 final class SlideIdentity
 {
     private const MAX_IMAGE_BYTES = 2_000_000;
+
+    private const MAX_SVG_BYTES = 500_000;
+
+    /**
+     * The most pixels a picture may have (about 6000 x 4000): more is not a logo.
+     */
+    private const MAX_PIXELS = 25_000_000;
 
     private const BADGE_HOSTS = ['shields.io', 'badge', 'travis-ci', 'codecov', 'coveralls', 'circleci', 'github.com/.*/workflows', 'sonarcloud', 'badgen.net', 'img.youtube.com'];
 
@@ -107,7 +113,7 @@ final class SlideIdentity
         }
 
         $data = $disk->get($path);
-        $mime = $data === null ? null : self::imageType($data);
+        $mime = $data === null || ! self::isSafeImage($data) ? null : self::imageType($data);
 
         return $data === null || $mime === null ? null : ['data' => $data, 'mime' => $mime];
     }
@@ -140,7 +146,7 @@ final class SlideIdentity
         }
 
         $data = $disk->get($path);
-        $mime = $data === null ? null : self::imageType($data);
+        $mime = $data === null || ! self::isSafeImage($data) ? null : self::imageType($data);
 
         if ($data === null || $mime === null) {
             return null;
@@ -185,7 +191,7 @@ final class SlideIdentity
 
         $data = file_get_contents($file);
 
-        return $data !== false && self::imageType($data) !== null ? $data : null;
+        return $data !== false && self::isSafeImage($data) ? $data : null;
     }
 
     /**
@@ -245,17 +251,38 @@ final class SlideIdentity
         return is_array($pixels) ? DominantColor::of($pixels) : null;
     }
 
+    /**
+     * An image from the internet: only https addresses of GitHub's own hosts (config gitchronicle.media.image_hosts),
+     * never an address inside our network, with a size limit, and only if the bytes really are a safe image.
+     */
     private static function download(string $url): ?string
     {
-        try {
-            $response = Http::withHeaders(['User-Agent' => 'GitChronicle'])->timeout(10)->get($url);
-        } catch (ConnectionException) {
-            return null;
+        $body = SafeDownload::image($url, (array) config('gitchronicle.media.image_hosts'), self::MAX_IMAGE_BYTES);
+
+        return $body !== null && self::isSafeImage($body) ? $body : null;
+    }
+
+    /**
+     * Whether the bytes are an image that is safe to decode in Chrome and to embed in a deck: a known type, a
+     * raster picture of a sane size (a few KB of PNG can claim 60,000 x 60,000 pixels and fill the memory
+     * when decoded), and an SVG without scripts, embedded pages, entities or links to other files.
+     */
+    public static function isSafeImage(string $data): bool
+    {
+        $mime = self::imageType($data);
+
+        if ($mime === null) {
+            return false;
         }
 
-        $body = $response->body();
+        if ($mime === 'image/svg+xml') {
+            return strlen($data) <= self::MAX_SVG_BYTES
+                && preg_match('/<!ENTITY|<!DOCTYPE[^>]*\[|<script|<foreignObject|<iframe|<embed|<object|<link|\bon[a-z]+\s*=|(?:href|src)\s*=\s*["\']\s*(?!#|data:image\/)[^"\']/i', $data) !== 1;
+        }
 
-        return $response->successful() && strlen($body) <= self::MAX_IMAGE_BYTES && self::imageType($body) !== null ? $body : null;
+        $size = @getimagesizefromstring($data);
+
+        return is_array($size) && $size[0] > 0 && $size[1] > 0 && $size[0] * $size[1] <= self::MAX_PIXELS;
     }
 
     /**

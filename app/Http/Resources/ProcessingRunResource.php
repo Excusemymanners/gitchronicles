@@ -68,7 +68,7 @@ class ProcessingRunResource extends JsonResource
      * saved); full_reason_facts holds the facts it is made of (a reason code and its numbers), null for
      * older runs, so the interface can word them in the visitor's language.
      *
-     * @return array{added: int|null, modified: int|null, deleted: int|null, modules: list<array{path: string, files: int, via: string}>, modules_not_listed: int, modules_added: list<string>, modules_removed: list<string>, full_reason: string|null, full_reason_facts: array<string, int|string>|null}|null
+     * @return array{added: int|null, modified: int|null, deleted: int|null, modules: list<array{path: string, files: int, via: string}>, modules_not_listed: int, modules_added: list<string>, modules_removed: list<string>, full_reason: string|null, full_reason_facts: array<string, int|string>|null, left_out: array{files: int, symbols: int, imports: int}|null}|null
      */
     private function changes(): ?array
     {
@@ -90,6 +90,8 @@ class ProcessingRunResource extends JsonResource
             'modules_removed' => array_slice($summary['modules_removed'] ?? [], 0, self::MAX_LISTED_MODULES),
             'full_reason' => FullProcessingReason::sentence($summary['full_reason'] ?? null),
             'full_reason_facts' => is_array($summary['full_reason'] ?? null) ? $summary['full_reason'] : null,
+            // What a limit of the analysis left out (files, symbols, imports), when it left something out.
+            'left_out' => $summary['left_out'] ?? null,
         ];
     }
 

@@ -25,6 +25,11 @@ const browser = await puppeteer.launch({
 
 try {
     const page = await browser.newPage();
+
+    /* Imaginea vine de pe internet: pagina nu are voie să ceară nimic în afară de ea însăși (date: și about:). */
+    await page.setRequestInterception(true);
+    page.on('request', (request) => (/^(data:|about:)/.test(request.url()) ? request.continue() : request.abort()));
+
     await page.setContent('<!doctype html><html><body></body></html>');
 
     const pixels = await page.evaluate(async (source) => {

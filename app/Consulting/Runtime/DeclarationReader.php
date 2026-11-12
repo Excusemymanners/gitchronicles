@@ -3,6 +3,7 @@
 namespace App\Consulting\Runtime;
 
 use App\Diagrams\TechnologyDetector;
+use App\Documentation\CloneFiles;
 use App\Models\Repository;
 use Illuminate\Support\Facades\File;
 
@@ -527,7 +528,8 @@ final class DeclarationReader
     {
         $fullPath = $repository->clonePath().'/'.$path;
 
-        if (! is_file($fullPath) || is_link($fullPath) || filesize($fullPath) > self::MAX_FILE_BYTES) {
+        // Not a link, not a file behind a linked folder, and inside the clone (CloneFiles checks the real path).
+        if (! (new CloneFiles($repository))->exists($path) || ! is_file($fullPath) || is_link($fullPath) || filesize($fullPath) > self::MAX_FILE_BYTES) {
             return null;
         }
 

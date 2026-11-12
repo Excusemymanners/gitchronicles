@@ -88,6 +88,22 @@ class AnalyzeRepository implements ShouldQueue
 
         $impact = $changes === null ? null : ImpactAnalysis::of($changes, $before, $after);
 
+        $changeSummary = $changes === null ? ($fullReason === null ? null : ['full_reason' => $fullReason]) : [
+            'added' => count($changes->added),
+            'modified' => count($changes->modified),
+            'deleted' => count($changes->deleted),
+            'modules' => $this->run->isIncremental() ? $impact['modules'] : [],
+            'modules_added' => $impact['modules_added'],
+            'modules_removed' => $impact['modules_removed'],
+            'project_files' => $this->projectFiles($changes),
+            'full_reason' => $fullReason,
+        ];
+
+        // What a limit of the analysis (config gitchronicle.analysis) left out, in real numbers; absent when nothing was.
+        if (array_sum($summary['left_out']) > 0) {
+            $changeSummary = [...($changeSummary ?? []), 'left_out' => $summary['left_out']];
+        }
+
         $this->run->update([
             'files_total' => $summary['files_total'],
             'files_analyzed' => $summary['files_parsed'],
@@ -100,16 +116,7 @@ class AnalyzeRepository implements ShouldQueue
                 ProcessingMode::Full => $summary['modules_total'],
                 ProcessingMode::Initial => 0,
             },
-            'change_summary' => $changes === null ? ($fullReason === null ? null : ['full_reason' => $fullReason]) : [
-                'added' => count($changes->added),
-                'modified' => count($changes->modified),
-                'deleted' => count($changes->deleted),
-                'modules' => $this->run->isIncremental() ? $impact['modules'] : [],
-                'modules_added' => $impact['modules_added'],
-                'modules_removed' => $impact['modules_removed'],
-                'project_files' => $this->projectFiles($changes),
-                'full_reason' => $fullReason,
-            ],
+            'change_summary' => $changeSummary,
         ]);
     }
 

@@ -2,6 +2,8 @@
 
 namespace App\Media;
 
+use App\Support\ChildEnvironment;
+
 /**
  * The environment variables of the Node tools that drive Chrome (HyperFrames, Marp, the diagram renderer).
  *
@@ -64,6 +66,8 @@ final class ToolEnvironment
         }
 
         return [
+            // The tools show content from a stranger's repository: the application's keys and passwords are removed.
+            ...ChildEnvironment::withoutSecrets(),
             'HOME' => $home,
             'XDG_CONFIG_HOME' => "{$home}/.config",
             'XDG_CACHE_HOME' => "{$home}/.cache",
