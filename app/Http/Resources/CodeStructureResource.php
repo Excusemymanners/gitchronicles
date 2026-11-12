@@ -26,7 +26,7 @@ class CodeStructureResource extends JsonResource
      * Transform the resource into an array. It runs four small queries: languages, modules,
      * the strongest dependencies and their total number.
      *
-     * Files without a known language are counted under „Altele”.
+     * Files without a known language are counted under „Other” (translated), listed last.
      *
      * @return array{file_count: int, line_count: int, module_count: int, language_count: int, languages: list<array{name: string, file_count: int, line_count: int}>, modules: list<array{id: int, path: string, name: string, file_count: int, line_count: int}>, dependencies: list<array{from: string, to: string, weight: int}>, dependency_count: int}
      */
@@ -56,8 +56,10 @@ class CodeStructureResource extends JsonResource
             'line_count' => (int) $languages->sum('line_count'),
             'module_count' => $modules->count(),
             'language_count' => $languages->whereNotNull('language')->count(),
-            'languages' => $languages->map(fn (object $language): array => [
-                'name' => $language->language ?? 'Altele',
+            // The named languages first (by lines), then the files of unknown language, so the first
+            // "language_count" entries are exactly the named ones.
+            'languages' => $languages->whereNotNull('language')->concat($languages->whereNull('language'))->values()->map(fn (object $language): array => [
+                'name' => $language->language ?? __('repositories.unknown_language'),
                 'file_count' => (int) $language->file_count,
                 'line_count' => (int) $language->line_count,
             ])->all(),

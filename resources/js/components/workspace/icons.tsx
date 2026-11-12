@@ -80,3 +80,68 @@ export function GitHubIcon({ className = 'size-4' }: Props) {
         </svg>
     );
 }
+
+/** Three dots: opens the overflow menu of the top bar. */
+export function MoreIcon({ className = 'size-5' }: Props) {
+    return (
+        <svg {...strokeProps} strokeWidth={2.25} className={className}>
+            <path d="M5 12h.01M12 12h.01M19 12h.01" />
+        </svg>
+    );
+}
+
+/** Two arrows in a circle: "Check for updates"; it spins while the check runs. */
+export function RefreshIcon({ className = 'size-3.5' }: Props) {
+    return (
+        <svg {...strokeProps} className={className}>
+            <path d="M20 11a8 8 0 0 0-14.9-3.5M4 4v4h4M4 13a8 8 0 0 0 14.9 3.5M20 20v-4h-4" />
+        </svg>
+    );
+}
+
+/** A filled triangle: plays the video. */
+export function PlayIcon({ className = 'size-6' }: Props) {
+    return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className={className}>
+            <path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.6-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14Z" />
+        </svg>
+    );
+}
+
+/** An arrow into a tray: downloads a file. */
+export function DownloadIcon({ className = 'size-4' }: Props) {
+    return (
+        <svg {...strokeProps} className={className}>
+            <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+        </svg>
+    );
+}
+
+/** Two sheets: copies a text to the clipboard. */
+export function CopyIcon({ className = 'size-4' }: Props) {
+    return (
+        <svg {...strokeProps} className={className}>
+            <rect x="9" y="9" width="11" height="11" rx="2" />
+            <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+        </svg>
+    );
+}
+
+/** A tick: the copy worked. */
+export function CheckIcon({ className = 'size-4' }: Props) {
+    return (
+        <svg {...strokeProps} strokeWidth={2} className={className}>
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
+    );
+}
+
+/** A speech bubble: the floating "Ask" button and the ask box. */
+export function AskIcon({ className = 'size-5' }: Props) {
+    return (
+        <svg {...strokeProps} className={className}>
+            <path d="M5 18.5V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8.5L5 18.5Z" />
+            <path d="M9 9h6M9 12h3.5" />
+        </svg>
+    );
+}

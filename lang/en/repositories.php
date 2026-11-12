@@ -15,6 +15,9 @@ return [
 
     'invalid_url' => 'Enter a GitHub link like https://github.com/owner/name.',
 
+    // The language of the files whose language is unknown, in „Code structure” (CodeStructureResource).
+    'unknown_language' => 'Other',
+
     'flash' => [
         'already_added' => 'This repository was already added.',
         'log_in_to_add' => 'Log in and we will add :repository.',

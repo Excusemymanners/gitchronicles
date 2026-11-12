@@ -87,3 +87,31 @@ export function useMediaQuery(query: string): boolean {
 
     return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches);
 }
+
+/**
+ * Scrolls the nearest scrollable ancestor (a column, the tab row) just enough to show the element. Unlike
+ * scrollIntoView(), this does not move the browser's keyboard starting point, so the first Tab on a page still
+ * goes to "Skip to content" instead of the element after the open tab.
+ */
+export function revealInScrollParent(element: HTMLElement | null, axis: 'x' | 'y'): void {
+    let container = element?.parentElement ?? null;
+
+    while (container && !/(auto|scroll)/.test(getComputedStyle(container)[axis === 'x' ? 'overflowX' : 'overflowY'])) {
+        container = container.parentElement;
+    }
+
+    if (!element || !container) {
+        return;
+    }
+
+    const box = element.getBoundingClientRect();
+    const view = container.getBoundingClientRect();
+    const [start, end, viewStart, viewEnd] = axis === 'x' ? [box.left, box.right, view.left, view.right] : [box.top, box.bottom, view.top, view.bottom];
+    const margin = 16;
+
+    if (start < viewStart) {
+        container[axis === 'x' ? 'scrollLeft' : 'scrollTop'] -= viewStart - start + margin;
+    } else if (end > viewEnd) {
+        container[axis === 'x' ? 'scrollLeft' : 'scrollTop'] += end - viewEnd + margin;
+    }
+}

@@ -3,21 +3,26 @@ import type { ReactNode } from 'react';
 
 type Props = {
     title: string;
+    /** An optional link or action on the right of the title, for example "All the documentation". */
+    aside?: ReactNode;
     children: ReactNode;
 };
 
 /**
- * Cardul cu titlu folosit de secțiunile paginilor unui repository,
- * ca toate să arate la fel. Titlul dă și numele secțiunii pentru cititoarele de ecran.
+ * A titled section of a repository page, drawn without a box: a hairline above and a display-face title, so the
+ * Overview reads as one page rather than a stack of cards. The title also names the section for screen readers.
  */
-export default function SectionCard({ title, children }: Props) {
+export default function SectionCard({ title, aside, children }: Props) {
     const headingId = useId();
 
     return (
-        <section aria-labelledby={headingId} className="rounded-lg border border-line bg-surface p-6 shadow-xs">
-            <h2 id={headingId} className="text-base font-semibold text-ink">
-                {title}
-            </h2>
+        <section aria-labelledby={headingId} className="border-t border-line pt-8">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h2 id={headingId} className="font-display text-heading font-semibold text-ink">
+                    {title}
+                </h2>
+                {aside}
+            </div>
             <div className="mt-4">{children}</div>
         </section>
     );

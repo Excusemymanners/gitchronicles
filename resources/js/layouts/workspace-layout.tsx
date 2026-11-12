@@ -1,45 +1,277 @@
 import { router, usePage, usePoll } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import AssistantProvider from '@/components/assistant/assistant-provider';
+import AssistantBar from '@/components/assistant/assistant-bar';
+import AssistantProvider, { useAssistantConversation } from '@/components/assistant/assistant-provider';
 import FlashMessage from '@/components/flash-message';
-import AssistantDock from '@/components/workspace/assistant-dock';
-import ChaptersDrawer from '@/components/workspace/chapters-drawer';
-import ChaptersNav from '@/components/workspace/chapters-nav';
-import ElementsPanel from '@/components/workspace/elements-panel';
+import { HERO_ASK_ID } from '@/components/repository/ask-box';
+import { AskButton, AskPanel } from '@/components/workspace/ask-panel';
+import CommandPalette from '@/components/workspace/command-palette';
+import DocsNav from '@/components/workspace/docs-nav';
+import DocsNavDrawer from '@/components/workspace/docs-nav-drawer';
+import { MenuIcon } from '@/components/workspace/icons';
+import SectionTabs from '@/components/workspace/section-tabs';
+import { repositorySections, sectionOfComponent } from '@/components/workspace/sections';
+import { isShortcut } from '@/components/workspace/shortcuts';
 import WorkspaceTopBar from '@/components/workspace/workspace-top-bar';
 import { useI18n } from '@/hooks/use-i18n';
 import { useMediaQuery } from '@/lib/workspace';
-import type { RepositoryPageProps } from '@/types';
+import type { RepositoryPageProps, WorkspaceGroup } from '@/types';
 
 type Props = {
     children: ReactNode;
 };
 
-/** De la „lg” (1024 px) cuprinsul e o coloană în stânga; mai jos e un sertar. */
-const CHAPTERS_COLUMN_QUERY = '(min-width: 64rem)';
+/** From "lg" (1024 px) the documentation's pages are a column on the left; below, a drawer. */
+const DOCS_COLUMN_QUERY = '(min-width: 64rem)';
 
-/** De la „xl” (1280 px) panoul „Elemente” e o coloană în dreapta; mai jos e sub conținutul capitolului. */
-const ELEMENTS_COLUMN_QUERY = '(min-width: 80rem)';
+/** From "xl" (1280 px) the documentation has a right column for "On this page". */
+const ASIDE_COLUMN_QUERY = '(min-width: 80rem)';
 
 /**
- * Spațiul de lucru al unui repository, în stilul NotebookLM: bara de sus, cuprinsul în stânga (ca pe
- * Wikipedia sau pe un site de documentație), capitolul deschis în mijloc, panoul „Elemente” în dreapta
- * și bara asistentului mereu jos. Fiecare coloană se derulează separat; pagina întreagă stă pe loc.
+ * The workspace of a repository: the top bar and the row of section tabs stay fixed at the top, and the page
+ * scrolls below them. It is the persistent layout of the "repositories/…" pages (see app.tsx), so the
+ * conversation with the assistant and the open folders survive a change of section.
  *
- * E layout-ul implicit al paginilor „repositories/…” (vezi app.tsx), deci Inertia îl păstrează montat
- * între capitole: cuprinsul își păstrează derularea și folderele deschise, iar conversația cu asistentul
- * rămâne când deschizi alt capitol. Pagina însăși își pune conținutul în RepositoryLayout (rama capitolului).
- *
- * Tot aici e reîmprospătarea cât timp repository-ul se procesează (mutată din fosta bară de tab-uri).
+ * Three page shapes: Documentation keeps a reading layout (its pages on the left, the article, "On this page" on
+ * the right); Ask is a centered conversation with its question field at the bottom; every other section is one
+ * centered column. On every page but Ask a floating "Ask" button opens the assistant as a panel beside the page.
  */
 export default function WorkspaceLayout({ children }: Props) {
+    const { repository } = usePage<RepositoryPageProps>().props;
+
+    // The key starts a fresh workspace (and conversation) for another repository.
+    return (
+        <AssistantProvider key={repository.id} repositoryId={repository.id}>
+            <WorkspaceFrame>{children}</WorkspaceFrame>
+        </AssistantProvider>
+    );
+}
+
+function WorkspaceFrame({ children }: Props) {
     const { t } = useI18n();
     const { props, component } = usePage<RepositoryPageProps>();
     const { repository, workspace, can_delete, can_retry, can_check_updates, can_regenerate, last_update } = props;
+    const conversation = useAssistantConversation();
 
-    // Cât timp procesarea mai are de lucru, cerem serverului la fiecare 2 secunde doar
-    // repository-ul și dreptul de „Reîncearcă”; când e gata sau a eșuat, ne oprim.
+    useProcessingPoll(repository);
+
+    const activeSection = sectionOfComponent(component);
+    const sections = repositorySections(repository.id, workspace, activeSection);
+    const pageShape = component === 'repositories/docs' ? 'docs' : component === 'repositories/assistant' ? 'ask' : 'column';
+
+    const [isAskOpen, setAskOpen] = useState(false);
+    const [isPaletteOpen, setPaletteOpen] = useState(false);
+    const [isDocsNavOpen, setDocsNavOpen] = useState(false);
+    const askButtonRef = useRef<HTMLButtonElement>(null);
+    const mainRef = useRef<HTMLElement>(null);
+
+    // One way to ask per screen: no panel on the Ask page, no button while the Overview's own ask box is visible.
+    const canUsePanel = pageShape !== 'ask';
+    const isHeroAskVisible = useIsVisible(HERO_ASK_ID, component);
+    const isPanelOpen = canUsePanel && isAskOpen;
+
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            if (isShortcut(event, 'k')) {
+                event.preventDefault();
+                setPaletteOpen((isOpen) => !isOpen);
+            } else if (isShortcut(event, 'i')) {
+                event.preventDefault();
+
+                if (canUsePanel) {
+                    setAskOpen((isOpen) => !isOpen);
+                } else {
+                    document.querySelector<HTMLTextAreaElement>('[data-ask-composer] textarea')?.focus();
+                }
+            } else if (event.key === 'Escape' && isPanelOpen && document.querySelector('dialog[open]') === null) {
+                setAskOpen(false);
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [canUsePanel, isPanelOpen]);
+
+    // When the panel closes, the focus goes back to the button that opens it.
+    const wasPanelOpen = useRef(false);
+
+    useEffect(() => {
+        if (wasPanelOpen.current && !isPanelOpen) {
+            askButtonRef.current?.focus();
+        }
+
+        wasPanelOpen.current = isPanelOpen;
+    }, [isPanelOpen]);
+
+    // "Skip to content" moves the focus to the page without changing the address.
+    function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
+        event.preventDefault();
+        mainRef.current?.focus();
+    }
+
+    // The palette's last row asks the assistant: in the panel, or on the Ask page itself.
+    const askFromPalette = workspace.assistant.is_indexed
+        ? (question: string) => {
+              if (canUsePanel) {
+                  setAskOpen(true);
+              }
+
+              conversation.ask(question);
+          }
+        : null;
+
+    const main = (
+        <main id="continut" ref={mainRef} tabIndex={-1} className="focus:outline-none">
+            {children}
+        </main>
+    );
+
+    return (
+        <div className="relative flex h-dvh flex-col overflow-hidden bg-canvas text-ink">
+            <a
+                href="#continut"
+                onClick={skipToContent}
+                className="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm font-medium text-accent focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:outline-2 focus:outline-accent"
+            >
+                {t('workspace.skipToContent')}
+            </a>
+
+            <header className="relative z-10 shrink-0 [view-transition-name:workspace-bar]">
+                <WorkspaceTopBar
+                    repository={repository}
+                    canDelete={can_delete}
+                    canRetry={can_retry}
+                    canCheckUpdates={can_check_updates}
+                    canRegenerate={can_regenerate}
+                    lastUpdate={last_update}
+                    onOpenPalette={() => setPaletteOpen(true)}
+                />
+                <SectionTabs sections={sections} activeKey={activeSection} />
+            </header>
+
+            <div className="relative flex min-h-0 flex-1">
+                {pageShape === 'docs' ? (
+                    <DocsShape groups={workspace.chapters} isNavOpen={isDocsNavOpen} onOpenNav={() => setDocsNavOpen(true)} onCloseNav={() => setDocsNavOpen(false)}>
+                        {main}
+                    </DocsShape>
+                ) : (
+                    <div className="relative flex min-w-0 flex-1 flex-col">
+                        {/* scroll-region: Inertia scrolls this column back to the top on a new page and restores it on "Back". */}
+                        <div scroll-region="" className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain [view-transition-name:page]">
+                            {main}
+                            {/* Room under the page for the floating button, so the last line never sits under it. */}
+                            {canUsePanel && <div aria-hidden="true" className="h-20" />}
+                        </div>
+
+                        {pageShape === 'ask' && (
+                            <div data-ask-composer="" className="shrink-0 border-t border-line bg-canvas">
+                                <div className="mx-auto w-full max-w-190 px-4 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-8">
+                                    <AssistantBar
+                                        assistant={conversation}
+                                        repository={repository}
+                                        isIndexed={workspace.assistant.is_indexed}
+                                        starters={workspace.assistant.starters}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {canUsePanel && !isPanelOpen && !isHeroAskVisible && <AskButton buttonRef={askButtonRef} onClick={() => setAskOpen(true)} />}
+
+                {canUsePanel && <AskPanel repository={repository} assistant={workspace.assistant} isOpen={isPanelOpen} onClose={() => setAskOpen(false)} />}
+            </div>
+
+            <CommandPalette
+                isOpen={isPaletteOpen}
+                onClose={() => setPaletteOpen(false)}
+                sections={sections}
+                groups={workspace.chapters}
+                onAsk={askFromPalette}
+            />
+
+            <FlashMessage placement="top" />
+        </div>
+    );
+}
+
+type DocsShapeProps = {
+    groups: WorkspaceGroup[];
+    isNavOpen: boolean;
+    onOpenNav: () => void;
+    onCloseNav: () => void;
+    children: ReactNode;
+};
+
+/**
+ * The Documentation page's reading layout: its pages and module tree on the left (from 1024 px; a drawer below,
+ * opened from a slim bar above the article), the article in the middle and, from 1280 px, the slot on the right
+ * where the article's "On this page" list portals itself (components/docs/on-this-page.tsx).
+ */
+function DocsShape({ groups, isNavOpen, onOpenNav, onCloseNav, children }: DocsShapeProps) {
+    const { t } = useI18n();
+    const hasNavColumn = useMediaQuery(DOCS_COLUMN_QUERY);
+    const hasAsideColumn = useMediaQuery(ASIDE_COLUMN_QUERY);
+    const docsGroups = documentationGroups(groups);
+
+    return (
+        <>
+            {hasNavColumn && (
+                <div className="relative w-66 shrink-0 overflow-y-auto overscroll-contain border-r border-line bg-surface">
+                    <DocsNav groups={docsGroups} />
+                </div>
+            )}
+
+            <div className="relative flex min-w-0 flex-1 flex-col">
+                {!hasNavColumn && (
+                    <div className="shrink-0 border-b border-line bg-canvas px-2 py-1.5 sm:px-4">
+                        <button
+                            type="button"
+                            onClick={onOpenNav}
+                            aria-haspopup="dialog"
+                            aria-expanded={isNavOpen}
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-ink-muted hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        >
+                            <MenuIcon className="size-4" />
+                            {t('workspace.docsNav.label')}
+                        </button>
+                    </div>
+                )}
+
+                <div scroll-region="" className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain [view-transition-name:page]">
+                    {children}
+                    <div aria-hidden="true" className="h-20" />
+                </div>
+            </div>
+
+            {hasAsideColumn && (
+                <div className="relative w-64 shrink-0 overflow-y-auto overscroll-contain border-l border-line bg-surface">
+                    <div id="workspace-aside-top" className="sticky top-0 z-10" />
+                </div>
+            )}
+
+            {!hasNavColumn && <DocsNavDrawer groups={docsGroups} isOpen={isNavOpen} onClose={onCloseNav} />}
+        </>
+    );
+}
+
+/** The documentation's part of the server's table of contents: its own pages (under /docs) and the modules. */
+function documentationGroups(groups: WorkspaceGroup[]): WorkspaceGroup[] {
+    return groups
+        .filter((group) => group.key === 'docs' || group.key === 'modules')
+        .map((group) => ({ ...group, chapters: group.chapters.filter((chapter) => chapter.href.includes('/docs')) }))
+        .filter((group) => group.chapters.length > 0 || group.folders.length > 0);
+}
+
+/**
+ * While the repository is processed, ask the server every 2 seconds for the repository and the "Try again" right
+ * only; stop when it is ready or failed. When the stage changes, reload the whole page: a finished stage brings new
+ * sections and data.
+ */
+function useProcessingPoll(repository: RepositoryPageProps['repository']): void {
     const { start, stop } = usePoll(2000, { only: ['repository', 'can_retry'] }, { autoStart: false });
 
     useEffect(() => {
@@ -50,8 +282,6 @@ export default function WorkspaceLayout({ children }: Props) {
         }
     }, [repository.is_processing, start, stop]);
 
-    // Când se schimbă etapa (de exemplu s-a terminat analiza), cerem din nou toată pagina:
-    // o etapă terminată aduce capitole și elemente noi (prop-ul „workspace”) și date pentru capitol.
     const shownStatus = useRef(repository.status);
 
     useEffect(() => {
@@ -60,96 +290,29 @@ export default function WorkspaceLayout({ children }: Props) {
             router.reload();
         }
     }, [repository.status]);
+}
 
-    const hasChaptersColumn = useMediaQuery(CHAPTERS_COLUMN_QUERY);
-    const hasElementsColumn = useMediaQuery(ELEMENTS_COLUMN_QUERY);
-    const [isChaptersDrawerOpen, setChaptersDrawerOpen] = useState(false);
+/**
+ * Whether the element with this id is on screen (an IntersectionObserver, which also respects the scroll
+ * column's clipping). Looked up again when the page changes; an element that does not exist is "not visible".
+ */
+function useIsVisible(elementId: string, pageComponent: string): boolean {
+    const [isVisible, setVisible] = useState(false);
 
-    // „Sari la conținut” mută focusul pe capitol fără să schimbe adresa (o ancoră ar fi schimbat capitolul evidențiat).
-    const mainRef = useRef<HTMLElement>(null);
+    useEffect(() => {
+        const element = document.getElementById(elementId);
 
-    function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
-        event.preventDefault();
-        mainRef.current?.focus();
-    }
+        if (!element) {
+            setVisible(false);
 
-    return (
-        // Cheia: alt repository pornește cu un spațiu de lucru nou (foldere închise, fără conversație).
-        // AssistantProvider ține conversația, comună barei de jos și paginii „Asistent”.
-        <AssistantProvider key={repository.id} repositoryId={repository.id}>
-            {/*
-              Fiecare coloană care se derulează e „relative”: textele sr-only (poziționate absolut) rămân în coloana lor;
-              altfel ar ieși din ea și ar face să se deruleze toată rama, cu bara de sus cu tot.
-            */}
-            <div className="relative flex h-dvh flex-col overflow-hidden bg-canvas text-ink">
-                <a
-                    href="#continut"
-                    onClick={skipToContent}
-                    className="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm font-medium text-accent focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:outline-2 focus:outline-accent"
-                >
-                    {t('workspace.skipToContent')}
-                </a>
+            return;
+        }
 
-                <WorkspaceTopBar
-                    repository={repository}
-                    canDelete={can_delete}
-                    canRetry={can_retry}
-                    canCheckUpdates={can_check_updates}
-                    canRegenerate={can_regenerate}
-                    lastUpdate={last_update}
-                    onOpenChapters={hasChaptersColumn ? null : () => setChaptersDrawerOpen(true)}
-                    isChaptersOpen={isChaptersDrawerOpen}
-                />
+        const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
+        observer.observe(element);
 
-                <div className="flex min-h-0 flex-1">
-                    {hasChaptersColumn && (
-                        <div className="relative w-66 shrink-0 overflow-y-auto overscroll-contain border-r border-line bg-surface">
-                            <ChaptersNav groups={workspace.chapters} />
-                        </div>
-                    )}
+        return () => observer.disconnect();
+    }, [elementId, pageComponent]);
 
-                    <div className="relative flex min-w-0 flex-1 flex-col">
-                        {/* scroll-region: Inertia readuce derularea acestei coloane sus la un capitol nou și o reface la „Înapoi”. */}
-                        <div scroll-region="" className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                            <main id="continut" ref={mainRef} tabIndex={-1} className="focus:outline-none">
-                                {children}
-                            </main>
-
-                            {!hasElementsColumn && <ElementsPanel elements={workspace.elements} placement="below" />}
-
-                            {/* Loc liber sub capitol, cât bara asistentului, ca ultimul rând să nu rămână sub ea. */}
-                            <div aria-hidden="true" className="h-52" />
-                        </div>
-
-                        {/* Pagina „Asistent” arată ea conversația, pe toată înălțimea; aici rămâne doar bara. */}
-                        <AssistantDock
-                            repository={repository}
-                            assistant={workspace.assistant}
-                            showThread={component !== 'repositories/assistant'}
-                        />
-                    </div>
-
-                    {hasElementsColumn && (
-                        <div className="relative w-82 shrink-0 overflow-y-auto overscroll-contain border-l border-line bg-surface">
-                            {/* Empty slot: a page can put its own content (the docs "On this page" list) above the panel. */}
-                            <div id="workspace-aside-top" className="sticky top-0 z-10" />
-                            <ElementsPanel elements={workspace.elements} placement="column" />
-                        </div>
-                    )}
-                </div>
-
-                {!hasChaptersColumn && (
-                    <ChaptersDrawer
-                        repository={repository}
-                        groups={workspace.chapters}
-                        canDelete={can_delete}
-                        isOpen={isChaptersDrawerOpen}
-                        onClose={() => setChaptersDrawerOpen(false)}
-                    />
-                )}
-
-                <FlashMessage placement="top" />
-            </div>
-        </AssistantProvider>
-    );
+    return isVisible;
 }

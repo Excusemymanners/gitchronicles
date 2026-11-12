@@ -136,7 +136,7 @@ class RepositoryTest extends TestCase
                 'languages' => [
                     ['name' => 'PHP', 'file_count' => 2, 'line_count' => 140],
                     ['name' => 'TypeScript', 'file_count' => 1, 'line_count' => 50],
-                    ['name' => 'Altele', 'file_count' => 1, 'line_count' => 12],
+                    ['name' => 'Other', 'file_count' => 1, 'line_count' => 12],
                 ],
                 'modules' => [
                     ['id' => $root->id, 'path' => '/', 'name' => 'magazin', 'file_count' => 1, 'line_count' => 12],

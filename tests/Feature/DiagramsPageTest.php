@@ -87,9 +87,11 @@ class DiagramsPageTest extends TestCase
 
         $response = $this->get("/repositories/{$repository->id}");
 
+        // The Overview's "Explore" card draws its thumbnail from the workspace's architecture element.
         $response->assertInertia(fn (Assert $page) => $page
-            ->where('diagram_preview.type', 'layers')
-            ->where('diagram_preview.title', 'Arhitectura pe straturi')
+            ->where('workspace.elements.architecture.type', 'layers')
+            ->where('workspace.elements.architecture.href', "/repositories/{$repository->id}/diagrams#straturi")
+            ->where('showcase.diagram_count', 2)
         );
     }
 

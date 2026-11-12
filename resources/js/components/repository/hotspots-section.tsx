@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import HotspotsCard from '@/components/timeline/hotspots-card';
+import UnboxedSection from '@/components/repository/unboxed-section';
 import type { RepositoryPageProps } from '@/types';
 import type { Hotspot } from '@/types/history';
 
@@ -20,5 +21,9 @@ export default function HotspotsSection({ hotspots }: Props) {
         return null;
     }
 
-    return <HotspotsCard repository={repository} hotspots={hotspots} timelineHref={`/repositories/${repository.id}/timeline#zone-fierbinti`} />;
+    return (
+        <UnboxedSection>
+            <HotspotsCard repository={repository} hotspots={hotspots} timelineHref={`/repositories/${repository.id}/timeline#zone-fierbinti`} />
+        </UnboxedSection>
+    );
 }

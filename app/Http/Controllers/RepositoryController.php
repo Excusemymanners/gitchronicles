@@ -5,15 +5,15 @@ namespace App\Http\Controllers;
 use App\Actions\AddRepository;
 use App\Actions\ReprocessRepository;
 use App\Actions\UpdateRepository;
-use App\Enums\DiagramType;
 use App\Enums\ProcessingTrigger;
 use App\Git\HistoryStatistics;
 use App\Http\Controllers\Repository\RendersRepositoryPage;
 use App\Http\Requests\StoreRepositoryRequest;
 use App\Http\Resources\CodeStructureResource;
-use App\Http\Resources\DiagramResource;
 use App\Http\Resources\OverviewSummaryResource;
+use App\Http\Resources\PresentationMediaResource;
 use App\Http\Resources\RepositoryCardResource;
+use App\Http\Resources\RepositoryShowcaseResource;
 use App\Models\Document;
 use App\Models\Repository;
 use App\Support\GitHubUrl;
@@ -115,17 +115,16 @@ class RepositoryController extends Controller
             // „Zone fierbinți”: the 5 files changed most often (Istoric), null when there are none.
             'hotspots' => fn () => $statistics->hotspots($repository, 5) ?: null,
 
-            // A preview of the architecture diagram (Faza 7): the layers view, null until BuildDiagrams draws it.
-            'diagram_preview' => function () use ($repository): ?array {
-                $layers = $repository->diagrams()->firstWhere('type', DiagramType::Layers);
-
-                return $layers === null ? null : DiagramResource::make($layers)->resolve();
-            },
-
             // „Structura codului”: the result of the code analysis (Faza 5), null until the first analysis ends.
             'code_structure' => fn () => $repository->analyzed_at === null
                 ? null
                 : CodeStructureResource::make($repository)->resolve(),
+
+            // The showcase's video player and downloads: the same videos and slides as the „Video & slides” page.
+            'media' => fn () => PresentationMediaResource::make($repository)->resolve(),
+
+            // The „Explore” cards and the README download: the facts no other prop carries.
+            'showcase' => fn () => RepositoryShowcaseResource::make($repository)->resolve(),
         ]);
     }
 

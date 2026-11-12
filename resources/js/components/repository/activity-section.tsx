@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import ActivityCard from '@/components/timeline/activity-card';
+import UnboxedSection from '@/components/repository/unboxed-section';
 import type { RepositoryPageProps } from '@/types';
 import type { Activity } from '@/types/history';
 
@@ -19,5 +20,9 @@ export default function ActivitySection({ activity }: Props) {
         return null;
     }
 
-    return <ActivityCard activity={activity} timelineHref={`/repositories/${repository.id}/timeline`} />;
+    return (
+        <UnboxedSection>
+            <ActivityCard activity={activity} timelineHref={`/repositories/${repository.id}/timeline`} />
+        </UnboxedSection>
+    );
 }

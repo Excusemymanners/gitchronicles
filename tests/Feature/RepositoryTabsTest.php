@@ -84,7 +84,8 @@ class RepositoryTabsTest extends TestCase
             ->where('overview', null)
             ->where('activity', null)
             ->where('hotspots', null)
-            ->where('diagram_preview', null)
+            ->where('showcase.diagram_count', 0)
+            ->where('showcase.documentation', null)
         );
     }
 }

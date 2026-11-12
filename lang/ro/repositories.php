@@ -15,6 +15,9 @@ return [
 
     'invalid_url' => 'Introdu un link de GitHub de forma https://github.com/proprietar/nume.',
 
+    // The language of the files whose language is unknown, in „Code structure” (CodeStructureResource).
+    'unknown_language' => 'Altele',
+
     'flash' => [
         'already_added' => 'Repository-ul era deja adăugat.',
         'log_in_to_add' => 'Intră în cont ca să adăugăm :repository.',

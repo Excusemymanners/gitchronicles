@@ -4,15 +4,15 @@ import ChapterLink from '@/components/workspace/chapter-link';
 import { ChevronIcon, SearchIcon } from '@/components/workspace/icons';
 import { useI18n } from '@/hooks/use-i18n';
 import { formatNumber } from '@/lib/format';
-import { useActiveChapter } from '@/lib/workspace';
+import { revealInScrollParent, useActiveChapter } from '@/lib/workspace';
 import type { WorkspaceGroup, WorkspaceModule, WorkspaceModuleFolder } from '@/types';
 
 type Props = {
     groups: WorkspaceGroup[];
 };
 
-/** De la câte module încolo apare câmpul de filtrare: un proiect mare poate avea sute. */
-const FILTER_FROM_MODULE_COUNT = 40;
+/** The filter field appears when there are more modules than this: a big project can have hundreds. */
+const FILTER_ABOVE_MODULE_COUNT = 12;
 
 const focusRing = 'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent';
 
@@ -24,11 +24,11 @@ const idleItemClasses = 'text-ink-muted hover:bg-surface-2 hover:text-ink';
 const activeItemClasses = 'bg-accent-soft font-medium text-accent shadow-[inset_2px_0_0_var(--color-accent)]';
 
 /**
- * Cuprinsul repository-ului, ca la Wikipedia sau pe un site de documentație: grupuri de capitole
- * (Documentație, Arhitectură, Module, Istoric), cu capitolul deschis evidențiat. Modulele sunt grupate
- * pe folderul de sus, în foldere care se deschid și se închid.
+ * The documentation's own navigation (the left column of the Documentation page, a drawer on phones): its pages
+ * ("About the project", the README) and the module tree, with the open page highlighted. Modules are grouped by
+ * their top folder, in folders that open and close, like a documentation site.
  */
-export default function ChaptersNav({ groups }: Props) {
+export default function DocsNav({ groups }: Props) {
     const { t } = useI18n();
     const activeChapter = useActiveChapter();
 
@@ -36,11 +36,11 @@ export default function ChaptersNav({ groups }: Props) {
     const activeItemRef = useRef<HTMLLIElement>(null);
 
     useEffect(() => {
-        activeItemRef.current?.scrollIntoView({ block: 'nearest' });
+        revealInScrollParent(activeItemRef.current, 'y');
     }, [activeChapter?.href]);
 
     return (
-        <nav aria-label={t('workspace.chapters')} className="flex flex-col gap-6 px-3 pt-5 pb-10">
+        <nav aria-label={t('workspace.docsNav.label')} className="flex flex-col gap-6 px-3 pt-5 pb-10">
             {groups.map((group) => (
                 <ChapterGroup key={group.key} group={group} activeHref={activeChapter?.href ?? null} activeItemRef={activeItemRef} />
             ))}
@@ -59,7 +59,7 @@ function ChapterGroup({ group, activeHref, activeItemRef }: ChapterGroupProps) {
 
     return (
         <section aria-labelledby={headingId}>
-            <h2 id={headingId} className="px-2.5 text-[0.6875rem] font-semibold tracking-wider text-ink-subtle uppercase">
+            <h2 id={headingId} className="px-2.5 font-sans text-[0.8125rem] font-medium text-ink-subtle">
                 {group.title}
                 {group.count !== null && <span className="tabular-nums"> · {formatNumber(group.count)}</span>}
             </h2>
@@ -138,7 +138,7 @@ type ModuleTreeProps = {
 /**
  * Modulele, grupate pe folderul de sus („app” → „Http”, „Models”). Un folder cu un singur modul apare
  * direct, fără să trebuiască deschis. La început e deschis folderul capitolului curent sau, dacă niciun
- * modul nu e deschis, cel mai mare folder. Peste FILTER_FROM_MODULE_COUNT module apare un câmp de filtrare.
+ * modul nu e deschis, cel mai mare folder. Above FILTER_ABOVE_MODULE_COUNT modules a filter field appears.
  */
 function ModuleTree({ folders, activeHref, activeItemRef }: ModuleTreeProps) {
     const { t, plural } = useI18n();
@@ -188,7 +188,7 @@ function ModuleTree({ folders, activeHref, activeItemRef }: ModuleTreeProps) {
 
     return (
         <div className="mt-2">
-            {modules.length >= FILTER_FROM_MODULE_COUNT && (
+            {modules.length > FILTER_ABOVE_MODULE_COUNT && (
                 <div className="mb-2">
                     <label htmlFor={filterId} className="sr-only">
                         {t('workspace.filterModulesByPath')}
