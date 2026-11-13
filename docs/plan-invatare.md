@@ -347,6 +347,15 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Diagrama de componente a unui depozit cu mai puțin de trei module cu cod se desenează pe fișiere (cele mai mari 20, cu simbolurile lor), dar doar dacă arată mai mult decât modulele (mai multe fișiere decât module). Concluziile și dovezile se calculează cu aceleași clase, fiecare fișier ținând locul unui modul (`CodeOverview::applicationFiles()`), iar interfața spune „fișiere” după câmpul `unit` din concluzii. Un nod fără pagină de documentație nu e legătură.
   - Gramaticile `bash` și `rust` se adaugă la instalare; până se instalează, analizorul se oprește cu mesajul obișnuit „Missing tree-sitter grammars”.
 
+- 2026-11-13 — Aspectul „Brand 3”, antracit. Proprietarul a cerut un aspect mai profesionist și mai neutru: paleta și logo-ul spre antracit sau culorile GitHub, butoane, tipografie și un erou mai impresionante. Decizii și motive:
+  - Culorile neutre sunt cele ale interfeței GitHub (pagina `#0d1117`, cardurile mai deschise, textul `#f0f6fc`; în tema luminoasă alb și antracit `#1f2328`): documentația pare continuarea paginii repository-ului de unde vine vizitatorul. Un singur accent albastru, doar pentru legături, focus, tab-ul deschis și selecție.
+  - Butonul principal e neutru (deschis pe pagina întunecată, antracit pe cea luminoasă), ca accentul să nu concureze cu singurul lucru de apăsat. Tokenul păstrează numele vechi (`accent-strong`), așa că toate butoanele principale s-au schimbat odată.
+  - Contrastul e calculat, nu ghicit: trei valori date inițial nu treceau (textul discret pe suprafețe, accentul pe fundalul lui pal, marginea controalelor), așa că am folosit valorile GitHub vecine care trec 4,5:1 pentru text și 3:1 pentru marginea unui câmp.
+  - O singură familie pentru interfață, Mona Sans (fontul open-source al GitHub), cu greutățile 400–700; ierarhia vine din mărime și greutate, nu dintr-un al doilea font. Titlurile au implicit 600, ca să nu devină subțiri acum că există și 400.
+  - Logo-ul nou e un „G” desenat ca o ramură git (un arc care pleacă dintr-un commit și se închide în altul), într-o singură culoare cu `currentColor`; l-am ales dintre trei variante pentru că rămâne lizibil la 16 px. Fișierele vechi stau în `public/brand/v2/`, iar revenirea e o linie (`LEGACY_MARK_SRC` în `app-logo.tsx`).
+  - Un singur sistem de butoane (principal, secundar, discret, periculos; trei mărimi; stare de încărcare care păstrează eticheta) și aceeași ramă pentru câmpuri, ca orice formular să arate la fel.
+  - Prima pagină pune câmpul pentru link în centru, peste o grilă de puncte desenată doar în CSS, cu exemple reale (repository-uri deja documentate); galeria devine previzualizarea a ceea ce primește vizitatorul. Paginile de eroare ale Laravel primesc aspectul aplicației printr-un singur fișier Blade.
+
 ## Faza 7 — Diagrame C4 + prezentare
 - **Fac:** diagrame Mermaid C4 generate din graful de dependențe și din fișierele de configurare, plus o prezentare Marp (PDF/PPTX) construită din documentația generată.
 - **Gata când:** pagina repository-ului arată diagramele Container și Component și pot descărca prezentarea.

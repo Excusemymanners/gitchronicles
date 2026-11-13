@@ -1,6 +1,6 @@
 import { Head, router, usePoll } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, CSSProperties } from 'react';
 import Markdown from 'react-markdown';
 import LanguageBar from '@/components/home/language-bar';
 import ActivitySection from '@/components/repository/activity-section';
@@ -51,15 +51,29 @@ export default function RepositoriesShow({ repository, completeness, workspace, 
         <RepositoryLayout>
             <Head title={repository.full_name} />
 
-            <section aria-labelledby="overview-title" className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_17rem] lg:grid-rows-[auto_1fr] xl:grid-cols-[minmax(0,1fr)_19rem]">
+            {/*
+              The hero: the owner in muted text over the name at display scale, one paragraph at a comfortable measure,
+              the facts as one row, then the ask box as the focal control. The video sits beside it in a device-like
+              frame (a thin line, a soft shadow, rounded corners). Its parts enter one after the other.
+            */}
+            <section
+                aria-labelledby="overview-title"
+                className="grid gap-x-14 gap-y-10 pt-2 pb-4 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:grid-rows-[auto_1fr] xl:grid-cols-[minmax(0,1fr)_19rem]"
+            >
                 <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-                    <p className="text-sm text-ink-muted">{repository.owner}</p>
-                    <h1 id="overview-title" className="mt-1 font-display text-display font-bold break-words text-ink">
+                    <p style={staggerAt(0)} className="stagger animate-rise text-base text-ink-muted sm:text-lg">
+                        {repository.owner}
+                    </p>
+                    <h1
+                        id="overview-title"
+                        style={staggerAt(0)}
+                        className="stagger mt-1 animate-rise font-display text-display font-semibold break-words text-ink"
+                    >
                         {repository.name}
                     </h1>
 
                     {summary && (
-                        <div className="mt-5 max-w-prose text-base leading-relaxed text-ink-muted sm:text-lg">
+                        <div style={staggerAt(1)} className="stagger mt-6 max-w-[62ch] animate-rise text-base leading-relaxed text-ink-muted sm:text-lg">
                             {paragraph ? <InlineMarkdown>{paragraph}</InlineMarkdown> : summary}
                         </div>
                     )}
@@ -67,12 +81,15 @@ export default function RepositoriesShow({ repository, completeness, workspace, 
                     <Facts structure={code_structure} commitCount={activity?.commit_count ?? null} />
                 </div>
 
-                <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-                    <HeroVideo repository={repository} media={media} />
+                <div style={staggerAt(2)} className="stagger animate-rise lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                    {/* The device frame: a bezel of surface around the player; the player itself is HeroVideo's. */}
+                    <div className="mx-auto max-w-76 rounded-3xl border border-line bg-surface p-2 shadow-float lg:max-w-none">
+                        <HeroVideo repository={repository} media={media} />
+                    </div>
                 </div>
 
                 {workspace.assistant.is_indexed && (
-                    <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-end">
+                    <div style={staggerAt(3)} className="stagger min-w-0 animate-rise lg:col-start-1 lg:row-start-2 lg:self-end">
                         <AskBox repository={repository} starters={workspace.assistant.starters} />
                     </div>
                 )}
@@ -100,9 +117,14 @@ export default function RepositoriesShow({ repository, completeness, workspace, 
     );
 }
 
+/** The place of a hero part in its entrance (the stagger utility reads --i). */
+function staggerAt(index: number): CSSProperties {
+    return { '--i': index } as CSSProperties;
+}
+
 /**
- * The hero's row of real facts: the languages bar, then files, lines, modules and commits. A number that is not
- * known yet is left out; with none known the row is not drawn.
+ * The hero's row of real facts: files, lines, modules and commits (each number over its label, hairlines between
+ * them), then the languages bar. A number that is not known yet is left out; with none known the row is not drawn.
  */
 function Facts({ structure, commitCount }: { structure: CodeStructure | null; commitCount: number | null }) {
     const { t } = useI18n();
@@ -125,16 +147,20 @@ function Facts({ structure, commitCount }: { structure: CodeStructure | null; co
             : [];
 
     return (
-        <div className="mt-8 max-w-xl">
-            {languages.length > 0 && <LanguageBar languages={languages} />}
-            <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
-                {facts.map((fact) => (
-                    <div key={fact.label}>
-                        <dt className="text-[0.8125rem] text-ink-subtle">{fact.label}</dt>
-                        <dd className="font-display text-xl font-semibold text-ink tabular-nums">{formatNumber(fact.value)}</dd>
+        <div style={staggerAt(1)} className="stagger mt-9 max-w-2xl animate-rise">
+            <dl className="flex flex-wrap gap-y-4">
+                {facts.map((fact, index) => (
+                    <div key={fact.label} className={`flex flex-col-reverse pr-6 sm:pr-8 ${index > 0 ? 'border-l border-line pl-6 sm:pl-8' : ''}`}>
+                        <dt className="mt-1 text-small text-ink-subtle">{fact.label}</dt>
+                        <dd className="font-display text-2xl leading-none font-semibold tracking-tight text-ink tabular-nums">{formatNumber(fact.value)}</dd>
                     </div>
                 ))}
             </dl>
+            {languages.length > 0 && (
+                <div className="mt-6 max-w-xl">
+                    <LanguageBar languages={languages} />
+                </div>
+            )}
         </div>
     );
 }

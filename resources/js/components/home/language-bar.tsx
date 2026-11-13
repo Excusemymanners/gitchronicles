@@ -8,10 +8,11 @@ type Props = {
 };
 
 /**
- * Culoarea fiecărui segment: aceeași nuanță de accent, tot mai stinsă. Nu colorăm după limbaj
- * (ar cere o paletă întreagă în afara tokenilor); ordinea și legenda spun care e care.
+ * The colour of each segment: the ink, ever fainter (Brand 3 keeps the accent for links, focus and selection).
+ * We do not colour by language (that would need a whole palette outside the tokens); the order and the legend
+ * say which is which.
  */
-const segmentClasses = ['bg-accent', 'bg-accent/60', 'bg-accent/30'];
+const segmentClasses = ['bg-ink/85', 'bg-ink/50', 'bg-ink/25'];
 
 /**
  * Limbajele unui repository: o bară împărțită după numărul de linii și, sub ea, legenda.
@@ -29,7 +30,7 @@ export default function LanguageBar({ languages }: Props) {
                 {languages.map((language, index) => (
                     <span key={language.name} style={{ width: `${language.share * 100}%` }} className={`rounded-full ${segmentClasses[index]}`} />
                 ))}
-                {otherShare > 0.005 && <span className="flex-1 rounded-full bg-line-strong" />}
+                {otherShare > 0.005 && <span className="flex-1 rounded-full bg-line" />}
             </div>
 
             <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[0.8125rem] text-ink-muted">
@@ -42,7 +43,7 @@ export default function LanguageBar({ languages }: Props) {
                 ))}
                 {otherShare > 0.005 && (
                     <li className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className="size-2 rounded-full bg-line-strong" />
+                        <span aria-hidden="true" className="size-2 rounded-full bg-line" />
                         <span>{t('common.other')}</span>
                         <span className="tabular-nums">{formatPercent(otherShare)}</span>
                     </li>

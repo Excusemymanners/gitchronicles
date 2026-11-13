@@ -90,7 +90,7 @@ function VideoPlayer({ video, repository }: { video: PresentationVideo; reposito
     const repositoryName = repository.full_name;
 
     return (
-        <VideoSlot className={`${frameClasses} border border-line bg-surface-2 shadow-float`}>
+        <VideoSlot className={`${frameClasses} border border-line-subtle bg-surface-2`}>
             <button
                 type="button"
                 onClick={() => player.start(video, { repositoryName, mediaHref: `/repositories/${repository.id}/media` })}

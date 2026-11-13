@@ -135,7 +135,7 @@ export default function AssistantBar({ assistant, repository, isIndexed, starter
                 </button>
             </form>
 
-            <p id={hintId} className={`mt-2 text-center text-[0.6875rem] sm:text-xs ${hint ? 'text-danger' : 'text-ink-subtle'}`}>
+            <p id={hintId} className={`mt-2 text-center text-[0.6875rem] sm:text-xs ${hint ? 'text-danger-ink' : 'text-ink-subtle'}`}>
                 {unavailableReason ?? hint ?? (
                     <>
                         {t('assistant.bar.hint')}

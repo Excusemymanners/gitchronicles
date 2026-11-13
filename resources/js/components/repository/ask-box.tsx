@@ -1,6 +1,8 @@
 import { Link, router } from '@inertiajs/react';
 import { useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import Button from '@/components/button';
+import { fieldShellClasses } from '@/components/text-input';
 import { MIN_QUESTION_LENGTH } from '@/hooks/use-assistant';
 import { ArrowRightIcon, AskIcon } from '@/components/workspace/icons';
 import { useI18n } from '@/hooks/use-i18n';
@@ -44,10 +46,7 @@ export default function AskBox({ repository, starters }: Props) {
 
     return (
         <div id={HERO_ASK_ID}>
-            <form
-                onSubmit={handleSubmit}
-                className="flex items-center gap-2 rounded-xl border border-line-strong bg-surface p-1.5 pl-4 shadow-card has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-1 has-[input:focus-visible]:outline-accent"
-            >
+            <form onSubmit={handleSubmit} className={`flex items-center gap-2 rounded-xl p-1.5 pl-4 ${fieldShellClasses()}`}>
                 <AskIcon className="size-5 shrink-0 text-ink-subtle" />
                 <label htmlFor={inputId} className="sr-only">
                     {t('overview.showcase.askLabel', { repository: repository.full_name })}
@@ -61,15 +60,12 @@ export default function AskBox({ repository, starters }: Props) {
                     placeholder={t('overview.showcase.askPlaceholder', { name: repository.name })}
                     autoComplete="off"
                     enterKeyHint="send"
-                    className="h-11 min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-ink-subtle focus:outline-none"
+                    className="h-11 min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-ink-subtle focus:outline-none sm:text-[1.0625rem]"
                 />
-                <button
-                    type="submit"
-                    className="pressable inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-accent-strong px-4 text-sm font-semibold text-on-accent hover:bg-accent-strong-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                >
+                <Button type="submit" variant="primary" size="lg" className="max-sm:px-3.5">
                     <span className="max-sm:sr-only">{t('overview.showcase.askSend')}</span>
-                    <ArrowRightIcon className="size-4" />
-                </button>
+                    <ArrowRightIcon />
+                </Button>
             </form>
 
             {starters.length > 0 && (
@@ -78,7 +74,7 @@ export default function AskBox({ repository, starters }: Props) {
                         <li key={starter} className="min-w-0 max-w-full">
                             <Link
                                 href={askUrl(repository.id, starter)}
-                                className="pressable block max-w-full truncate rounded-full border border-line bg-surface px-3 py-1 text-[0.8125rem] text-ink-muted hover:border-line-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                                className="pressable block max-w-full truncate rounded-full border border-line bg-surface px-3 py-1.5 text-small text-ink-muted hover:border-line-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                             >
                                 {starter}
                             </Link>

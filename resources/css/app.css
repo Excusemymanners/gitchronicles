@@ -10,27 +10,39 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    /* Trei voci: Instrument Sans pentru text, Mona Sans (fontul din logo) pentru titluri, JetBrains Mono pentru cod. */
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /*
+     * Two voices (Brand 3): Mona Sans, GitHub's open-source typeface, for everything a person reads (headings,
+     * text, buttons, the logo) and JetBrains Mono for code, SHAs and file paths. One interface family keeps the
+     * page calm; the hierarchy comes from size and weight, not from a second face.
+     */
+    --font-sans: 'Mona Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
     --font-display: 'Mona Sans', ui-sans-serif, system-ui, sans-serif;
-    /* Numele vechi al aceluiași font, folosit de logo. */
+    /* The same face under the name the logo and older components use. */
     --font-brand: 'Mona Sans', ui-sans-serif, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
     /*
-     * Titlurile: text-display (doar titlul mare de pe prima pagină), text-title (titlul unei pagini)
-     * și text-heading (titlul unei secțiuni). Fiecare vine cu înălțimea rândului și spațierea literelor.
+     * The type scale. text-display is the hero headline only (home page, a repository's Overview): large, tight
+     * and balanced. text-title is a page title, text-heading a section title, text-lead the sentence under a
+     * headline, text-small the quiet line under a control (hints, dates, legends). Body text is text-base at 1.6.
      */
-    --text-display: clamp(2.5rem, 1.4rem + 4.2vw, 4.25rem);
-    --text-display--line-height: 1.04;
+    --text-display: clamp(2.75rem, 6vw, 5rem);
+    --text-display--line-height: 1.02;
     --text-display--letter-spacing: -0.03em;
-    --text-title: clamp(1.75rem, 1.5rem + 1vw, 2.25rem);
+    --text-title: clamp(1.75rem, 1.45rem + 1.1vw, 2.25rem);
     --text-title--line-height: 1.15;
     --text-title--letter-spacing: -0.02em;
     --text-heading: 1.5rem;
     --text-heading--line-height: 1.25;
     --text-heading--letter-spacing: -0.015em;
+    --text-lead: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
+    --text-lead--line-height: 1.55;
+    --text-lead--letter-spacing: -0.005em;
+    --text-base: 1rem;
+    --text-base--line-height: 1.6;
+    --text-small: 0.8125rem;
+    --text-small--line-height: 1.5;
 
     /* Două raze: 8 px pentru butoane și câmpuri (rounded-md), 12 px pentru carduri și panouri (rounded-lg). */
     --radius-md: 0.5rem;
@@ -125,88 +137,95 @@
 }
 
 /*
- * Culorile interfeței, numite după rol (fundal, suprafață, text, accent, stare), nu după nuanță:
- * o componentă scrie bg-surface sau text-ink-muted și arată bine în ambele teme.
- * Paleta are trei culori, luate din ideea de cronică: cerneala (bleumarinul din logo), hârtia (un alb cald)
- * și ultramarinul, pigmentul albastru al manuscriselor. Cerneala și hârtia poartă butonul principal, exact ca
- * în logo (pană albă pe bleumarin): buton de hârtie în tema întunecată, buton de cerneală în cea luminoasă.
- * Ultramarinul marchează legăturile, focusul, elementul ales și linia cu inele.
- * Valorile de aici sunt tema luminoasă (cerneală pe hârtie); clasa .dark le înlocuiește mai jos.
- * Sunt în hex, ca diagramele Mermaid să le poată citi din JavaScript și folosi direct.
- * „static” păstrează toate variabilele în CSS, chiar și pe cele pe care nicio clasă nu le folosește încă.
+ * The interface colours, named after their role (page, surface, text, accent, state), never after a hue:
+ * a component writes bg-surface or text-ink-muted and looks right in both themes.
+ *
+ * Brand 3 — anthracite. The neutrals are the ones GitHub's own interface uses, so a repository's documentation
+ * feels like a continuation of the repository page a visitor just left. There is ONE accent, a clear blue, and
+ * it only marks links, the keyboard focus, the open tab and a selection. The primary action is NOT blue: it is
+ * the strongest neutral (a light button on the dark page, an anthracite button on the light page), so the
+ * accent never competes with the one thing to click.
+ *
+ * The values here are the light theme; the .dark class replaces them further down. They are hex (or rgb with an
+ * alpha), so the Mermaid diagrams can read them from JavaScript. Every text/background pair is measured
+ * (WCAG AA: 4.5:1 for text, 3:1 for large text and for a control's edge); the table is in DESIGN-SPEC.md §3.8.
+ * "static" keeps every variable in the CSS, even the ones no class uses yet.
  */
 @theme static {
     /*
-     * Fundaluri: pagina, cardurile, elementele mici de pe carduri (cod, bare, hover) și ce plutește
-     * deasupra paginii (mesajul flash, bara fixă de jos). În tema întunecată „mai sus” înseamnă „mai deschis”.
+     * Backgrounds: the page, cards and panels, small things on a card (code, bars, hover), and what floats above
+     * the page (the flash message, a menu). In the dark theme "higher" means "lighter".
      */
-    --color-canvas: #f6f3ec;
-    --color-surface: #fffdf9;
-    --color-surface-2: #efebe1;
-    --color-surface-raised: #fffdf9;
+    --color-canvas: #ffffff;
+    --color-surface: #f6f8fa;
+    --color-surface-2: #eff2f5;
+    --color-surface-raised: #ffffff;
 
     /*
-     * Linii: între rândurile unei liste, chenarul cardurilor, chenarul controalelor.
-     * line-subtle și line doar despart (decor); line-strong e conturul unui control (câmp, buton secundar,
-     * inelul unui pas neatins) și are 3:1 față de pagină: cerneala diluată pe jumătate în hârtie.
+     * Lines: between the rows of a list, the edge of a card, the edge of a control.
+     * line-subtle and line only separate (decoration); line-strong is the edge of a control (field, secondary
+     * button, a rail step not reached yet) and holds 3:1 against the page.
      */
-    --color-line-subtle: #efebe1;
-    --color-line: #e3ded2;
-    --color-line-strong: #878994;
+    --color-line-subtle: #eaeef2;
+    --color-line: #d1d9e0;
+    --color-line-strong: #818b98;
 
-    /* Text: principal, secundar (descrieri, etichete), discret (date, indicii, placeholder). */
-    --color-ink: #0f1630;
-    --color-ink-muted: #454a5f;
-    --color-ink-subtle: #65697c;
-
-    /* Ultramarinul (accent): legături, tab-ul deschis, conturul de focus, fundalul unui element ales. Cerneala (accent-strong): butonul principal, cu text de hârtie (on-accent). */
-    --color-accent: #2b46d9;
-    --color-accent-hover: #1d33a8;
-    --color-accent-soft: #e7eafb;
-    --color-accent-strong: #0f1630;
-    --color-accent-strong-hover: #272f52;
-    --color-on-accent: #fffdf9;
-    --color-selection: rgb(43 70 217 / 0.18);
+    /* Text: main, secondary (descriptions, labels), quiet (dates, hints, placeholders). */
+    --color-ink: #1f2328;
+    --color-ink-muted: #59636e;
+    --color-ink-subtle: #656d76;
 
     /*
-     * Stările, fiecare cu patru nuanțe: culoarea plină (punct, text de eroare), fundalul pal,
-     * chenarul și textul de pe fundalul pal.
-     * info = în lucru (albastru), warning = în așteptare (chihlimbar), success = gata (verde), danger = eșuat (roșu).
-     * Culoarea plină e un semn (punct, bară): are cel puțin 3:1 pe hârtie și pe fundalul pal al tonului ei.
+     * The accent (links, the open tab, the focus ring, a selected item) and the primary action. The primary action
+     * keeps its old token name, accent-strong, so every "main button" in the app turns neutral at once.
      */
-    --color-info: #0284c7;
-    --color-info-soft: #f0f9ff;
-    --color-info-line: rgb(2 132 199 / 0.2);
-    --color-info-ink: #075985;
-    --color-warning: #c2690a;
-    --color-warning-soft: #fffbeb;
-    --color-warning-line: rgb(217 119 6 / 0.2);
-    --color-warning-ink: #92400e;
-    --color-success: #178a3e;
-    --color-success-soft: #f0fdf4;
-    --color-success-line: rgb(22 163 74 / 0.2);
-    --color-success-ink: #166534;
-    --color-danger: #c81e1e;
-    --color-danger-soft: #fef2f2;
-    --color-danger-line: rgb(220 38 38 / 0.2);
-    --color-danger-ink: #991b1b;
+    --color-accent: #0969da;
+    --color-accent-hover: #0550ae;
+    --color-accent-soft: #ddf4ff;
+    --color-accent-strong: #1f2328;
+    --color-accent-strong-hover: #32383f;
+    --color-on-accent: #ffffff;
+    --color-selection: rgb(84 174 255 / 0.35);
 
     /*
-     * Umbra unei bare fixe jos pe ecran (de exemplu câmpul asistentului): cade în sus, peste conținut.
-     * Tailwind copiază forma umbrei în clasa shadow-raised, dar culoarea rămâne variabila --color-shadow,
-     * așa că .dark o poate schimba.
+     * The states, each in four shades: the solid colour (a dot, an error text), the pale background, its edge and
+     * the text that sits on the pale background.
+     * info = working (the accent), warning = waiting, success = done, danger = failed.
+     * A solid colour is a mark (a dot, a bar): it holds 3:1 on the page and on its own pale background.
      */
-    --color-shadow: rgb(15 23 48 / 0.08);
-    --color-shadow-strong: rgb(15 23 48 / 0.18);
+    --color-info: #0969da;
+    --color-info-soft: #ddf4ff;
+    --color-info-line: rgb(84 174 255 / 0.4);
+    --color-info-ink: #0550ae;
+    --color-warning: #9a6700;
+    --color-warning-soft: #fff8c5;
+    --color-warning-line: rgb(212 167 44 / 0.4);
+    --color-warning-ink: #7d4e00;
+    --color-success: #1a7f37;
+    --color-success-soft: #dafbe1;
+    --color-success-line: rgb(74 194 107 / 0.4);
+    --color-success-ink: #116329;
+    --color-danger: #d1242f;
+    --color-danger-soft: #ffebe9;
+    --color-danger-line: rgb(255 129 130 / 0.4);
+    --color-danger-ink: #a40e26;
+
+    /*
+     * The shadow of a bar fixed at the bottom of the screen (the assistant's field): it falls upwards, over the
+     * content. Tailwind copies the shape into shadow-raised, but the colour stays the --color-shadow variable,
+     * so .dark can change it.
+     */
+    --color-shadow: rgb(31 35 40 / 0.08);
+    --color-shadow-strong: rgb(31 35 40 / 0.16);
     --shadow-raised: 0 -6px 20px var(--color-shadow);
 
     /*
-     * shadow-card: umbra fină a unui card așezat pe pagină (se vede doar în tema luminoasă; în cea
-     * întunecată cardul se desparte prin chenar și printr-o suprafață mai deschisă).
-     * shadow-float: umbra a ceea ce plutește deasupra paginii (mesaj flash, meniu, sertar).
+     * shadow-card: the fine shadow of a card resting on the page (seen in the light theme; in the dark theme a card
+     * separates by its edge and a lighter surface). shadow-float: what floats above the page (flash message, menu,
+     * drawer, the framed video).
      */
-    --shadow-card: 0 1px 2px 0 var(--color-shadow);
-    --shadow-float: 0 12px 32px -12px var(--color-shadow-strong), 0 2px 6px -2px var(--color-shadow);
+    --shadow-card: 0 1px 0 0 var(--color-shadow);
+    --shadow-float: 0 16px 40px -16px var(--color-shadow-strong), 0 2px 6px -2px var(--color-shadow);
 
     /*
      * Duratele mișcării, aceleași în toată aplicația:
@@ -234,53 +253,52 @@
     }
 
     /*
-     * Tema întunecată: pagina e cerneala (un bleumarin plin, nu un negru cu tentă), textul e hârtia,
-     * iar butonul principal e tot hârtie, cu text de cerneală. Contrastul fiecărei perechi text/fundal
-     * e măsurat (WCAG AA: minimum 4,5:1) și notat în DESIGN-SPEC.md.
+     * The dark theme (the default): GitHub's anthracite. The page is a near-black blue-grey, cards step up in
+     * lightness, text is a cool white, and the primary button is that same white with anthracite text.
      */
     .dark {
         color-scheme: dark;
 
-        --color-canvas: #0b1023;
-        --color-surface: #11172f;
-        --color-surface-2: #18203d;
-        --color-surface-raised: #1c2545;
+        --color-canvas: #0d1117;
+        --color-surface: #151b23;
+        --color-surface-2: #1c2128;
+        --color-surface-raised: #212830;
 
-        --color-line-subtle: #1c243f;
-        --color-line: #283152;
-        --color-line-strong: #5a6694;
+        --color-line-subtle: #21262d;
+        --color-line: #30363d;
+        --color-line-strong: #656c76;
 
-        --color-ink: #f3f0e8;
-        --color-ink-muted: #b6bcd2;
-        --color-ink-subtle: #9399b4;
+        --color-ink: #f0f6fc;
+        --color-ink-muted: #9198a1;
+        --color-ink-subtle: #8b949e;
 
-        --color-accent: #94a9ff;
-        --color-accent-hover: #bdcaff;
-        --color-accent-soft: rgb(148 169 255 / 0.14);
-        --color-accent-strong: #f3f0e8;
-        --color-accent-strong-hover: #dcd8cc;
-        --color-on-accent: #0b1023;
-        --color-selection: rgb(148 169 255 / 0.35);
+        --color-accent: #4493f8;
+        --color-accent-hover: #58a6ff;
+        --color-accent-soft: rgb(56 139 253 / 0.1);
+        --color-accent-strong: #f0f6fc;
+        --color-accent-strong-hover: #d1d9e0;
+        --color-on-accent: #0d1117;
+        --color-selection: rgb(56 139 253 / 0.4);
 
-        --color-info: #38bdf8;
-        --color-info-soft: rgb(56 189 248 / 0.12);
-        --color-info-line: rgb(56 189 248 / 0.3);
-        --color-info-ink: #7dd3fc;
-        --color-warning: #fbbf24;
-        --color-warning-soft: rgb(245 158 11 / 0.12);
-        --color-warning-line: rgb(245 158 11 / 0.3);
-        --color-warning-ink: #fcd34d;
-        --color-success: #4ade80;
-        --color-success-soft: rgb(34 197 94 / 0.12);
-        --color-success-line: rgb(34 197 94 / 0.3);
-        --color-success-ink: #86efac;
-        --color-danger: #f87171;
-        --color-danger-soft: rgb(239 68 68 / 0.12);
-        --color-danger-line: rgb(239 68 68 / 0.35);
-        --color-danger-ink: #fca5a5;
+        --color-info: #4493f8;
+        --color-info-soft: rgb(56 139 253 / 0.15);
+        --color-info-line: rgb(56 139 253 / 0.4);
+        --color-info-ink: #79c0ff;
+        --color-warning: #d29922;
+        --color-warning-soft: rgb(187 128 9 / 0.15);
+        --color-warning-line: rgb(187 128 9 / 0.4);
+        --color-warning-ink: #e3b341;
+        --color-success: #3fb950;
+        --color-success-soft: rgb(46 160 67 / 0.15);
+        --color-success-line: rgb(46 160 67 / 0.4);
+        --color-success-ink: #56d364;
+        --color-danger: #f85149;
+        --color-danger-soft: rgb(248 81 73 / 0.1);
+        --color-danger-line: rgb(248 81 73 / 0.4);
+        --color-danger-ink: #ff7b72;
 
-        --color-shadow: rgb(0 0 0 / 0.5);
-        --color-shadow-strong: rgb(0 0 0 / 0.7);
+        --color-shadow: rgb(1 4 9 / 0.5);
+        --color-shadow-strong: rgb(1 4 9 / 0.8);
     }
 
     /*
@@ -304,10 +322,21 @@
         -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Titlurile de pagină și de secțiune vorbesc cu fontul din logo, pe toate paginile. */
+    /*
+     * Headings: the display face (the same Mona Sans, named for clarity), semibold unless a class says otherwise
+     * (Tailwind's reset would leave them at 400), and balanced lines, so a two-line title never leaves one word
+     * alone on its second line.
+     */
     h1,
     h2 {
         font-family: var(--font-display);
+    }
+
+    h1,
+    h2,
+    h3 {
+        font-weight: 600;
+        text-wrap: balance;
     }
 
     /*
@@ -466,4 +495,16 @@
     background-image: linear-gradient(100deg, transparent 30%, var(--color-line) 50%, transparent 70%);
     background-size: 200% 100%;
     animation: shimmer 1.6s linear infinite;
+}
+
+/*
+ * hero-grid: the quiet backdrop behind a hero, drawn in CSS only (no image): a faint dot grid in the colour of a
+ * line, fading out from the top centre through a radial mask. It frames the headline without becoming something
+ * to look at. Put it on an absolutely positioned, aria-hidden layer behind the hero's content.
+ */
+@utility hero-grid {
+    background-image: radial-gradient(circle at 1px 1px, var(--color-line) 1px, transparent 0);
+    background-size: 22px 22px;
+    background-position: center top;
+    mask-image: radial-gradient(ellipse 65% 75% at 50% 0%, black 25%, transparent 75%);
 }

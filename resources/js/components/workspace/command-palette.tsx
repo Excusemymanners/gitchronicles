@@ -119,7 +119,7 @@ export default function CommandPalette({ isOpen, onClose, sections, groups, onAs
     }, [safeIndex]);
 
     const rowClasses = (index: number) =>
-        `flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left text-sm ${index === safeIndex ? 'bg-accent-soft text-accent' : 'text-ink'}`;
+        `flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left text-sm ${index === safeIndex ? 'bg-accent-soft text-ink' : 'text-ink'}`;
 
     return (
         <dialog

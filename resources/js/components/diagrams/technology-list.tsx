@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { DetectedTechnology } from '@/components/diagrams/types';
+import { LOGO_TILE_FILL } from '@/lib/mermaid';
 
 type Props = {
     technologies: DetectedTechnology[];
@@ -47,7 +48,7 @@ function Logo({ pack, name }: { pack: IconPack | null; name: string | null }) {
 
     return (
         <svg aria-hidden="true" width="22" height="22" viewBox={viewBox} className="shrink-0">
-            <rect x={-(size - width) / 2 - padding} y={-(size - height) / 2 - padding} width={size + 2 * padding} height={size + 2 * padding} rx={size * 0.22} fill="#e8f1fb" />
+            <rect x={-(size - width) / 2 - padding} y={-(size - height) / 2 - padding} width={size + 2 * padding} height={size + 2 * padding} rx={size * 0.22} fill={LOGO_TILE_FILL} />
             {/* Desenul logo-ului vine din fișierul nostru diagram-icons.json (pachetul Iconify „logos”, CC0), nu din date. */}
             {icon && <g dangerouslySetInnerHTML={{ __html: icon.body }} />}
         </svg>

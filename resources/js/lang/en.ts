@@ -122,37 +122,29 @@ const en = {
         metaDescription: 'Living documentation for your GitHub repositories, written from the code and its git history.',
         hero: {
             title: 'Documentation that keeps up with every commit.',
-            lead: 'GitChronicle reads a repository’s code and git history, writes its documentation, draws its architecture and answers questions with links to the exact lines. When a new commit lands, it rewrites only what changed.',
+            lead: 'GitChronicle reads a repository’s code and git history, then writes its documentation, draws its architecture and answers questions with links to the exact lines.',
         },
-        how: {
-            title: 'How it works',
-            lead: 'Seven steps, always in the same order. Each one starts once the previous one succeeds.',
-        },
-        capabilities: {
-            title: 'What you get for every repository',
-            docs: {
-                title: 'Documentation',
-                text: 'An “About the project” overview, a page for each important module and a README. Every page names the commit it was written from.',
+        promises: {
+            title: 'What GitChronicle promises',
+            current: {
+                title: 'Current with every commit',
+                text: 'A new commit rewrites only the pages it touched, and every page names the commit it was written from.',
             },
-            diagrams: {
-                title: 'Architecture diagrams',
-                text: 'Layers, C4 (context, containers, components) and flows, drawn from the real imports between modules.',
+            real: {
+                title: 'Only real numbers',
+                text: 'Files, lines, modules and commits are counted from the code and its history. A missing value is left out, never guessed.',
             },
-            assistant: {
-                title: 'Assistant with citations',
-                text: 'Ask about the code in your own words. Every answer points to the files and lines it relies on.',
+            cited: {
+                title: 'Answers that cite the code',
+                text: 'Ask in your own words; every answer links to the files and lines it relies on.',
             },
-            history: {
-                title: 'History and time travel',
-                text: 'Commits, the files that change most and the people behind them. Read the documentation as it was at any earlier commit.',
-            },
-            video: {
-                title: 'Presentation video',
-                text: 'A narrated vertical clip and a slide deck (PDF and PPTX), built from the repository’s own data.',
+            visible: {
+                title: 'Architecture you can see',
+                text: 'Layered and C4 diagrams drawn from the real imports, plus a short narrated video and slides.',
             },
         },
         repositories: {
-            title: 'Repositories',
+            title: 'Recently documented',
             emptyTitle: 'No repositories yet.',
             emptyText: 'Paste a GitHub link in the field above. Its card shows up here, and you can watch its documentation being written, step by step.',
             emptyAction: 'Go to the link field',
@@ -165,6 +157,8 @@ const en = {
             hintUser: 'If the repository is already here, we simply open its page.',
             hintGuest: 'Browsing needs no account. To add a new repository you log in first, and we add it right after.',
             replaceHost: 'Or replace github.com with {host} in any repository link.',
+            examples: 'Already documented:',
+            exampleFill: 'Put {repository} in the field',
         },
         card: {
             failed: 'Processing stopped with an error.',

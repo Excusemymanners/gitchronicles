@@ -120,37 +120,29 @@ const ro: Dictionary = {
         metaDescription: 'Documentație vie pentru repository-urile tale',
         hero: {
             title: 'Documentație care ține pasul cu fiecare commit.',
-            lead: 'GitChronicle citește codul și istoricul git al unui repository, îi scrie documentația, îi desenează arhitectura și răspunde la întrebări cu trimiteri la liniile exacte. La următorul commit reface doar ce s-a schimbat.',
+            lead: 'GitChronicle citește codul și istoricul git al unui repository, apoi îi scrie documentația, îi desenează arhitectura și răspunde la întrebări cu trimiteri la liniile exacte.',
         },
-        how: {
-            title: 'Cum funcționează',
-            lead: 'Șapte pași, mereu în aceeași ordine. Fiecare pornește după ce a reușit cel dinainte.',
-        },
-        capabilities: {
-            title: 'Ce găsești în fiecare repository',
-            docs: {
-                title: 'Documentație',
-                text: '„Despre proiect”, o pagină pentru fiecare modul important și un README. Fiecare pagină spune din ce commit a fost scrisă.',
+        promises: {
+            title: 'Ce promite GitChronicle',
+            current: {
+                title: 'La zi cu fiecare commit',
+                text: 'Un commit nou rescrie doar paginile pe care le atinge, iar fiecare pagină spune din ce commit a fost scrisă.',
             },
-            diagrams: {
-                title: 'Diagrame de arhitectură',
-                text: 'Straturi, C4 (context, containere, componente) și fluxuri, desenate din importurile reale dintre module.',
+            real: {
+                title: 'Doar numere reale',
+                text: 'Fișierele, liniile, modulele și commit-urile sunt numărate din cod și din istoric. O valoare lipsă e omisă, niciodată ghicită.',
             },
-            assistant: {
-                title: 'Asistent cu citări',
-                text: 'Întrebi despre cod în cuvintele tale. Răspunsul trimite la fișierul și la liniile pe care se sprijină.',
+            cited: {
+                title: 'Răspunsuri cu citări',
+                text: 'Întrebi în cuvintele tale; fiecare răspuns trimite la fișierele și liniile pe care se sprijină.',
             },
-            history: {
-                title: 'Istoric și călătorie în timp',
-                text: 'Commit-urile, fișierele schimbate cel mai des și contribuitorii. Poți vedea documentația așa cum era la un commit mai vechi.',
-            },
-            video: {
-                title: 'Video de prezentare',
-                text: 'Un clip vertical cu voce și un set de slide-uri (PDF și PPTX), făcute din datele repository-ului.',
+            visible: {
+                title: 'Arhitectura, la vedere',
+                text: 'Diagrame pe straturi și C4 desenate din importurile reale, plus un scurt video narat și slide-uri.',
             },
         },
         repositories: {
-            title: 'Repository-uri',
+            title: 'Documentate recent',
             emptyTitle: 'Încă nu a fost adăugat niciun repository.',
             emptyText: 'Lipește un link de GitHub în câmpul de sus. Aici apare cardul lui și poți urmări, pas cu pas, cum i se scrie documentația.',
             emptyAction: 'Mergi la câmpul pentru link',
@@ -163,6 +155,8 @@ const ro: Dictionary = {
             hintUser: 'Dacă repository-ul a fost deja adăugat, îi deschidem direct pagina.',
             hintGuest: 'Poți răsfoi totul fără cont. Pentru un repository nou îți cerem să intri în cont, apoi îl adăugăm automat.',
             replaceHost: 'Sau înlocuiește github.com cu {host} în orice link de repository.',
+            examples: 'Deja documentate:',
+            exampleFill: 'Pune {repository} în câmp',
         },
         card: {
             failed: 'Procesarea s-a oprit cu o eroare.',

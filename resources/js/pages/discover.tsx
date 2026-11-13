@@ -109,7 +109,7 @@ export default function Discover({ filters, periods, default_period, languages, 
                                     id="language"
                                     value={filters.language ?? ''}
                                     onChange={(event) => router.get(discoverUrl(filters.period, event.target.value || null), {}, { preserveScroll: true })}
-                                    className="mt-1.5 block w-full rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink shadow-xs focus:outline-2 focus:-outline-offset-1 focus:outline-accent sm:w-60"
+                                    className="mt-1.5 block w-full rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink shadow-card hover:border-ink-subtle focus:border-accent focus:outline-2 focus:-outline-offset-1 focus:outline-accent sm:w-60"
                                 >
                                     <option value="">{t('discover.allLanguages')}</option>
                                     {/* Un limbaj din adresă care nu mai are repository-uri rămâne totuși selectat. */}
@@ -183,9 +183,9 @@ function RepositoryOfTheDay({ entry, day, periodLabel }: { entry: DiscoverEntry;
     return (
         <section
             aria-labelledby="repository-of-the-day"
-            className="mt-8 rounded-lg border border-accent/40 bg-accent-soft p-4 sm:p-6 [&_dt]:text-ink-muted"
+            className="mt-8 rounded-lg border border-line bg-surface p-4 shadow-card sm:p-6 [&_dt]:text-ink-muted"
         >
-            <p id="repository-of-the-day" className="text-xs font-semibold tracking-wide text-accent uppercase">
+            <p id="repository-of-the-day" className="text-small font-medium text-ink-muted">
                 {rich('discover.repositoryOfTheDay', { day: <time dateTime={day}>{formatDay(day)}</time> })}
             </p>
             <div className="mt-2">

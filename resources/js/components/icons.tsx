@@ -103,3 +103,32 @@ export function ExternalLinkIcon(props: IconProps) {
         </Icon>
     );
 }
+
+/** A circle with an exclamation mark: a validation error next to a field. */
+export function AlertIcon(props: IconProps) {
+    return (
+        <Icon {...props}>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7.5v5.25M12 16.25v.25" />
+        </Icon>
+    );
+}
+
+/** A commit on its line: what changes with every commit. */
+export function CommitIcon(props: IconProps) {
+    return (
+        <Icon {...props}>
+            <circle cx="12" cy="12" r="3.5" />
+            <path d="M3 12h5.5M15.5 12H21" />
+        </Icon>
+    );
+}
+
+/** A number sign: counted, not estimated. */
+export function CountIcon(props: IconProps) {
+    return (
+        <Icon {...props}>
+            <path d="M9.5 4 8 20M16 4l-1.5 16M4.5 9h15M4 15h15" />
+        </Icon>
+    );
+}

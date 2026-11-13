@@ -1,9 +1,10 @@
 import { Head, usePoll } from '@inertiajs/react';
 import { useEffect } from 'react';
+import type { CSSProperties } from 'react';
+import Button from '@/components/button';
 import AddRepositoryForm from '@/components/home/add-repository-form';
-import Capabilities from '@/components/home/capabilities';
+import Promises from '@/components/home/promises';
 import RepositoryCard from '@/components/home/repository-card';
-import PipelineRail from '@/components/pipeline-rail';
 import { useI18n } from '@/hooks/use-i18n';
 import AppLayout, { pageContainer } from '@/layouts/app-layout';
 import { formatNumber } from '@/lib/format';
@@ -12,21 +13,36 @@ import { useCountUp } from '@/lib/motion';
 import type { RepositoryCard as RepositoryCardData } from '@/types/home';
 
 type Props = {
-    /** Toate repository-urile adăugate de oricine, cele mai noi primele, cu faptele de pe carduri. */
+    /** Every repository anyone added, newest first, with the facts on their cards. */
     repositories: RepositoryCardData[];
 };
 
+/** The place of a hero part in its entrance (the stagger utility reads --i). */
+function staggerAt(index: number): CSSProperties {
+    return { '--i': index } as CSSProperties;
+}
+
+/** How many documented repositories the field offers as one-click examples. */
+const EXAMPLE_COUNT = 3;
+
 /**
- * Prima pagină: ce face aplicația și formularul de adăugare, pașii procesării („Cum funcționează”),
- * capitolele pe care le primește fiecare repository și galeria repository-urilor adăugate.
- * Toate numerele vin din baza de date; textele fixe doar explică produsul.
+ * The home page. The hero says what GitChronicle does in one headline and one sentence, and puts the link field in
+ * the middle of the screen; under it, the four promises as one tight row; then the real preview of what a visitor
+ * gets: the repositories already documented here, as cards with their real numbers.
+ * Every number comes from the database; the fixed texts only explain the product.
+ *
+ * Motion: only the hero's parts enter, one after the other (animate-rise + stagger), on the first paint.
  */
 export default function Home({ repositories }: Props) {
     const { t } = useI18n();
     const hasProcessingRepository = repositories.some((repository) => repository.is_processing);
+    const examples = repositories
+        .filter((repository) => repository.status === 'ready')
+        .slice(0, EXAMPLE_COUNT)
+        .map((repository) => repository.full_name);
 
-    // Cât timp măcar un repository se mai procesează, cerem lista din nou la fiecare 2 secunde
-    // (doar prop-ul „repositories”); când toate sunt gata sau au eșuat, ne oprim.
+    // While at least one repository is still being processed, ask for the list again every 2 seconds (only the
+    // "repositories" prop); when all are done or failed, stop.
     const { start, stop } = usePoll(2000, { only: ['repositories'] }, { autoStart: false });
 
     useEffect(() => {
@@ -43,41 +59,38 @@ export default function Home({ repositories }: Props) {
                 <meta head-key="description" name="description" content={t('home.metaDescription')} />
             </Head>
 
-            {/* Pe ecrane late: titlul și formularul în stânga, pașii procesării în dreapta. Pe telefon, unul sub altul. */}
-            <section className={`grid gap-x-16 gap-y-14 pt-12 pb-16 sm:pt-16 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:pt-24 lg:pb-24 ${pageContainer}`}>
-                <div>
-                    <h1 className="max-w-[16ch] font-display text-display font-bold text-ink">{t('home.hero.title')}</h1>
-                    <p className="mt-5 max-w-[58ch] text-base leading-7 text-ink-muted sm:mt-6 sm:text-lg sm:leading-8">
+            <section aria-labelledby="hero-title" className="relative isolate overflow-hidden">
+                {/* The quiet backdrop: a faint dot grid that fades out from the top (pure CSS, see hero-grid). */}
+                <div aria-hidden="true" className="hero-grid pointer-events-none absolute inset-0 -z-10" />
+
+                <div className={`pt-16 pb-14 text-center sm:pt-24 sm:pb-20 lg:pt-28 ${pageContainer}`}>
+                    <h1
+                        id="hero-title"
+                        style={staggerAt(0)}
+                        className="stagger mx-auto max-w-5xl animate-rise font-display text-display font-semibold text-ink"
+                    >
+                        {t('home.hero.title')}
+                    </h1>
+                    <p
+                        style={staggerAt(1)}
+                        className="stagger mx-auto mt-6 max-w-[58ch] animate-rise text-lead text-ink-muted"
+                    >
                         {t('home.hero.lead')}
                     </p>
 
-                    <div className="mt-10 max-w-2xl">
-                        <AddRepositoryForm />
+                    <div style={staggerAt(2)} className="stagger mx-auto mt-10 max-w-3xl animate-rise text-left sm:mt-12">
+                        <AddRepositoryForm examples={examples} />
                     </div>
                 </div>
-
-                <section aria-labelledby="how-heading" className="lg:pt-3">
-                    <h2 id="how-heading" className="font-display text-lg font-semibold tracking-tight text-ink">
-                        {t('home.how.title')}
-                    </h2>
-                    <p className="mt-1 text-sm text-ink-muted">{t('home.how.lead')}</p>
-                    {/* Singura animație de la încărcarea paginii: linia „se scrie” de sus în jos, inel cu inel. */}
-                    <PipelineRail animated className="mt-6" />
-                </section>
             </section>
 
-            <section aria-labelledby="capabilities-heading" className={`pb-16 lg:pb-24 ${pageContainer}`}>
-                <h2 id="capabilities-heading" className="font-display text-heading font-semibold text-ink">
-                    {t('home.capabilities.title')}
-                </h2>
-                <div className="mt-8">
-                    <Capabilities />
-                </div>
-            </section>
+            <div className={`pb-14 lg:pb-16 ${pageContainer}`}>
+                <Promises />
+            </div>
 
-            <section aria-labelledby="repositories-heading" className="flex-1 border-t border-line bg-surface/40 py-16 lg:py-20">
+            <section aria-labelledby="repositories-heading" className="flex-1 border-t border-line-subtle bg-surface/50 py-12 lg:py-16">
                 <div className={pageContainer}>
-                    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
                         <h2 id="repositories-heading" className="font-display text-heading font-semibold text-ink">
                             {t('home.repositories.title')}
                         </h2>
@@ -87,19 +100,13 @@ export default function Home({ repositories }: Props) {
                     {repositories.length === 0 ? (
                         <div className="mt-8 rounded-lg border border-dashed border-line-strong px-6 py-14 text-center">
                             <p className="font-display text-lg font-semibold text-ink">{t('home.repositories.emptyTitle')}</p>
-                            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-muted">
-                                {t('home.repositories.emptyText')}
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => document.getElementById('url')?.focus()}
-                                className="pressable mt-6 inline-flex cursor-pointer items-center rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                            >
+                            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-muted">{t('home.repositories.emptyText')}</p>
+                            <Button className="mt-6" onClick={() => document.getElementById('url')?.focus()}>
                                 {t('home.repositories.emptyAction')}
-                            </button>
+                            </Button>
                         </div>
                     ) : (
-                        <ul className="mt-8 grid gap-4 lg:grid-cols-2">
+                        <ul className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                             {repositories.map((repository) => (
                                 <RepositoryCard key={repository.id} repository={repository} />
                             ))}
@@ -112,8 +119,8 @@ export default function Home({ repositories }: Props) {
 }
 
 /**
- * Totalurile galeriei, adunate din cardurile de mai jos: câte repository-uri, fișiere analizate și pagini scrise.
- * Numerele urcă o dată până la valoarea lor (useCountUp) și din nou când un repository termină de procesat.
+ * The gallery's totals, added up from the cards below: how many repositories, files analysed and pages written.
+ * The numbers count up once to their value (useCountUp), and again when a repository finishes processing.
  */
 function Totals({ repositories }: { repositories: RepositoryCardData[] }) {
     const fileCount = repositories.reduce((sum, repository) => sum + repository.facts.file_count, 0);
@@ -123,18 +130,17 @@ function Totals({ repositories }: { repositories: RepositoryCardData[] }) {
     const shownDocuments = useCountUp(documentCount);
     const { plural } = useI18n();
 
-    // Substantivul se acordă cu numărul final („1 file”, „20 de fișiere”), nu cu cel care încă urcă:
-    // formele de plural încep cu {count}, așa că tăiem primul cuvânt și punem în locul lui numărul animat.
+    // The noun agrees with the final number ("1 file", "20 de fișiere"), not with the one still counting up: the plural
+    // forms start with {count}, so we cut the first word and put the animated number in its place.
     const nounOf = (count: number, key: CountKey) => plural(key, count).replace(/^\S+\s/, '');
 
     return (
         <p className="text-sm text-ink-muted">
-            <strong className="font-medium text-ink tabular-nums">{repositories.length}</strong> {nounOf(repositories.length, 'repositories')},{' '}
-            <strong className="font-medium text-ink tabular-nums">{formatNumber(shownFiles)}</strong> {nounOf(fileCount, 'filesAnalyzed')}
+            <strong className="font-semibold text-ink tabular-nums">{repositories.length}</strong> {nounOf(repositories.length, 'repositories')},{' '}
+            <strong className="font-semibold text-ink tabular-nums">{formatNumber(shownFiles)}</strong> {nounOf(fileCount, 'filesAnalyzed')}
             {documentCount > 0 && (
                 <>
-                    , <strong className="font-medium text-ink tabular-nums">{formatNumber(shownDocuments)}</strong>{' '}
-                    {nounOf(documentCount, 'pagesWritten')}
+                    , <strong className="font-semibold text-ink tabular-nums">{formatNumber(shownDocuments)}</strong> {nounOf(documentCount, 'pagesWritten')}
                 </>
             )}
         </p>

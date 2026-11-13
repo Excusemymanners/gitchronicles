@@ -23,17 +23,11 @@ export default defineConfig({
             // fără el, browserul le desena cu un font al sistemului, în mijlocul cuvintelor.
             // Preîncărcăm doar fonturile primului ecran; restul vin când e nevoie de ele.
             fonts: [
-                // Textul obișnuit.
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                    subsets: ['latin', 'latin-ext'],
-                    preload: [{ weight: 400 }],
-                }),
-                // Titlurile și numele din logo.
+                // Mona Sans: tot textul interfeței (titluri, text, butoane, logo), într-o singură familie.
                 bunny('Mona Sans', {
-                    weights: [600, 700],
+                    weights: [400, 500, 600, 700],
                     subsets: ['latin', 'latin-ext'],
-                    preload: [{ weight: 700 }],
+                    preload: [{ weight: 400 }, { weight: 600 }],
                 }),
                 // Cod, SHA-uri și căi de fișiere.
                 bunny('JetBrains Mono', {

@@ -12,7 +12,7 @@ type Props = {
 const CLOSE_DELAY_MS = 150;
 
 const chipClasses =
-    'mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-accent-soft px-1 align-text-top font-mono text-[0.75rem] text-accent hover:bg-accent hover:text-on-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent';
+    'mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-accent-soft px-1 align-text-top font-mono text-[0.75rem] text-accent-hover hover:bg-accent hover:text-on-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent';
 
 /** The lines of a fragment, short: "12–15" or "7". */
 export function lineRange(citation: AssistantCitation): string {

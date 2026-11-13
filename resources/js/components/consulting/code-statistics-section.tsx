@@ -51,7 +51,7 @@ export default function CodeStatisticsSection({ statistics }: { statistics: Cons
                                         <th scope="row" className="px-3 py-2 font-normal text-ink">
                                             {language.name}
                                             <span aria-hidden="true" className="mt-1 block h-1 w-full max-w-40 rounded-full bg-surface-2">
-                                                <span className="block h-1 rounded-full bg-accent" style={{ width: `${Math.max(share * 100, 1)}%` }} />
+                                                <span className="block h-1 rounded-full bg-ink/60" style={{ width: `${Math.max(share * 100, 1)}%` }} />
                                             </span>
                                         </th>
                                         <td className="px-3 py-2 text-right text-ink-muted tabular-nums">{formatNumber(language.files)}</td>

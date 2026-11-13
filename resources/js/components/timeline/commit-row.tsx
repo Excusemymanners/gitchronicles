@@ -26,7 +26,7 @@ export default function CommitRow({ repository, commit, runs }: Props) {
             <span
                 aria-hidden="true"
                 className={`absolute top-1.5 rounded-full ring-4 ring-canvas ${
-                    isProcessed ? '-left-[6.5px] size-3 bg-info' : commit.is_merge ? '-left-[4.5px] size-2 bg-ink-subtle' : '-left-[4.5px] size-2 bg-accent'
+                    isProcessed ? '-left-[6.5px] size-3 bg-info' : commit.is_merge ? '-left-[4.5px] size-2 bg-ink-subtle' : '-left-[4.5px] size-2 bg-ink'
                 }`}
             />
 

@@ -39,7 +39,7 @@ export default function DiagramLegend({ items }: Props) {
 function Swatch({ name, style }: { name: string; style: string | undefined }) {
     if (name === 'arrow') {
         return (
-            <svg aria-hidden="true" width="22" height="12" viewBox="0 0 22 12" className="shrink-0 text-ink-subtle">
+            <svg aria-hidden="true" width="22" height="12" viewBox="0 0 22 12" fill="none" className="shrink-0 text-ink-subtle">
                 <path d="M1 6h16" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M15 2l5 4-5 4z" fill="currentColor" />
             </svg>

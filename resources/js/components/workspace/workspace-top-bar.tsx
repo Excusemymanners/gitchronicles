@@ -42,8 +42,8 @@ export default function WorkspaceTopBar({ repository, canDelete, canRetry, canCh
     return (
         <div className="flex h-14 items-center gap-2 bg-surface px-2 sm:gap-3 sm:px-4">
             <Link href="/" className={`flex shrink-0 items-center gap-2.5 rounded-md ${focusRing}`}>
-                <AppLogoMark className="size-7" />
-                <span className="font-brand text-base font-bold tracking-tight text-ink max-xl:sr-only">GitChronicle</span>
+                <AppLogoMark className="size-6" />
+                <span className="font-brand text-[1.0625rem] leading-none font-semibold tracking-[-0.015em] text-ink max-xl:sr-only">GitChronicle</span>
                 <span className="sr-only">{t('workspace.allRepositories')}</span>
             </Link>
 

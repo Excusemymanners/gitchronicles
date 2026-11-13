@@ -45,13 +45,14 @@ export default function Login({ pending_repository }: Props) {
                 <Form action="/login" method="post" resetOnError={['password']} noValidate className="flex flex-col gap-5">
                     {({ errors, processing }) => (
                         <>
-                            <TextField label={t('auth.fields.email')} name="email" type="email" autoComplete="username" autoFocus error={errors.email} />
+                            <TextField label={t('auth.fields.email')} name="email" type="email" autoComplete="username" autoFocus error={errors.email} size="lg" />
                             <TextField
                                 label={t('auth.fields.password')}
                                 name="password"
                                 type="password"
                                 autoComplete="current-password"
                                 error={errors.password}
+                                size="lg"
                             />
 
                             <div className="flex items-center gap-2">
@@ -67,7 +68,7 @@ export default function Login({ pending_repository }: Props) {
                                 </label>
                             </div>
 
-                            <PrimaryButton size="lg" disabled={processing}>
+                            <PrimaryButton size="lg" loading={processing}>
                                 {processing ? t('auth.login.submitting') : t('auth.login.submit')}
                             </PrimaryButton>
                         </>

@@ -44,8 +44,8 @@ export default function Register({ pending_repository }: Props) {
                 >
                     {({ errors, processing }) => (
                         <>
-                            <TextField label={t('auth.fields.name')} name="name" autoComplete="name" autoFocus error={errors.name} />
-                            <TextField label={t('auth.fields.email')} name="email" type="email" autoComplete="email" error={errors.email} />
+                            <TextField label={t('auth.fields.name')} name="name" autoComplete="name" autoFocus error={errors.name} size="lg" />
+                            <TextField label={t('auth.fields.email')} name="email" type="email" autoComplete="email" error={errors.email} size="lg" />
                             <TextField
                                 label={t('auth.fields.password')}
                                 name="password"
@@ -53,6 +53,7 @@ export default function Register({ pending_repository }: Props) {
                                 autoComplete="new-password"
                                 hint={t('auth.fields.passwordHint')}
                                 error={errors.password}
+                                size="lg"
                             />
                             <TextField
                                 label={t('auth.fields.passwordConfirmation')}
@@ -60,9 +61,10 @@ export default function Register({ pending_repository }: Props) {
                                 type="password"
                                 autoComplete="new-password"
                                 error={errors.password_confirmation}
+                                size="lg"
                             />
 
-                            <PrimaryButton size="lg" disabled={processing}>
+                            <PrimaryButton size="lg" loading={processing}>
                                 {processing ? t('auth.register.submitting') : t('auth.register.submit')}
                             </PrimaryButton>
                         </>

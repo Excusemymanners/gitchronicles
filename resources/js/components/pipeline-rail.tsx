@@ -26,7 +26,7 @@ type Props = {
 
 /** Inelul unui pas: gol ca în logo; plin cât se lucrează la el. */
 const ringClasses: Record<StageState, string> = {
-    done: 'border-accent bg-canvas',
+    done: 'border-ink bg-canvas',
     active: 'border-accent bg-accent',
     todo: 'border-line-strong bg-canvas',
 };
@@ -60,7 +60,7 @@ export default function PipelineRail({ status, variant = 'detailed', animated = 
                                 aria-hidden="true"
                                 style={beatOf(index)}
                                 className={`absolute top-5 bottom-0 left-[0.5625rem] w-0.5 origin-top rounded-full ${
-                                    states[index + 1] === 'todo' ? 'bg-line-strong' : 'bg-accent/60'
+                                    states[index + 1] === 'todo' ? 'bg-line-strong' : 'bg-ink/50'
                                 } ${animated ? 'animate-trace beat' : ''}`}
                             />
                         )}
@@ -102,7 +102,7 @@ export default function PipelineRail({ status, variant = 'detailed', animated = 
  * de sus, de unde vine linia, iar gradațiile apar la urmă.
  */
 function DialRing({ state, beat }: { state: StageState; beat?: number }) {
-    const stroke = state === 'todo' ? 'stroke-line-strong' : 'stroke-accent';
+    const stroke = state === 'todo' ? 'stroke-line-strong' : state === 'active' ? 'stroke-accent' : 'stroke-ink';
     const animated = beat !== undefined;
     const timing = animated ? beatOf(beat) : undefined;
 
@@ -144,7 +144,7 @@ function CompactRail({ states, className }: { states: StageState[]; className: s
                         <span className={`relative size-2.5 rounded-full border-2 ${ringClasses[state]}`} />
                     </span>
                     {index < states.length - 1 && (
-                        <span className={`h-0.5 flex-1 ${states[index + 1] === 'todo' ? 'bg-line-strong' : 'bg-accent/60'}`} />
+                        <span className={`h-0.5 flex-1 ${states[index + 1] === 'todo' ? 'bg-line-strong' : 'bg-ink/50'}`} />
                     )}
                 </span>
             ))}

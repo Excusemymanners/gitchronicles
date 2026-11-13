@@ -1,39 +1,51 @@
 import { Form, usePage } from '@inertiajs/react';
+import { useRef } from 'react';
 import PrimaryButton from '@/components/primary-button';
+import { FieldError } from '@/components/text-field';
+import { fieldShellClasses } from '@/components/text-input';
 import { GitHubIcon } from '@/components/workspace/icons';
 import { useI18n } from '@/hooks/use-i18n';
 
+type Props = {
+    /** "owner/name" of up to three repositories already documented here; a click puts its link in the field. */
+    examples: string[];
+};
+
 /**
- * Formularul principal al primei pagini: lipești linkul unui repository public de pe GitHub.
- * Oricine îl poate trimite; serverul decide ce urmează. Dacă repository-ul există deja, îi deschide pagina.
- * Un vizitator fără cont ajunge la autentificare, iar după ce intră în cont repository-ul se adaugă automat.
- * resetOnSuccess golește câmpul după un răspuns reușit; noValidate lasă validarea pe seama serverului,
- * care răspunde în limba aleasă.
+ * The home page's centrepiece: paste the link of a public GitHub repository.
+ * Anyone may send it; the server decides what follows. If the repository is already here, it opens its page.
+ * A guest goes to log in first, and the repository is added right after. resetOnSuccess empties the field after
+ * a successful answer; noValidate leaves validation to the server, which answers in the chosen language.
  *
- * Câmpul și butonul stau în aceeași ramă, ca o singură comandă; rama primește conturul de focus al câmpului.
+ * The field and the button sit in one frame, as one command (fieldShellClasses): the frame takes the field's focus
+ * ring and its error state. Under it, real repositories already documented fill the field with one click.
  */
-export default function AddRepositoryForm() {
+export default function AddRepositoryForm({ examples }: Props) {
     const { auth, app_host } = usePage<{ app_host: string }>().props;
     const { t, rich } = useI18n();
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    /** Puts an example's link in the field and gives the field the focus, ready to send with Enter. */
+    function fillWith(fullName: string) {
+        if (inputRef.current) {
+            inputRef.current.value = `https://github.com/${fullName}`;
+            inputRef.current.focus();
+        }
+    }
 
     return (
         <Form action="/repositories" method="post" resetOnSuccess noValidate>
             {({ errors, processing }) => (
                 <>
-                    <label htmlFor="url" className="text-sm font-medium text-ink">
+                    <label htmlFor="url" className="sr-only">
                         {t('home.form.label')}
                     </label>
 
-                    <div
-                        className={`mt-2 flex flex-col gap-2 rounded-xl border bg-surface p-2 shadow-card transition-colors has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-1 sm:flex-row sm:items-center ${
-                            errors.url
-                                ? 'border-danger has-[input:focus-visible]:outline-danger'
-                                : 'border-line-strong has-[input:focus-visible]:outline-accent'
-                        }`}
-                    >
+                    <div className={`flex flex-col gap-1.5 rounded-xl p-1.5 sm:flex-row sm:items-center ${fieldShellClasses(Boolean(errors.url))}`}>
                         <div className="flex min-w-0 flex-1 items-center gap-3 pl-3">
                             <GitHubIcon className="size-5 shrink-0 text-ink-subtle" />
                             <input
+                                ref={inputRef}
                                 id="url"
                                 name="url"
                                 type="url"
@@ -44,27 +56,41 @@ export default function AddRepositoryForm() {
                                 spellCheck={false}
                                 aria-invalid={errors.url ? true : undefined}
                                 aria-describedby={errors.url ? 'url-error url-hint' : 'url-hint'}
-                                // Conturul de focus îl desenează rama din jur (has-[input:focus-visible]).
-                                className="block w-full min-w-0 bg-transparent py-2.5 text-base text-ink placeholder:text-ink-subtle focus:outline-none"
+                                // The frame around it draws the focus ring (fieldShellClasses).
+                                className="block h-11 w-full min-w-0 bg-transparent text-base text-ink placeholder:text-ink-subtle focus:outline-none sm:text-[1.0625rem]"
                             />
                         </div>
-                        <PrimaryButton size="lg" disabled={processing}>
+                        <PrimaryButton size="lg" loading={processing}>
                             {processing ? t('home.form.submitting') : t('home.form.submit')}
                         </PrimaryButton>
                     </div>
 
                     {errors.url && (
-                        <p id="url-error" className="mt-2 animate-fade-in text-sm text-danger">
+                        <FieldError id="url-error" className="mt-2.5 justify-center">
                             {errors.url}
-                        </p>
+                        </FieldError>
                     )}
 
-                    <p id="url-hint" className="mt-3 text-sm text-ink-subtle">
-                        {auth.user ? t('home.form.hintUser') : t('home.form.hintGuest')}
-                    </p>
+                    {examples.length > 0 && (
+                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-small text-ink-subtle">
+                            <span>{t('home.form.examples')}</span>
+                            {examples.map((fullName) => (
+                                <button
+                                    key={fullName}
+                                    type="button"
+                                    onClick={() => fillWith(fullName)}
+                                    aria-label={t('home.form.exampleFill', { repository: fullName })}
+                                    className="pressable cursor-pointer rounded-full border border-line bg-surface px-2.5 py-1 font-mono text-[0.75rem] text-ink-muted hover:border-line-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                                >
+                                    {fullName}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
-                    {/* Scurtătura: schimbi github.com cu adresa aplicației în orice link (vezi FrontDoorController). */}
-                    <p className="mt-1 text-sm text-ink-subtle">
+                    <p id="url-hint" className="mx-auto mt-5 max-w-xl text-center text-small text-ink-subtle">
+                        {auth.user ? t('home.form.hintUser') : t('home.form.hintGuest')}{' '}
+                        {/* The shortcut: swap github.com for the app's address in any link (see FrontDoorController). */}
                         {rich('home.form.replaceHost', { host: <strong className="font-medium text-ink-muted">{app_host}</strong> })}
                     </p>
                 </>

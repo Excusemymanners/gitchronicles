@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { useRef } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import AppLogo from '@/components/app-logo';
+import { buttonClasses } from '@/components/button';
 import FlashMessage from '@/components/flash-message';
 import LanguageSwitch from '@/components/language-switch';
 import ThemeToggle from '@/components/theme-toggle';
@@ -16,7 +17,7 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
 /** Lățimea și marginile laterale ale conținutului; antetul, paginile și subsolul se aliniază pe ea. */
 export const pageContainer = 'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8';
 
-const navLinkClasses = `rounded-md px-2.5 py-1.5 font-medium text-ink-muted hover:text-ink aria-[current=page]:text-ink ${focusRing}`;
+const navLinkClasses = `rounded-md px-2 py-1.5 font-medium whitespace-nowrap text-ink-muted hover:text-ink aria-[current=page]:text-ink sm:px-2.5 ${focusRing}`;
 
 /**
  * Rama paginilor din afara unui repository (prima pagină, autentificare, cont nou): antetul cu navigarea
@@ -86,7 +87,7 @@ export default function AppLayout({ children }: Props) {
                                         <Link
                                             href="/register"
                                             aria-current={url.startsWith('/register') ? 'page' : undefined}
-                                            className={`pressable rounded-md bg-surface px-3 py-1.5 font-medium text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2 max-sm:hidden ${focusRing}`}
+                                            className={buttonClasses({ variant: 'secondary', size: 'sm', className: 'ml-1 max-sm:hidden' })}
                                         >
                                             {t('nav.signUp')}
                                         </Link>
@@ -115,7 +116,7 @@ export default function AppLayout({ children }: Props) {
             <footer className="border-t border-line">
                 <div className={`flex flex-col gap-1 py-6 text-[0.8125rem] text-ink-subtle sm:flex-row sm:items-center sm:justify-between ${pageContainer}`}>
                     <p>
-                        <span className="font-brand font-bold text-ink-muted">{t('common.appName')}</span> {t('footer.tagline')}
+                        <span className="font-brand font-semibold text-ink-muted">{t('common.appName')}</span> {t('footer.tagline')}
                     </p>
                     <p>{t('footer.thesis')}</p>
                 </div>

@@ -34,7 +34,7 @@ export default function RepositoryCard({ repository }: Props) {
             <div className="flex items-start justify-between gap-3">
                 <h3 className="min-w-0">
                     <Link href={href} prefetch className={`group block rounded-sm after:absolute after:inset-0 after:rounded-lg ${focusRing}`}>
-                        <span className="block truncate text-[0.8125rem] text-ink-subtle">{repository.owner}</span>
+                        <span className="block truncate text-small font-normal text-ink-subtle">{repository.owner}</span>
                         {/* Același nume de tranziție ca titlul din bara spațiului de lucru: la deschidere, numele alunecă acolo. */}
                         <span
                             style={{ viewTransitionName: `repo-title-${repository.id}` }}
@@ -113,7 +113,7 @@ function Fact({ label }: { label: string }) {
 
     return (
         <li>
-            <span className="font-medium text-ink tabular-nums">{count}</span> {noun.join(' ')}
+            <span className="font-semibold text-ink tabular-nums">{count}</span> {noun.join(' ')}
         </li>
     );
 }

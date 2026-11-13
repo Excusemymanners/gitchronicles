@@ -269,7 +269,7 @@ function FindingsList({ findings, name, unit }: { findings: DiagramFindings; nam
 
     return (
         <div className="mt-4 border-t border-line pt-3">
-            <p className="text-xs font-medium tracking-wide text-ink-subtle uppercase">{t('diagrams.meaning.findingsHeading')}</p>
+            <p className="text-small font-medium text-ink-subtle">{t('diagrams.meaning.findingsHeading')}</p>
             <dl className="mt-2 grid gap-x-6 gap-y-2.5 text-sm sm:grid-cols-[11rem_minmax(0,1fr)]">
                 {rows.map((row) => (
                     <div key={row.key} className="contents">

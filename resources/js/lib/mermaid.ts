@@ -8,7 +8,7 @@ import { useSyncExternalStore } from 'react';
  *
  * - securityLevel „strict”: etichetele nu pot rula cod și nu pot deschide legături;
  * - culorile vin din tema paginii (tokenii --color-* când există, altfel aceleași valori scrise aici);
- * - în tema întunecată, clasele C4 ale diagramelor primesc variantele lor întunecate (vezi DARK_CLASS_STYLES);
+ * - clasele C4 ale diagramelor primesc culorile paletei, în ambele teme (vezi DARK_CLASS_STYLES și LIGHT_CLASS_STYLES);
  * - diagramele se desenează pe rând, nu în paralel: Mermaid ține o stare globală (configurația).
  */
 
@@ -23,59 +23,73 @@ type IconPack = Parameters<Mermaid['registerIconPacks']>[0][number];
 const THEME_CHANGE_EVENT = 'gitchronicle-theme-change';
 
 /**
- * Culorile temei, folosite când pagina nu are încă tokenii --color-* (aceleași valori ca în app.css-ul temei).
+ * The theme's colours, used when the page does not have the --color-* tokens yet (the same values as in
+ * resources/css/app.css, Brand 3 — anthracite).
  */
 const FALLBACK_COLORS: Record<DiagramTheme, Record<string, string>> = {
     light: {
-        canvas: '#f9fafb',
-        surface: '#ffffff',
-        'surface-2': '#f3f4f6',
+        canvas: '#ffffff',
+        surface: '#f6f8fa',
+        'surface-2': '#eff2f5',
         'surface-raised': '#ffffff',
-        line: '#e5e7eb',
-        'line-strong': '#d1d5db',
-        ink: '#111827',
-        'ink-muted': '#4b5563',
-        'ink-subtle': '#6b7280',
+        line: '#d1d9e0',
+        'line-strong': '#818b98',
+        ink: '#1f2328',
+        'ink-muted': '#59636e',
+        'ink-subtle': '#656d76',
+        accent: '#0969da',
+        shadow: 'rgb(31 35 40 / 0.08)',
     },
     dark: {
-        canvas: '#0a0e1a',
-        surface: '#111727',
-        'surface-2': '#172036',
-        'surface-raised': '#1a2440',
-        line: '#253049',
-        'line-strong': '#4a5675',
-        ink: '#e8ebf4',
-        'ink-muted': '#a3acc2',
-        'ink-subtle': '#838ca4',
+        canvas: '#0d1117',
+        surface: '#151b23',
+        'surface-2': '#1c2128',
+        'surface-raised': '#212830',
+        line: '#30363d',
+        'line-strong': '#656c76',
+        ink: '#f0f6fc',
+        'ink-muted': '#9198a1',
+        'ink-subtle': '#8b949e',
+        accent: '#4493f8',
+        shadow: 'rgb(1 4 9 / 0.5)',
     },
 };
 
 /**
- * Stilurile claselor C4 în tema întunecată. Codul Mermaid salvat are variantele luminoase
- * (așa arată la fel și copiat în alt editor); pe pagină, în tema întunecată, le înlocuim cu acestea.
- * O cutie albastru-închis primește un contur deschis, ca să se vadă pe fundalul bleumarin.
+ * The light tile a technology's logo sits on (in a diagram node and in the technology list), in both themes:
+ * many logos are black (GitHub, Next.js), so they need a light ground even on the dark page.
+ */
+export const LOGO_TILE_FILL = '#f6f8fa';
+
+/**
+ * The C4 classes, drawn in the page's palette: neutral boxes, and the accent only where the diagram wants the
+ * eye (the system being described, the components inside a container). Mermaid's classDef takes literal colours,
+ * so these are the token values of each theme written out. The saved Mermaid code keeps the server's own colours
+ * (it looks the same when copied into another editor); on the page, codeForTheme() swaps in these.
  */
 export const DARK_CLASS_STYLES: Record<string, string> = {
-    person: 'fill:#1e3a8a,stroke:#60a5fa,color:#e8ebf4',
-    system: 'fill:#1e3a8a,stroke:#60a5fa,color:#e8ebf4',
-    containerBox: 'fill:#1e3a8a,stroke:#60a5fa,color:#e8ebf4',
-    component: 'fill:#1d4ed8,stroke:#60a5fa,color:#ffffff',
-    externalBox: 'fill:#26304a,stroke:#4a5675,color:#e8ebf4',
-    more: 'fill:none,stroke:#4a5675,stroke-dasharray:4 3,color:#a3acc2',
-    boundary: 'fill:none,stroke:#838ca4,stroke-dasharray:6 4',
+    person: 'fill:#212830,stroke:#9198a1,color:#f0f6fc',
+    system: 'fill:#212830,stroke:#4493f8,stroke-width:1.5px,color:#f0f6fc',
+    container: `fill:${LOGO_TILE_FILL}`,
+    containerBox: 'fill:#1c2128,stroke:#656c76,color:#f0f6fc',
+    component: 'fill:#212830,stroke:#4493f8,color:#f0f6fc',
+    external: 'fill:#eff2f5',
+    externalBox: 'fill:#151b23,stroke:#3d444d,color:#9198a1',
+    more: 'fill:none,stroke:#3d444d,stroke-dasharray:4 3,color:#9198a1',
+    boundary: 'fill:none,stroke:#8b949e,stroke-dasharray:6 4',
 };
 
-/** Stilurile claselor C4 în tema luminoasă: aceleași ca în codul scris de server (ArchitectureDiagramBuilder). */
+/** The same classes on the light page. */
 export const LIGHT_CLASS_STYLES: Record<string, string> = {
-    person: 'fill:#08427b,stroke:#073b6f,color:#ffffff',
-    system: 'fill:#1e3a8a,stroke:#1e3a8a,color:#ffffff',
-    container: 'fill:#e8f1fb',
-    containerBox: 'fill:#1e3a8a,stroke:#1e3a8a,color:#ffffff',
-    component: 'fill:#2563eb,stroke:#1d4ed8,color:#ffffff',
-    external: 'fill:#e5e7eb',
-    externalBox: 'fill:#e5e7eb,stroke:#9ca3af,color:#111827',
-    more: 'fill:none,stroke:#9ca3af,stroke-dasharray:4 3,color:#6b7280',
-    boundary: 'fill:none,stroke:#6b7280,stroke-dasharray:6 4',
+    person: 'fill:#ffffff,stroke:#59636e,color:#1f2328',
+    system: 'fill:#ffffff,stroke:#0969da,stroke-width:1.5px,color:#1f2328',
+    container: `fill:${LOGO_TILE_FILL}`,
+    containerBox: 'fill:#f6f8fa,stroke:#818b98,color:#1f2328',
+    component: 'fill:#ffffff,stroke:#0969da,color:#1f2328',
+    external: 'fill:#eff2f5',
+    externalBox: 'fill:#eff2f5,stroke:#d1d9e0,color:#59636e',
+    more: 'fill:none,stroke:#afb8c1,stroke-dasharray:4 3,color:#59636e',
+    boundary: 'fill:none,stroke:#656d76,stroke-dasharray:6 4',
 };
 
 /** Tema afișată acum: clasa „dark” de pe <html>. */
@@ -133,9 +147,9 @@ function configure(mermaid: Mermaid, theme: DiagramTheme): void {
         suppressErrorRendering: true,
         theme: 'base',
         darkMode: theme === 'dark',
-        fontFamily: "'Instrument Sans', ui-sans-serif, system-ui, sans-serif",
+        fontFamily: "'Mona Sans', ui-sans-serif, system-ui, sans-serif",
         themeVariables: {
-            fontFamily: "'Instrument Sans', ui-sans-serif, system-ui, sans-serif",
+            fontFamily: "'Mona Sans', ui-sans-serif, system-ui, sans-serif",
             fontSize: '14px',
             background: color('surface'),
             mainBkg: color('surface-raised'),
@@ -152,18 +166,22 @@ function configure(mermaid: Mermaid, theme: DiagramTheme): void {
             clusterBkg: color('canvas'),
             clusterBorder: color('line'),
             edgeLabelBackground: color('surface'),
+            // Mermaid 12 draws its "neo" nodes with a light grey shadow (meant for a white page); here the shadow
+            // is the page's own (a soft dark one in both themes), so boxes lift a little instead of glowing.
+            dropShadow: `drop-shadow(0 1px 2px ${color('shadow')})`,
         },
     });
 }
 
-/** Codul diagramei pentru tema dată: în tema întunecată, clasele C4 cunoscute primesc stilul întunecat. */
+/**
+ * The diagram's code for the given theme: every known C4 class gets the style of the page's palette in that theme
+ * (see DARK_CLASS_STYLES and LIGHT_CLASS_STYLES).
+ */
 export function codeForTheme(code: string, theme: DiagramTheme): string {
-    if (theme === 'light') {
-        return code;
-    }
+    const styles = theme === 'dark' ? DARK_CLASS_STYLES : LIGHT_CLASS_STYLES;
 
     return code.replace(/^(\s*classDef\s+)([\w-]+)(\s+).*$/gm, (line, start: string, name: string, space: string) =>
-        name in DARK_CLASS_STYLES ? `${start}${name}${space}${DARK_CLASS_STYLES[name]}` : line,
+        name in styles ? `${start}${name}${space}${styles[name]}` : line,
     );
 }
 

@@ -28,7 +28,7 @@ export default function AuthShell({ title, lead, pendingRepository, pendingText,
     return (
         <div className={`grid flex-1 items-start gap-x-16 gap-y-12 py-12 sm:py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:py-24 ${pageContainer}`}>
             <div className="mx-auto w-full max-w-sm lg:mx-0">
-                <h1 className="font-display text-title font-bold text-ink">{title}</h1>
+                <h1 className="font-display text-title font-semibold text-ink">{title}</h1>
                 <p className="mt-3 text-base leading-7 text-ink-muted">{lead}</p>
 
                 {pendingRepository && (

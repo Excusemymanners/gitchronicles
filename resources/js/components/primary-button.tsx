@@ -1,25 +1,17 @@
 import type { ButtonHTMLAttributes } from 'react';
+import Button from '@/components/button';
 
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> & {
-    /** „lg” e butonul formularului mare de pe prima pagină; „md” e cel obișnuit. */
+    /** "lg" is the button of a large form (the home page, log in, sign up); "md" the usual one. */
     size?: 'md' | 'lg';
-};
-
-const sizeClasses: Record<NonNullable<Props['size']>, string> = {
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-5 py-3 text-base',
+    /** The form is being sent: a spinner before the label, and the button cannot be pressed again. */
+    loading?: boolean;
 };
 
 /**
- * Butonul principal al unui formular, în culoarea de accent. Se strânge puțin cât e apăsat (pressable);
- * cât timp e dezactivat, apare estompat.
+ * The main button of a form: the system's primary button (components/button.tsx), submitting by default.
+ * Kept as its own component because many forms already use it by this name.
  */
 export default function PrimaryButton({ type = 'submit', size = 'md', ...props }: Props) {
-    return (
-        <button
-            type={type}
-            {...props}
-            className={`pressable inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-strong font-semibold whitespace-nowrap text-on-accent shadow-card hover:bg-accent-strong-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60 ${sizeClasses[size]}`}
-        />
-    );
+    return <Button variant="primary" type={type} size={size} {...props} />;
 }

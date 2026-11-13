@@ -1,6 +1,7 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 import PipelineRail from '@/components/pipeline-rail';
 import PrimaryButton from '@/components/primary-button';
+import { FieldError } from '@/components/text-field';
 import { GitHubIcon } from '@/components/workspace/icons';
 import { useI18n } from '@/hooks/use-i18n';
 import AppLayout, { pageContainer } from '@/layouts/app-layout';
@@ -42,7 +43,7 @@ export default function FrontDoorDocument({ full_name, url, facts }: Props) {
                         {facts?.avatar_url && (
                             <img src={facts.avatar_url} alt="" width={56} height={56} referrerPolicy="no-referrer" className="size-14 shrink-0 rounded-xl ring-1 ring-line" />
                         )}
-                        <h1 className="min-w-0 font-display text-title font-bold break-words text-ink">{full_name}</h1>
+                        <h1 className="min-w-0 font-display text-title font-semibold break-words text-ink">{full_name}</h1>
                     </div>
 
                     {facts?.description && <p className="mt-4 max-w-[60ch] text-base leading-7 text-ink-muted">{facts.description}</p>}
@@ -54,7 +55,7 @@ export default function FrontDoorDocument({ full_name, url, facts }: Props) {
                             <>
                                 <input type="hidden" name="url" value={url} />
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                                    <PrimaryButton size="lg" disabled={processing}>
+                                    <PrimaryButton size="lg" loading={processing}>
                                         {processing ? t('frontDoor.submitting') : t('frontDoor.action')}
                                     </PrimaryButton>
                                     <a
@@ -68,7 +69,7 @@ export default function FrontDoorDocument({ full_name, url, facts }: Props) {
                                         <span className="sr-only"> {t('common.opensInNewTab')}</span>
                                     </a>
                                 </div>
-                                {errors.url && <p className="mt-3 animate-fade-in text-sm text-danger">{errors.url}</p>}
+                                {errors.url && <FieldError id="url-error" className="mt-3">{errors.url}</FieldError>}
                                 <p className="mt-3 text-sm text-ink-subtle">{auth.user ? t('frontDoor.hintUser') : t('frontDoor.hintGuest')}</p>
                             </>
                         )}
@@ -116,7 +117,7 @@ function Facts({ facts }: { facts: GitHubFacts }) {
         <dl className="mt-8 grid max-w-xl grid-cols-2 gap-x-6 gap-y-5 rounded-xl border border-line bg-surface p-5 shadow-card sm:grid-cols-3">
             {items.map((item) => (
                 <div key={item.label}>
-                    <dt className="text-xs font-medium text-ink-subtle">{item.label}</dt>
+                    <dt className="text-small text-ink-subtle">{item.label}</dt>
                     <dd title={item.title} className="mt-1 truncate font-medium text-ink tabular-nums">
                         {item.value}
                     </dd>

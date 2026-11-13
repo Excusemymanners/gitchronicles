@@ -53,7 +53,7 @@ export default function ActivityCard({ activity, timelineHref }: Props) {
                                 {activity.months.map((month) => (
                                     <div key={month.month} className="group relative flex h-full flex-1 items-end justify-center">
                                         <span
-                                            className="block w-full max-w-6 rounded-t-sm bg-accent group-hover:bg-accent-hover"
+                                            className="block w-full max-w-6 rounded-t-sm bg-ink/60 group-hover:bg-ink"
                                             style={{ height: month.commit_count ? `${Math.max((month.commit_count / maxCount) * 100, 6)}%` : 0 }}
                                         />
                                         <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 rounded-sm border border-line bg-surface-raised px-1.5 py-0.5 text-xs whitespace-nowrap text-ink shadow-lg group-hover:block">

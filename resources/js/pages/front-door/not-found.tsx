@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import { buttonClasses } from '@/components/button';
 import { useI18n } from '@/hooks/use-i18n';
 import AppLayout, { pageContainer } from '@/layouts/app-layout';
 
@@ -24,16 +25,13 @@ export default function FrontDoorNotFound({ full_name }: Props) {
 
             <section className={`py-16 sm:py-24 ${pageContainer}`}>
                 <p className="font-mono text-sm text-ink-subtle">404</p>
-                <h1 className="mt-3 max-w-[22ch] font-display text-title font-bold break-words text-ink">
+                <h1 className="mt-3 max-w-[22ch] font-display text-title font-semibold break-words text-ink">
                     {t('frontDoor.notFound.title', { repository: full_name })}
                 </h1>
                 <p className="mt-4 max-w-[58ch] text-base leading-7 text-ink-muted">{t('frontDoor.notFound.text')}</p>
 
                 <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-                    <Link
-                        href="/"
-                        className={`pressable inline-flex items-center rounded-md bg-accent-strong px-5 py-3 text-base font-semibold text-on-accent shadow-card hover:bg-accent-strong-hover ${focusRing}`}
-                    >
+                    <Link href="/" className={buttonClasses({ variant: 'primary', size: 'lg' })}>
                         {t('frontDoor.notFound.home')}
                     </Link>
                     <Link href="/discover" className={`rounded-md text-sm font-medium text-ink-muted hover:text-ink ${focusRing}`}>
