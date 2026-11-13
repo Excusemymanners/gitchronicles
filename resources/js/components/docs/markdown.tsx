@@ -133,7 +133,7 @@ const components: Components = {
     a: ({ node, href = '', children, ...props }) => {
         if (href.startsWith('/') && !href.startsWith('//')) {
             return (
-                <Link href={href} className={linkClasses}>
+                <Link href={href} prefetch className={linkClasses}>
                     {children}
                 </Link>
             );

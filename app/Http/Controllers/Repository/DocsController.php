@@ -10,6 +10,7 @@ use App\Models\Document;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Response;
 
 /**
@@ -30,7 +31,8 @@ class DocsController extends Controller
     /**
      * Show the tab to anyone: repositories are public.
      *
-     * "navigation", "document" and "time_travel" are closures, so the polling of RepositoryLayout (which
+     * "navigation" is an Inertia once prop (the browser keeps the chapter list while moving from page to page,
+     * and gets it again when WorkspaceVersion changes); "document" and "time_travel" are closures, so the polling of RepositoryLayout (which
      * asks only for "repository" and "can_retry") does not run their queries every 2 seconds.
      */
     public function __invoke(Request $request, Repository $repository, ProcessedCommits $commits, ?string $slug = null): Response
@@ -47,7 +49,7 @@ class DocsController extends Controller
         $chosenRun = $this->chosenRun($request, $repository, $commits);
 
         return $this->renderRepositoryPage($request, $repository, 'repositories/docs', [
-            'navigation' => fn () => DocumentNavigation::for($repository),
+            'navigation' => Inertia::once(fn () => DocumentNavigation::for($repository))->as('navigation:'.$this->workspaceVersionOf($request, $repository)),
             'document' => fn () => $document === null ? null : DocumentResource::make($document)->resolve(),
             'time_travel' => fn () => [
                 'commits' => $commits->of($repository),

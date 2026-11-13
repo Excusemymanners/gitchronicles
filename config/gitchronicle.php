@@ -143,6 +143,9 @@ return [
         'workers' => (int) env('MEDIA_RENDER_WORKERS', 4),
         'languages' => array_values(array_filter(array_map('trim', explode(',', (string) env('MEDIA_LANGUAGES', 'en,ro'))))),
         'max_seconds' => (float) env('MEDIA_MAX_SECONDS', 60),
+        // The most bytes one answer to a "Range" request sends (MediaFileController): the browser asks for the
+        // next piece itself, and a single PHP worker is never kept busy for long by a playing video.
+        'max_range_bytes' => (int) env('MEDIA_MAX_RANGE_BYTES', 1024 * 1024),
         'music' => (bool) env('MEDIA_MUSIC', false),
         'capture' => [
             'enabled' => (bool) env('MEDIA_CAPTURE', true),

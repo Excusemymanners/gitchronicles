@@ -22,5 +22,6 @@ export default function ChapterLink({ href, ...props }: Props) {
         return <a href={hash} {...props} />;
     }
 
-    return <Link href={href} {...props} />;
+    // Hover or focus starts fetching the page (Inertia keeps it for 30 s), so the click finds it ready.
+    return <Link href={href} prefetch {...props} />;
 }

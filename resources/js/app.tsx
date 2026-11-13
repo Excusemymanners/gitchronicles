@@ -1,18 +1,31 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import WorkspaceLayout from '@/layouts/workspace-layout';
+import { loadCurrentDictionary } from '@/lib/i18n';
+
+/**
+ * Spațiul de lucru al unui repository (cuprins, asistent, Markdown) se aduce doar pentru paginile „repositories/…”,
+ * în paralel cu pagina; prima pagină, adesea acasă sau autentificarea, nu plătește pentru el.
+ */
+let workspaceLayout: ComponentType<{ children: ReactNode }> | null = null;
 
 const appName = import.meta.env.VITE_APP_NAME || 'GitChronicle';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     resolve: async (name) => {
-        const page = await resolvePageComponent<{ default: ComponentType }>(
-            `./pages/${name}.tsx`,
-            import.meta.glob<{ default: ComponentType }>('./pages/**/*.tsx'),
-        );
+        // Dicționarul limbii alese se aduce în paralel cu pagina; textele se caută sincron, deci îl așteptăm aici.
+        const [page] = await Promise.all([
+            resolvePageComponent<{ default: ComponentType }>(
+                `./pages/${name}.tsx`,
+                import.meta.glob<{ default: ComponentType }>('./pages/**/*.tsx'),
+            ),
+            loadCurrentDictionary(),
+            name.startsWith('repositories/') && workspaceLayout === null
+                ? import('@/layouts/workspace-layout').then((module) => (workspaceLayout = module.default))
+                : null,
+        ]);
 
         return page.default;
     },
@@ -39,7 +52,7 @@ createInertiaApp({
     },
     // Paginile unui repository se deschid în spațiul de lucru (cuprins, elemente, asistent). Fiind layout-ul
     // implicit, Inertia îl păstrează montat între ele: cuprinsul și asistentul nu pornesc de la zero la fiecare capitol.
-    layout: (name) => (name.startsWith('repositories/') ? WorkspaceLayout : null),
+    layout: (name) => (name.startsWith('repositories/') ? workspaceLayout : null),
     setup({ el, App, props }) {
         createRoot(el).render(<App {...props} />);
     },

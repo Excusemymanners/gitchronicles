@@ -1,8 +1,8 @@
 import { router } from '@inertiajs/react';
 import { createElement, Fragment } from 'react';
 import type { ReactNode } from 'react';
-import { DEFAULT_LOCALE, dictionaries } from '@/lang';
-import type { CountKey, Locale, PluralForms, TranslationKey } from '@/lang';
+import { DEFAULT_LOCALE, dictionaryLoaders } from '@/lang';
+import type { CountKey, Dictionary, Locale, PluralForms, TranslationKey } from '@/lang';
 
 /*
  * Limba interfeței, în browser. Serverul o alege la fiecare cerere (App\Http\Middleware\SetLocale) și o trimite
@@ -15,13 +15,32 @@ import type { CountKey, Locale, PluralForms, TranslationKey } from '@/lang';
 export type TranslationParams = Record<string, string | number>;
 
 function isLocale(value: unknown): value is Locale {
-    return typeof value === 'string' && Object.hasOwn(dictionaries, value);
+    return typeof value === 'string' && Object.hasOwn(dictionaryLoaders, value);
 }
 
 /** Limba de acum. La pornire, cea scrisă de server în <html lang> (resources/views/app.blade.php). */
 let currentLocale: Locale = isLocale(document.documentElement.lang) ? document.documentElement.lang : DEFAULT_LOCALE;
 
 const listeners = new Set<() => void>();
+
+/** Dicționarele deja aduse, pe limbă. Fiecare e adus o singură dată, la prima nevoie. */
+const loadedDictionaries: Partial<Record<Locale, Dictionary>> = {};
+const loadingDictionaries: Partial<Record<Locale, Promise<Dictionary>>> = {};
+
+/** Aduce dicționarul unei limbi (un fișier separat) și îl ține minte. */
+export function loadDictionary(locale: Locale): Promise<Dictionary> {
+    loadingDictionaries[locale] ??= dictionaryLoaders[locale]().then((dictionary) => (loadedDictionaries[locale] = dictionary));
+
+    return loadingDictionaries[locale];
+}
+
+/**
+ * Aduce dicționarul limbii de acum. Se așteaptă o dată, înainte ca aplicația să deseneze prima pagină
+ * (resources/js/app.tsx); după aceea textele se caută sincron.
+ */
+export function loadCurrentDictionary(): Promise<Dictionary> {
+    return loadDictionary(currentLocale);
+}
 
 /** Limba de acum: 'en' sau 'ro'. */
 export function getLocale(): Locale {
@@ -33,6 +52,13 @@ export function setLocale(locale: unknown): void {
     const nextLocale = isLocale(locale) ? locale : DEFAULT_LOCALE;
 
     if (nextLocale === currentLocale) {
+        return;
+    }
+
+    // Dicționarul limbii noi poate să nu fie adus încă (utilizatorul abia a ales-o): limba se schimbă când sosește.
+    if (loadedDictionaries[nextLocale] === undefined) {
+        void loadDictionary(nextLocale).then(() => setLocale(nextLocale));
+
         return;
     }
 
@@ -74,7 +100,7 @@ function interpolate(text: string, params: TranslationParams = {}): string {
 
 /** Textul unei chei în limba de acum, cu valorile puse la locul lor: translate('discover.pageOf', { current: 2, last: 5 }). */
 export function translate(key: TranslationKey, params?: TranslationParams): string {
-    const text = lookup(dictionaries[currentLocale], key) ?? lookup(dictionaries[DEFAULT_LOCALE], key);
+    const text = lookup(loadedDictionaries[currentLocale] ?? {}, key) ?? lookup(loadedDictionaries[DEFAULT_LOCALE] ?? {}, key);
 
     return typeof text === 'string' ? interpolate(text, params) : key;
 }
@@ -84,7 +110,7 @@ export function translate(key: TranslationKey, params?: TranslationParams): stri
  * pluralize('files', 20) → „20 files” sau „20 de fișiere”. Numărul e scris cu separatorul de mii al limbii.
  */
 export function pluralize(key: CountKey, count: number, params?: TranslationParams): string {
-    const forms: PluralForms = dictionaries[currentLocale].counts[key];
+    const forms: PluralForms = (loadedDictionaries[currentLocale] ?? loadedDictionaries[DEFAULT_LOCALE])?.counts[key] ?? { other: String(count) };
     const category = new Intl.PluralRules(currentLocale).select(count);
 
     return interpolate(forms[category] ?? forms.other, { count: new Intl.NumberFormat(currentLocale).format(count), ...params });

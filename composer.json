@@ -45,6 +45,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
+            "@putenv PHP_CLI_SERVER_WORKERS=4",
             "@php artisan dev"
         ],
         "test": [

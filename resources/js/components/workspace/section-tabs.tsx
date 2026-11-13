@@ -33,6 +33,7 @@ export default function SectionTabs({ sections, activeKey }: Props) {
                             <Link
                                 ref={isActive ? activeRef : undefined}
                                 href={section.href}
+                                prefetch
                                 aria-current={isActive ? 'page' : undefined}
                                 className={`relative flex h-11 items-center rounded-md px-3 text-sm whitespace-nowrap focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-accent ${
                                     isActive ? 'font-medium text-ink' : 'text-ink-muted hover:text-ink'

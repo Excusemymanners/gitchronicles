@@ -1,5 +1,4 @@
-import en from '@/lang/en';
-import ro from '@/lang/ro';
+import type en from '@/lang/en';
 
 /*
  * Limbile interfeței. Engleza e limba implicită și cea de rezervă: o cheie care ar lipsi dintr-o limbă
@@ -7,16 +6,24 @@ import ro from '@/lang/ro';
  *
  * Adăugarea unei limbi noi (de exemplu germana, „de”) are trei pași:
  *  1. dicționarul resources/js/lang/de.ts — o copie tradusă a lui en.ts, cu tipul `Dictionary` — înregistrat
- *     mai jos, în `dictionaries`;
+ *     mai jos, în `dictionaryLoaders`;
  *  2. folderul lang/de pentru mesajele serverului — o copie tradusă a lui lang/en (aceleași fișiere și chei);
  *  3. o intrare în config/app.php, la 'supported_locales': 'de' => 'Deutsch' (numele, în limba lui).
  * tests/Feature/TranslationFilesTest.php verifică pașii 1–3 și cheile din lang/; `npx tsc --noEmit` verifică
  * cheile dicționarului.
  */
-export const dictionaries = { en, ro } satisfies Record<string, Dictionary>;
+
+/*
+ * Fiecare dicționar e un fișier separat, încărcat doar când limba lui e cea aleasă (import dinamic): pagina
+ * nu aduce textele celeilalte limbi. lib/i18n.ts îl așteaptă înainte de prima desenare.
+ */
+export const dictionaryLoaders = {
+    en: () => import('@/lang/en').then((module) => module.default as Dictionary),
+    ro: () => import('@/lang/ro').then((module) => module.default as Dictionary),
+} satisfies Record<string, () => Promise<Dictionary>>;
 
 /** Codul unei limbi a interfeței: 'en' sau 'ro'. */
-export type Locale = keyof typeof dictionaries;
+export type Locale = keyof typeof dictionaryLoaders;
 
 export const DEFAULT_LOCALE: Locale = 'en';
 

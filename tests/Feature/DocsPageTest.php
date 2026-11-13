@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Document;
 use App\Models\Repository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -149,6 +151,78 @@ class DocsPageTest extends TestCase
                 'is_stale' => false,
             ])
         );
+    }
+
+    public function test_a_documentation_page_runs_few_queries_whatever_the_size_of_the_repository(): void
+    {
+        $small = Repository::factory()->ready()->create();
+        Document::factory()->for($small)->overview()->create();
+        $big = Repository::factory()->ready()->create();
+        Document::factory()->for($big)->overview()->create();
+        Document::factory()->count(60)->for($big)->sequence(fn ($sequence) => ['slug' => 'module-'.$sequence->index, 'title' => 'folder/module-'.$sequence->index])->create();
+
+        $smallQueries = $this->countQueries(fn () => $this->get("/repositories/{$small->id}/docs/overview")->assertOk());
+        $bigQueries = $this->countQueries(fn () => $this->get("/repositories/{$big->id}/docs/module-7")->assertOk());
+
+        $this->assertSame($smallQueries, $bigQueries);
+        $this->assertLessThanOrEqual(26, $bigQueries, 'A documentation page should not run more queries than this.');
+    }
+
+    public function test_moving_between_pages_does_not_send_the_workspace_and_the_chapter_list_again(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        Document::factory()->for($repository)->overview()->create();
+        Document::factory()->for($repository)->create(['slug' => 'app-http', 'title' => 'app/Http']);
+        $url = "/repositories/{$repository->id}/docs/app-http";
+
+        $first = $this->get($url, ['X-Inertia' => 'true', 'X-Inertia-Version' => $this->inertiaVersion()]);
+        $onceProps = $first->json('onceProps');
+        $this->assertSame(['completeness', 'last_update', 'navigation', 'workspace'], collect($onceProps)->pluck('prop')->sort()->values()->all());
+        $this->assertNotNull($first->json('props.workspace'));
+
+        $second = $this->get("/repositories/{$repository->id}/docs", [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => $this->inertiaVersion(),
+            'X-Inertia-Except-Once-Props' => implode(',', array_keys($onceProps)),
+        ]);
+
+        $second->assertOk();
+        $this->assertArrayNotHasKey('workspace', $second->json('props'));
+        $this->assertArrayNotHasKey('navigation', $second->json('props'));
+        $this->assertSame('overview', $second->json('props.document.slug'));
+    }
+
+    public function test_the_workspace_is_sent_again_when_the_repository_changes(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        Document::factory()->for($repository)->overview()->create();
+        $headers = ['X-Inertia' => 'true', 'X-Inertia-Version' => $this->inertiaVersion()];
+
+        $before = $this->get("/repositories/{$repository->id}/docs", $headers);
+        Document::factory()->for($repository)->create(['slug' => 'app-http', 'title' => 'app/Http']);
+        $after = $this->get("/repositories/{$repository->id}/docs", [
+            ...$headers,
+            'X-Inertia-Except-Once-Props' => implode(',', array_keys($before->json('onceProps'))),
+        ]);
+
+        $this->assertNotNull($after->json('props.workspace'));
+        $this->assertCount(2, $after->json('props.navigation'));
+    }
+
+    private function inertiaVersion(): string
+    {
+        return (string) app(HandleInertiaRequests::class)->version(request());
+    }
+
+    private function countQueries(callable $callback): int
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $callback();
+        $queries = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $queries;
     }
 
     /**

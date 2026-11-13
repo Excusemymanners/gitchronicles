@@ -682,6 +682,14 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Răspunsul JSON al lui Semgrep se decodează în memorie și ocupă de câteva ori mărimea lui, deci limita de 50 MB depășea cei 128 MB ai PHP. Semgrep nu are opțiune pentru numărul de rezultate, așa că limitez mărimea (8 MB, `CONSULTING_MAX_OUTPUT_MB`); peste ea unealta apare în raport ca neterminată, cu motivul spus, iar celelalte unelte contează în continuare.
   - README-ul are acum starea reală: shell și Rust, diagrame pentru proiecte mici, documentația în ordinea problemă → soluție → pornire, trecerea prin interfață și limitele de securitate cu numele lor din configurare.
 
+- 2026-11-12 — Viteză: paginile documentației încărcau încet. Am măsurat întâi (Playwright, build de producție, serverul PHP cu un singur worker) și am reparat în ordinea câștigului. Decizii și motivele lor:
+  - Serverul răspundea în 0,06–0,2 s; timpul se pierdea în browser. Fișierul `use-i18n` de 424 KB era de fapt React, Inertia și ambele dicționare, puse împreună de bundler în fișierul primului modul care le folosea. Acum React și Inertia au fișiere proprii (stabile, ținute în cache), iar dicționarul se aduce doar pentru limba aleasă (import dinamic, așteptat înainte de prima desenare).
+  - Mermaid, ELK, Cytoscape și KaTeX erau deja aduse la cerere; ce lipsea era ca previzualizarea unei diagrame de sub ecran să nu le ceară de la început. Cardul se desenează acum abia când ajunge aproape de ecran: Prezentarea scade de la 3,1 MB de JavaScript la sub 0,8 MB.
+  - Spațiul de lucru (90 KB din cei 98 KB ai unui răspuns) se retrimitea la fiecare navigare. E acum prop „o singură dată” al lui Inertia, cu o cheie care se schimbă când se schimbă datele (o interogare calculează versiunea), iar serverul îl ține și în cache sub aceeași versiune. O navigare între două module transferă 5 KB în loc de 98 KB. Legăturile spre capitole se încarcă din timp la trecerea mouse-ului.
+  - Codul comun e grupat în câteva fișiere mari (react, inertia, markdown, spațiul de lucru, restul), în loc de zeci de fișiere de 1 KB; fiecare ar fi cerut un drum prin serverul cu un singur worker. Pagina de start nu mai aduce deloc spațiul de lucru și Markdown-ul.
+  - Videoclipul: un `Range: bytes=0-` primea tot restul fișierului și ținea singurul worker cât timp browserul tamponează. Răspunsurile parțiale sunt acum limitate la 1 MB (`MEDIA_MAX_RANGE_BYTES`); posterul și subtitrările au ETag și Last-Modified (304). Cu un cititor blocat, o pagină aștepta 5,8 s înainte și 0,09 s după.
+  - `composer run dev` pornește serverul cu 4 workeri (`PHP_CLI_SERVER_WORKERS`, cu `--no-reload`); motivul e în README. Un test fixează numărul de interogări ale unei pagini de documentație.
+
 ---
 
 ## Start: Faza 0

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import DiagramViewer from '@/components/diagrams/diagram-viewer';
 import type { DiagramModules } from '@/components/diagrams/types';
 import { useI18n } from '@/hooks/use-i18n';
@@ -23,6 +24,35 @@ type RenderState = { status: 'loading' } | { status: 'ready'; svg: string } | { 
 
 const NO_MODULES: DiagramModules = {};
 
+/** Adevărat când elementul e la cel mult o jumătate de ecran de zona vizibilă; mereu adevărat dacă `isGated` e fals. */
+function useIsNearScreen(ref: RefObject<HTMLElement | null>, isGated: boolean): boolean {
+    const [isNear, setIsNear] = useState(false);
+
+    useEffect(() => {
+        const element = ref.current;
+
+        if (!isGated || isNear || element === null) {
+            return;
+        }
+
+        if (typeof IntersectionObserver === 'undefined') {
+            setIsNear(true);
+
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => entries.some((entry) => entry.isIntersecting) && setIsNear(true),
+            { rootMargin: '50% 0px' },
+        );
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, [ref, isGated, isNear]);
+
+    return !isGated || isNear;
+}
+
 /**
  * O diagramă Mermaid: o desenează în browser, o redesenează când se schimbă tema și o arată într-un
  * DiagramViewer (zoom, deplasare, ecran complet, export). Dacă desenul nu reușește, spune asta pe scurt
@@ -35,9 +65,18 @@ export default function MermaidDiagram({ code, title, compact = false, modules =
     const [isFullScreen, setIsFullScreen] = useState(false);
     const dialogRef = useRef<HTMLDialogElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
+    const previewHolderRef = useRef<HTMLDivElement>(null);
+
+    // O previzualizare (card) se desenează abia când ajunge aproape de ecran: Mermaid și ELK sunt peste 2 MB,
+    // iar un card de sub pagină nu trebuie să încetinească ce se vede. Diagrama întreagă se desenează imediat.
+    const isNearScreen = useIsNearScreen(previewHolderRef, compact);
 
     // La o schimbare de temă păstrăm desenul vechi până e gata cel nou, ca pagina să nu clipească.
     useEffect(() => {
+        if (!isNearScreen) {
+            return;
+        }
+
         let cancelled = false;
 
         renderDiagram(code, theme).then(
@@ -48,7 +87,7 @@ export default function MermaidDiagram({ code, title, compact = false, modules =
         return () => {
             cancelled = true;
         };
-    }, [code, theme]);
+    }, [code, theme, isNearScreen]);
 
     // Previzualizarea umple caseta ei; Mermaid scrie width="100%" și o lățime maximă pe care o scoatem.
     useEffect(() => {
@@ -86,7 +125,7 @@ export default function MermaidDiagram({ code, title, compact = false, modules =
 
     if (compact) {
         return (
-            <div role="img" aria-label={t('diagrams.mermaid.label', { title })} className="h-full w-full">
+            <div ref={previewHolderRef} role="img" aria-label={t('diagrams.mermaid.label', { title })} className="h-full w-full">
                 {state.status === 'loading' ? (
                     <div className="skeleton h-full w-full rounded-md" />
                 ) : (

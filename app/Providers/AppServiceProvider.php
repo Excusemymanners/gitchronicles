@@ -67,6 +67,9 @@ class AppServiceProvider extends ServiceProvider
         // `php artisan dev` (composer run dev) also starts a worker for the "media" queue, next to the
         // default one, so a video being rendered never keeps a repository waiting to be processed.
         if ($this->app->runningInConsole()) {
+            // The server of `composer run dev` has several workers (PHP_CLI_SERVER_WORKERS, set in composer.json;
+            // PHP needs --no-reload for that): a playing video or a slow file never keeps the pages waiting.
+            DevCommands::artisan('serve --no-reload', 'server');
             DevCommands::artisan('queue:listen --queue='.config('gitchronicle.media.queue').' --tries=1 --timeout=0', 'media');
         }
     }
