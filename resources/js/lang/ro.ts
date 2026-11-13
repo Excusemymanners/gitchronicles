@@ -1012,6 +1012,16 @@ const ro: Dictionary = {
         emptyNotReady: 'Se pot face după ce repository-ul termină de procesat.',
         emptyCanGenerate: 'Apasă „Generează video și slide-uri”. Randarea durează câteva minute.',
         emptyLogIn: 'Un utilizator autentificat le poate genera de pe această pagină.',
+        mini: {
+            region: 'Mini-player video',
+            play: 'Pornește video-ul',
+            pause: 'Oprește video-ul',
+            mute: 'Fără sunet',
+            unmute: 'Cu sunet',
+            pictureInPicture: 'Picture-in-Picture',
+            openPage: 'Deschide pagina video-ului',
+            close: 'Închide video-ul',
+        },
         video: {
             title: 'Video de prezentare',
             failed: 'Video-ul nu a putut fi generat.',

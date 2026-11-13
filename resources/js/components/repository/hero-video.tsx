@@ -1,5 +1,6 @@
 import { Form, Link } from '@inertiajs/react';
 import { useState } from 'react';
+import { useVideoPlayer, VideoSlot } from '@/components/media/video-player';
 import { PlayIcon } from '@/components/workspace/icons';
 import { useI18n } from '@/hooks/use-i18n';
 import { formatTimecode } from '@/lib/format';
@@ -24,11 +25,22 @@ const frameClasses = 'relative mx-auto aspect-9/16 w-full max-w-72 overflow-hidd
  */
 export default function HeroVideo({ repository, media }: Props) {
     const { t } = useI18n();
+    const player = useVideoPlayer();
     const readyVideos = media.videos.filter((video) => video.status === 'ready' && video.src !== null);
-    const [language, setLanguage] = useState<MediaLanguage>(
+    const [chosenLanguage, setLanguage] = useState<MediaLanguage>(
         readyVideos.find((video) => video.language === media.default_language)?.language ?? readyVideos[0]?.language ?? media.default_language,
     );
+    // While a video plays, its language is the one shown (the visitor may have changed it on another page).
+    const language = player.session?.video.language ?? chosenLanguage;
     const video = readyVideos.find((item) => item.language === language) ?? readyVideos[0] ?? null;
+
+    function chooseLanguage(item: PresentationVideo) {
+        setLanguage(item.language);
+
+        if (player.session) {
+            player.changeVideo(item);
+        }
+    }
 
     if (video === null) {
         return <VideoState repository={repository} media={media} />;
@@ -36,8 +48,7 @@ export default function HeroVideo({ repository, media }: Props) {
 
     return (
         <figure className="flex flex-col gap-3">
-            {/* The key starts the player again (poster first) when the language changes. */}
-            <VideoPlayer key={video.language} video={video} repositoryName={repository.full_name} />
+            <VideoPlayer video={video} repository={repository} />
 
             <figcaption className="flex flex-wrap items-center justify-between gap-2 text-[0.8125rem] text-ink-muted">
                 <Link href={`/repositories/${repository.id}/media`} className={`rounded-sm hover:text-ink hover:underline ${focusRing}`}>
@@ -52,7 +63,7 @@ export default function HeroVideo({ repository, media }: Props) {
                                 type="button"
                                 lang={item.language}
                                 aria-pressed={item.language === video.language}
-                                onClick={() => setLanguage(item.language)}
+                                onClick={() => chooseLanguage(item)}
                                 className={`cursor-pointer rounded-sm px-2.5 py-0.5 text-xs font-medium ${focusRing} ${
                                     item.language === video.language ? 'bg-surface text-ink shadow-card' : 'text-ink-muted hover:text-ink'
                                 }`}
@@ -68,57 +79,43 @@ export default function HeroVideo({ repository, media }: Props) {
 }
 
 /**
- * The poster with the play button until a click, then the <video> with native controls, playing inline.
+ * The poster with the play button until a click. Then the page only keeps the frame (the slot): the one <video>
+ * of the repository, owned by the workspace, docks over it and keeps playing when the visitor leaves the page.
  * A poster that cannot be loaded (a missing file) falls back to a plain frame, not a broken-image icon.
  */
-function VideoPlayer({ video, repositoryName }: { video: PresentationVideo; repositoryName: string }) {
+function VideoPlayer({ video, repository }: { video: PresentationVideo; repository: RepositoryItem }) {
     const { t } = useI18n();
-    const [isPlaying, setPlaying] = useState(false);
+    const player = useVideoPlayer();
     const [hasPoster, setHasPoster] = useState(video.poster !== null);
-
-    if (isPlaying && video.src) {
-        return (
-            <div className={`${frameClasses} bg-surface-2`}>
-                <video
-                    src={video.src}
-                    poster={hasPoster && video.poster ? video.poster : undefined}
-                    controls
-                    autoPlay
-                    playsInline
-                    aria-label={t('overview.showcase.videoLabel', { repository: repositoryName })}
-                    className="size-full object-contain"
-                >
-                    {video.captions && <track kind="captions" src={video.captions} srcLang={video.language} label={video.language_label} default />}
-                </video>
-            </div>
-        );
-    }
+    const repositoryName = repository.full_name;
 
     return (
-        <button
-            type="button"
-            onClick={() => setPlaying(true)}
-            className={`group ${frameClasses} block cursor-pointer border border-line bg-surface-2 text-left shadow-float ${focusRing}`}
-        >
-            {hasPoster && video.poster && <img src={video.poster} alt="" onError={() => setHasPoster(false)} className="absolute inset-0 size-full object-cover" />}
+        <VideoSlot className={`${frameClasses} border border-line bg-surface-2 shadow-float`}>
+            <button
+                type="button"
+                onClick={() => player.start(video, { repositoryName, mediaHref: `/repositories/${repository.id}/media` })}
+                className={`group absolute inset-0 block cursor-pointer text-left ${focusRing}`}
+            >
+                {hasPoster && video.poster && <img src={video.poster} alt="" onError={() => setHasPoster(false)} className="absolute inset-0 size-full object-cover" />}
 
-            <span className="absolute inset-0 grid place-items-center">
-                <span className="grid size-16 place-items-center rounded-full bg-canvas/85 text-ink shadow-float backdrop-blur-sm motion-safe:transition-transform motion-safe:duration-(--motion-fast) group-hover:scale-105">
-                    <PlayIcon className="ml-1 size-7" />
+                <span className="absolute inset-0 grid place-items-center">
+                    <span className="grid size-16 place-items-center rounded-full bg-canvas/85 text-ink shadow-float backdrop-blur-sm motion-safe:transition-transform motion-safe:duration-(--motion-fast) group-hover:scale-105">
+                        <PlayIcon className="ml-1 size-7" />
+                    </span>
                 </span>
-            </span>
 
-            {video.duration_ms !== null && (
-                <span className="absolute right-3 bottom-3 rounded-md bg-canvas/85 px-2 py-0.5 text-xs font-medium text-ink tabular-nums backdrop-blur-sm">
-                    {formatTimecode(video.duration_ms)}
+                {video.duration_ms !== null && (
+                    <span className="absolute right-3 bottom-3 rounded-md bg-canvas/85 px-2 py-0.5 text-xs font-medium text-ink tabular-nums backdrop-blur-sm">
+                        {formatTimecode(video.duration_ms)}
+                    </span>
+                )}
+
+                <span className="sr-only">
+                    {t('overview.showcase.playVideo', { repository: repositoryName })}
+                    {video.duration_ms !== null && `, ${formatTimecode(video.duration_ms)}`}
                 </span>
-            )}
-
-            <span className="sr-only">
-                {t('overview.showcase.playVideo', { repository: repositoryName })}
-                {video.duration_ms !== null && `, ${formatTimecode(video.duration_ms)}`}
-            </span>
-        </button>
+            </button>
+        </VideoSlot>
     );
 }
 

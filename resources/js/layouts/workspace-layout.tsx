@@ -4,6 +4,8 @@ import type { MouseEvent, ReactNode } from 'react';
 import AssistantBar from '@/components/assistant/assistant-bar';
 import AssistantProvider, { useAssistantConversation } from '@/components/assistant/assistant-provider';
 import FlashMessage from '@/components/flash-message';
+import MiniPlayer from '@/components/media/mini-player';
+import { useIsMiniPlayerVisible, VideoPlayerProvider } from '@/components/media/video-player';
 import { HERO_ASK_ID } from '@/components/repository/ask-box';
 import { AskButton, AskPanel } from '@/components/workspace/ask-panel';
 import CommandPalette from '@/components/workspace/command-palette';
@@ -43,7 +45,9 @@ export default function WorkspaceLayout({ children }: Props) {
     // The key starts a fresh workspace (and conversation) for another repository.
     return (
         <AssistantProvider key={repository.id} repositoryId={repository.id}>
-            <WorkspaceFrame>{children}</WorkspaceFrame>
+            <VideoPlayerProvider>
+                <WorkspaceFrame>{children}</WorkspaceFrame>
+            </VideoPlayerProvider>
         </AssistantProvider>
     );
 }
@@ -184,6 +188,9 @@ function WorkspaceFrame({ children }: Props) {
                     {canUsePanel && <AskPanel repository={repository} assistant={workspace.assistant} isOpen={isPanelOpen} onClose={() => setAskOpen(false)} />}
                 </div>
 
+                {/* The video started on the Overview or the Video page keeps playing here, after the page's content. */}
+                <MiniPlayer />
+
                 {/* Below 1280 px the button sits in its own bar under the page, so it never covers the text being read;
                     from 1280 px the bar disappears (contents) and the button floats in the corner. */}
                 {canUsePanel && !isHeroAskVisible && (
@@ -224,11 +231,13 @@ function DocsShape({ groups, isNavOpen, onOpenNav, onCloseNav, children }: DocsS
     const hasNavColumn = useMediaQuery(DOCS_COLUMN_QUERY);
     const hasAsideColumn = useMediaQuery(ASIDE_COLUMN_QUERY);
     const docsGroups = documentationGroups(groups);
+    // From md the mini player floats bottom-left over this column: leave room so the last items scroll above it.
+    const hasMiniPlayer = useIsMiniPlayerVisible();
 
     return (
         <>
             {hasNavColumn && (
-                <div className="relative w-66 shrink-0 overflow-y-auto overscroll-contain border-r border-line bg-surface">
+                <div className={`relative w-66 shrink-0 overflow-y-auto overscroll-contain border-r border-line bg-surface ${hasMiniPlayer ? 'pb-100' : ''}`}>
                     <DocsNav groups={docsGroups} />
                 </div>
             )}

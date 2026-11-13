@@ -1,11 +1,12 @@
 import { Form, Head, router, usePoll } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
+import { useVideoPlayer } from '@/components/media/video-player';
 import SlidesSection from '@/components/media/slides-section';
 import VideoSection from '@/components/media/video-section';
 import { useI18n } from '@/hooks/use-i18n';
 import RepositoryLayout from '@/layouts/repository-layout';
 import type { RepositoryPageProps } from '@/types';
-import type { MediaLanguage, PresentationMedia } from '@/types/media';
+import type { MediaLanguage, PresentationMedia, PresentationVideo } from '@/types/media';
 
 type Props = RepositoryPageProps & {
     /** Video-urile (câte unul pe limbă) și slide-urile repository-ului (PresentationMediaResource în Laravel). */
@@ -45,8 +46,19 @@ export default function RepositoriesMedia({ repository, media }: Props) {
     }, [media.is_working]);
 
     // Limba aleasă pentru player, subtitrări, descărcare și lista de surse; la început, cea implicită.
-    const [language, setLanguage] = useState<MediaLanguage>(media.default_language);
+    const player = useVideoPlayer();
+    const [chosenLanguage, setLanguage] = useState<MediaLanguage>(media.default_language);
+    // Cât timp rulează un video, limba lui e cea afișată (poate fi schimbată dintr-o altă pagină).
+    const language = player.session?.video.language ?? chosenLanguage;
     const video = media.videos.find((item) => item.language === language) ?? media.videos[0] ?? null;
+
+    function chooseLanguage(item: PresentationVideo) {
+        setLanguage(item.language);
+
+        if (player.session) {
+            player.changeVideo(item);
+        }
+    }
 
     const hasNothing = media.videos.length === 0 && media.slides === null;
     const hasFailure = media.videos.some((item) => item.status === 'failed') || media.slides?.status === 'failed';
@@ -69,7 +81,7 @@ export default function RepositoriesMedia({ repository, media }: Props) {
                         type="button"
                         lang={item.language}
                         aria-pressed={item.language === video.language}
-                        onClick={() => setLanguage(item.language)}
+                        onClick={() => chooseLanguage(item)}
                         className={`cursor-pointer rounded-sm px-3 py-1 text-sm font-medium ${focusRing} ${
                             item.language === video.language ? 'bg-surface text-ink shadow-xs' : 'text-ink-muted hover:text-ink'
                         }`}
@@ -134,7 +146,7 @@ export default function RepositoriesMedia({ repository, media }: Props) {
                 </div>
             ) : (
                 <div className="mt-8 flex flex-col gap-10">
-                    {video && <VideoSection key={video.language} video={video} repositoryName={repository.full_name} languageSwitch={languageSwitch} />}
+                    {video && <VideoSection key={video.language} video={video} repositoryName={repository.full_name} mediaHref={`/repositories/${repository.id}/media`} languageSwitch={languageSwitch} />}
                     {media.slides && <SlidesSection slides={media.slides} />}
                 </div>
             )}

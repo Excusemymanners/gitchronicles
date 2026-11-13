@@ -689,6 +689,12 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Codul comun e grupat în câteva fișiere mari (react, inertia, markdown, spațiul de lucru, restul), în loc de zeci de fișiere de 1 KB; fiecare ar fi cerut un drum prin serverul cu un singur worker. Pagina de start nu mai aduce deloc spațiul de lucru și Markdown-ul.
   - Videoclipul: un `Range: bytes=0-` primea tot restul fișierului și ținea singurul worker cât timp browserul tamponează. Răspunsurile parțiale sunt acum limitate la 1 MB (`MEDIA_MAX_RANGE_BYTES`); posterul și subtitrările au ETag și Last-Modified (304). Cu un cititor blocat, o pagină aștepta 5,8 s înainte și 0,09 s după.
   - `composer run dev` pornește serverul cu 4 workeri (`PHP_CLI_SERVER_WORKERS`, cu `--no-reload`); motivul e în README. Un test fixează numărul de interogări ale unei pagini de documentație.
+- 2026-11-13 — Mini-playerul video. Decizii și motivele lor:
+  - Un singur element `<video>` pe vizita unui repository, ținut de un furnizor (`VideoPlayerProvider`) în layout-ul spațiului de lucru, pe care Inertia îl păstrează între pagini. Paginile (Prezentare generală, Video și slide-uri) nu mai au `<video>`, ci un „slot” (o ramă 9:16) peste care se așază video-ul.
+  - Un `<video>` mutat în DOM se oprește sau pornește de la capăt. De aceea elementul nu se mută niciodată: stă într-o cutie cu poziție fixă a cărei dreptunghi urmărește, cadru cu cadru, slotul paginii sau „puțul” mini-playerului; în pagina cu scroll, cutia e tăiată la zona de scroll, ca să nu acopere bara de sus.
+  - Mini-playerul apare doar după ce vizitatorul a apăsat play și numai pe paginile fără slot: jos-stânga de la 768 px (butonul „Întreabă” e în dreapta), iar pe telefon o bară deasupra barei de jos, în fluxul paginii, deci nu acoperă nimic. Îl închide doar butonul lui; părăsirea repository-ului îl închide, fiindcă furnizorul are cheia repository-ului.
+  - La schimbarea limbii, poziția se păstrează dacă durata celor două variante diferă cu mai puțin de 20 %, altfel video-ul pornește de la 0.
+  - Verificat cu Playwright: același element, `paused === false` și `currentTime` continuu la fiecare schimbare de pagină, la 1440 și la 390 px. Serverul `artisan serve` are un singur proces și bloca navigarea cât se descărca video-ul; la verificare am folosit `php -S` cu mai multe procese.
 
 ---
 

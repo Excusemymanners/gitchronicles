@@ -1014,6 +1014,16 @@ const en = {
         emptyNotReady: 'They can be made once the repository has finished processing.',
         emptyCanGenerate: 'Press “Generate video and slides”. Rendering takes a few minutes.',
         emptyLogIn: 'A logged-in user can generate them from this page.',
+        mini: {
+            region: 'Video mini player',
+            play: 'Play video',
+            pause: 'Pause video',
+            mute: 'Mute video',
+            unmute: 'Unmute video',
+            pictureInPicture: 'Picture-in-Picture',
+            openPage: 'Open the video page',
+            close: 'Close the video',
+        },
         video: {
             title: 'Overview video',
             failed: 'The video couldn’t be generated.',

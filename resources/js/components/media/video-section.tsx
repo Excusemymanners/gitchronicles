@@ -1,8 +1,10 @@
-import { useId, useRef } from 'react';
+import { useId } from 'react';
 import type { ReactNode } from 'react';
 import DownloadLink from '@/components/media/download-link';
 import MediaStatusBadge from '@/components/media/media-status-badge';
 import SceneList from '@/components/media/scene-list';
+import { useVideoPlayer, VideoSlot } from '@/components/media/video-player';
+import { PlayIcon } from '@/components/workspace/icons';
 import { useI18n } from '@/hooks/use-i18n';
 import { formatDate } from '@/lib/format';
 import { formatDuration } from '@/lib/history-format';
@@ -14,6 +16,8 @@ type Props = {
     languageSwitch?: ReactNode;
     /** „proprietar/nume”, pentru numele video-ului citit de cititoarele de ecran. */
     repositoryName: string;
+    /** Adresa paginii „Video” a repository-ului, la care trimite mini-playerul. */
+    mediaHref: string;
 };
 
 /**
@@ -21,19 +25,15 @@ type Props = {
  * el (durata, cine a scris textele, vocea, muzica), descărcarea și lista scenelor cu sursele lor.
  * Cât timp se randează sau dacă a eșuat, în locul playerului apare starea lui.
  */
-export default function VideoSection({ video, repositoryName, languageSwitch = null }: Props) {
+export default function VideoSection({ video, repositoryName, mediaHref, languageSwitch = null }: Props) {
     const { t } = useI18n();
     const headingId = useId();
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const player = useVideoPlayer();
+    const playerContext = { repositoryName, mediaHref };
 
     // Butonul cu timpul unei scene mută video-ul la începutul ei și îl pornește.
     function seek(milliseconds: number) {
-        const element = videoRef.current;
-
-        if (element) {
-            element.currentTime = milliseconds / 1000;
-            void element.play();
-        }
+        player.seek(video, playerContext, milliseconds);
     }
 
     return (
@@ -64,21 +64,22 @@ export default function VideoSection({ video, repositoryName, languageSwitch = n
             {video.status === 'ready' && video.src && (
                 <>
                     <div className="mt-4 grid gap-6 sm:grid-cols-[17rem_minmax(0,1fr)]">
-                        <div className="w-full max-w-68 overflow-hidden rounded-2xl border border-line bg-canvas">
-                            <video
-                                ref={videoRef}
-                                controls
-                                playsInline
-                                preload="metadata"
-                                poster={video.poster ?? undefined}
-                                aria-label={t('media.video.label', { repository: repositoryName })}
-                                className="block aspect-9/16 w-full"
+                        {/* Doar rama: <video>-ul repository-ului stă în spațiul de lucru și se așază peste ea. */}
+                        <VideoSlot className="relative aspect-9/16 w-full max-w-68 overflow-hidden rounded-2xl border border-line bg-surface-2">
+                            <button
+                                type="button"
+                                onClick={() => player.start(video, playerContext)}
+                                className="group absolute inset-0 block cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                             >
-                                <source src={video.src} type="video/mp4" />
-                                {video.captions && <track kind="captions" src={video.captions} srcLang={video.language} label={video.language_label} default />}
-                                {t('media.video.unsupported')}
-                            </video>
-                        </div>
+                                {video.poster && <img src={video.poster} alt="" className="absolute inset-0 size-full object-cover" />}
+                                <span className="absolute inset-0 grid place-items-center">
+                                    <span className="grid size-14 place-items-center rounded-full bg-canvas/85 text-ink shadow-float backdrop-blur-sm">
+                                        <PlayIcon className="ml-1 size-6" />
+                                    </span>
+                                </span>
+                                <span className="sr-only">{t('media.video.label', { repository: repositoryName })}</span>
+                            </button>
+                        </VideoSlot>
 
                         <div className="min-w-0">
                             <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
