@@ -315,17 +315,17 @@ function SystemMapView({ diagram, docsBase }: { diagram: Diagram; docsBase: stri
     return (
         <>
             {diagram.reading && <p className="max-w-3xl text-[0.9375rem] leading-7 text-ink">{diagram.reading}</p>}
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+            <div className="flex min-w-0 flex-col gap-4">
                 <div className="flex min-w-0 flex-col gap-2">
-                    <MermaidDiagram code={diagram.mermaid} title={diagram.title} modules={diagram.modules} docsBase={docsBase} onNodeActive={setActiveNode} highlight={highlight} />
+                    <MermaidDiagram code={diagram.mermaid} title={diagram.title} modules={diagram.modules} docsBase={docsBase} onNodeActive={setActiveNode} highlight={highlight} fitWidth />
                     <DiagramLegend items={legend} />
                 </div>
                 <div className="flex min-w-0 flex-col gap-4">
                     {mainSteps.length > 0 && (
-                        <StepList title={t('diagrams.explain.mainPath')} steps={diagram.steps} shown={mainSteps} activeNode={activeNode} activeStep={activeStep} onActive={setActiveStep} />
+                        <StepList title={t('diagrams.explain.mainPath')} steps={diagram.steps} shown={mainSteps} activeNode={activeNode} activeStep={activeStep} onActive={setActiveStep} columns />
                     )}
                     {otherSteps.length > 0 && (
-                        <StepList title={t('diagrams.explain.otherArrows')} steps={diagram.steps} shown={otherSteps} activeNode={activeNode} activeStep={activeStep} onActive={setActiveStep} />
+                        <StepList title={t('diagrams.explain.otherArrows')} steps={diagram.steps} shown={otherSteps} activeNode={activeNode} activeStep={activeStep} onActive={setActiveStep} columns />
                     )}
                     <p className="text-xs text-ink-subtle">
                         {diagram.source === 'ai' ? t('diagrams.explain.sourceAi') : t('diagrams.explain.sourceFallback')}

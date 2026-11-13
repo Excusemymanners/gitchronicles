@@ -50,11 +50,6 @@ final class SystemMapWriter
      */
     private const EXAMPLES_PER_ARROW = 3;
 
-    /**
-     * How many places in the code are kept for one arrow before they are ordered (the best ones are chosen).
-     */
-    private const CANDIDATES_PER_ARROW = 200;
-
     private const SYSTEM_PROMPT = <<<'PROMPT'
         You draw the big picture of a software project for someone who has never seen its code: one diagram that
         answers "how does it work?". You receive what the project says it does, its modules, the links between
@@ -119,8 +114,7 @@ final class SystemMapWriter
     public function __construct(
         private TextGenerator $generator,
         private SystemFacts $collector,
-        private CodeOverview $overview,
-        private ArchitectureFacts $facts,
+        private StepEvidence $evidence,
     ) {}
 
     /**
@@ -147,6 +141,7 @@ final class SystemMapWriter
             // Drawn again from the saved map, with its evidence found again, so a change of the drawing or of the
             // evidence table reaches the saved pictures without a new call.
             $map = isset($saved->meta['map']) ? $this->withBacking($saved->meta['map'], $saved->meta['title'], $saved->meta['reading'], $facts) : null;
+            $map = $map === null ? null : $this->pruned($repository, $map, $facts);
             $saved->update($map === null ? ['source_sha' => $repository->last_sha] : [
                 'source_sha' => $repository->last_sha,
                 'mermaid' => SystemMap::mermaid($map),
@@ -195,6 +190,8 @@ final class SystemMapWriter
             $map['title'] = "How {$repository->name} works";
         }
 
+        $map = $this->pruned($repository, $map, $facts);
+
         $repository->diagrams()->updateOrCreate(
             ['type' => DiagramType::Overview, 'key' => ''],
             ['mermaid' => SystemMap::mermaid($map), 'meta' => $this->meta($repository, $map, $facts, $source, $reason, $stats, $inputHash, $result), 'source_sha' => $repository->last_sha],
@@ -216,7 +213,7 @@ final class SystemMapWriter
     {
         $labels = array_column($map['nodes'], 'label', 'id');
         $edges = SystemMap::orderedEdges($map['edges']);
-        $examples = $this->examples($repository, $edges, $facts);
+        $examples = $this->examples($repository, $map, $facts);
         $evidence = [];
 
         foreach ($edges as $index => $edge) {
@@ -273,6 +270,7 @@ final class SystemMapWriter
      */
     private function withBacking(array $saved, string $title, string $reading, array $facts): ?array
     {
+        $saved['nodes'] = $this->withNamedModules($saved['nodes'], $facts);
         $nodes = array_column($saved['nodes'], null, 'id');
         $edges = [];
 
@@ -290,51 +288,123 @@ final class SystemMapWriter
     }
 
     /**
-     * The places in the code behind each arrow, in drawing order: for an arrow between parts of code, links
-     * that are not imports first (they say more), then imports; for an arrow to something outside the code,
-     * the lines that use it.
+     * A part of code also stands for the unassigned module that carries its name ("Documentation writer" and
+     * app/Documentation): a saved answer may predate the classifier that now keeps that module in the picture.
      *
-     * @param  list<array<string, mixed>>  $edges
+     * @param  list<array<string, mixed>>  $nodes
      * @param  array<string, mixed>  $facts
-     * @return list<list<array{from: string, to: string|null, line: int|null, excerpt: string|null}>>
+     * @return list<array<string, mixed>>
      */
-    private function examples(Repository $repository, array $edges, array $facts): array
+    private function withNamedModules(array $nodes, array $facts): array
     {
-        $id = fn (string $path): int => $facts['modules'][$path]['id'];
-        $pairs = [];
-        $modules = [];
+        $assigned = array_merge(...array_map(fn (array $node): array => $node['modules'], $nodes));
 
-        foreach ($edges as $edge) {
-            foreach ($edge['backing']['rows'] as $row) {
-                if ($edge['backing']['type'] === 'links') {
-                    $pairs[] = $id($row['from']).':'.$id($row['to']);
-                } else {
-                    $modules[] = $id($row['module']);
+        foreach ($nodes as &$node) {
+            if (! in_array($node['kind'], SystemMapValidator::CODE_KINDS, true)) {
+                continue;
+            }
+
+            foreach (array_keys($facts['modules']) as $path) {
+                if (! in_array($path, $assigned, true) && StepEvidence::isNamedAfter($path, $node['label'])) {
+                    $node['modules'][] = $path;
+                    $assigned[] = $path;
                 }
             }
         }
 
-        $links = $this->overview->linkExamples($repository, array_values(array_unique($pairs)), self::CANDIDATES_PER_ARROW);
-        $imports = $this->facts->examples($repository, array_values(array_unique($pairs)));
-        $outside = $modules === [] ? [] : $this->overview->externalExamples($repository, array_values(array_unique($modules)), self::CANDIDATES_PER_ARROW);
+        return $nodes;
+    }
+
+    /**
+     * The map without the arrows that no line of code backs (only guard lines or nothing), the main path
+     * numbered again. The map is kept as it is when dropping would leave too little to draw.
+     *
+     * @param  array<string, mixed>  $map
+     * @param  array<string, mixed>  $facts
+     * @return array<string, mixed>
+     */
+    private function pruned(Repository $repository, array $map, array $facts): array
+    {
+        $ordered = SystemMap::orderedEdges($map['edges']);
+        $examples = $this->examples($repository, $map, $facts);
+        $kept = array_values(array_filter($ordered, fn (array $edge, int $index): bool => $examples[$index] !== [], ARRAY_FILTER_USE_BOTH));
+
+        if (count($kept) === count($ordered)) {
+            return $map;
+        }
+
+        $connected = array_unique(array_merge(...array_map(fn (array $edge): array => [$edge['from'], $edge['to']], $kept ?: [['from' => '', 'to' => '']])));
+        $nodes = array_values(array_filter($map['nodes'], fn (array $node): bool => in_array($node['id'], $connected, true)));
+
+        if (count($nodes) < SystemMapValidator::MIN_NODES || count($kept) / max(1, count($ordered)) < SystemMapValidator::MIN_SURVIVING_SHARE) {
+            return $map;
+        }
+
+        $step = 0;
+
+        foreach ($kept as &$edge) {
+            $edge['step'] = $edge['step'] === null ? null : ++$step;
+        }
+
+        unset($edge);
+
+        return [...$map, 'nodes' => $nodes, 'edges' => $kept];
+    }
+
+    /**
+     * The places in the code behind each arrow, in drawing order, best first: the ranking of StepEvidence
+     * (direction, kind that matches the verb, the code path of the earlier steps, the module the part is
+     * named after). An arrow without any citable line gets an empty list.
+     *
+     * @param  array<string, mixed>  $map
+     * @param  array<string, mixed>  $facts
+     * @return list<list<array{from: string, to: string|null, line: int|null, excerpt: string|null, kind: string}>>
+     */
+    private function examples(Repository $repository, array $map, array $facts): array
+    {
+        $nodes = array_column($map['nodes'], null, 'id');
+        $reached = [];
         $all = [];
 
-        foreach ($edges as $edge) {
+        foreach (SystemMap::orderedEdges($map['edges']) as $edge) {
+            [$from, $to] = [$nodes[$edge['from']], $nodes[$edge['to']]];
+
+            $ranked = StepEvidence::rank($this->evidence->forParts($repository, $from, $to, $facts), [
+                'verb' => $edge['verb'],
+                'from_label' => $from['label'],
+                'to_label' => $to['label'],
+                'to_type' => StepEvidence::typeOf($to),
+                'reached' => $reached,
+                'driver' => StepEvidence::selectedDriver(),
+            ]);
+
             $found = [];
 
-            foreach ($edge['backing']['rows'] as $row) {
-                if ($edge['backing']['type'] === 'links') {
-                    $pair = $id($row['from']).':'.$id($row['to']);
-                    array_push($found, ...array_map(fn (array $link): array => ['from' => $link['from'], 'to' => $link['to'], 'line' => $link['line'], 'excerpt' => $link['excerpt'], 'kind' => $link['kind']], $links[$pair] ?? []));
-                    array_push($found, ...array_map(fn (array $import): array => ['from' => $import['from'], 'to' => $import['to'], 'line' => null, 'excerpt' => null], $imports[$pair] ?? []));
-                } else {
-                    array_push($found, ...array_map(fn (array $use): array => ['from' => $use['from'], 'to' => null, 'line' => $use['line'], 'excerpt' => $use['excerpt'], 'kind' => $use['kind']], $outside[$id($row['module']).'|'.$row['target']] ?? []));
+            foreach ($ranked as $candidate) {
+                $key = $candidate['from'].':'.$candidate['line'];
+
+                if (! isset($found[$key])) {
+                    $found[$key] = ['from' => $candidate['from'], 'to' => $candidate['to'], 'line' => $candidate['line'], 'excerpt' => $candidate['excerpt'], 'kind' => $candidate['kind']];
+                }
+
+                if (count($found) === self::EXAMPLES_PER_ARROW) {
+                    break;
                 }
             }
 
-            // The places that hand work over say the most: a dispatch or a started program before an import.
-            usort($found, fn (array $a, array $b): int => self::exampleRank($a) <=> self::exampleRank($b));
-            $all[] = array_slice($found, 0, self::EXAMPLES_PER_ARROW);
+            $found = array_values($found);
+            $found = $found === [] ? [] : [$this->evidence->locate($repository, $found[0]), ...array_slice($found, 1)];
+
+            if ($found !== []) {
+                $found[0]['excerpt'] = $this->evidence->summary($repository, $found[0]) ?? $found[0]['excerpt'];
+                $reached[$found[0]['from']] = true;
+
+                if ($found[0]['to'] !== null) {
+                    $reached[$found[0]['to']] = true;
+                }
+            }
+
+            $all[] = $found;
         }
 
         return $all;
@@ -408,21 +478,6 @@ final class SystemMapWriter
         ];
 
         return PromptTag::open('context')->text."\n".PromptText::data(implode("\n\n", array_filter($sections)))."\n".PromptTag::close('context')->text;
-    }
-
-    /**
-     * The order of the places behind an arrow: links that hand work over first, imports last.
-     *
-     * @param  array{from: string, line: int|null, excerpt: string|null}  $example
-     */
-    private static function exampleRank(array $example): int
-    {
-        $kinds = ['dispatch', 'route', 'render', 'runs', 'event', 'schedule', 'loads', 'calls', 'queues', 'stores', 'links', 'reference', 'binding'];
-        $position = array_search($example['kind'] ?? null, $kinds, true);
-        // Code that does the work says more than a test or a helper script of it.
-        $isTest = preg_match('~(^|/)(tests?|__\w+__|e2e|fixtures?|spec|scripts?)/|\.(test|spec)\.~i', $example['from']) === 1;
-
-        return ($isTest ? 100 : 0) + ($position === false ? count($kinds) : $position);
     }
 
     /**

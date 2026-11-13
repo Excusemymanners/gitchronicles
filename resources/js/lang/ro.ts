@@ -491,7 +491,7 @@ const ro: Dictionary = {
                 depends: 'Ce module depind de care?',
             },
             hints: {
-                how: 'Începe de la săgeata 1 și urmează numerele: ele sunt drumul principal, de la prima cerere până la rezultat. Fiecare cutie e o parte numită după ce face; lista de alături dă codul din spatele fiecărei săgeți.',
+                how: 'Începe de la săgeata 1 și urmează numerele: ele sunt drumul principal, de la prima cerere până la rezultat. Fiecare cutie e o parte numită după ce face; lista de sub ea dă codul din spatele fiecărei săgeți.',
                 what: 'Citește de sus în jos: săgețile pline sunt cereri, cele punctate sunt răspunsurile, iar fiecare număr corespunde unui pas din listă, cu liniile de cod care îl fac.',
                 talks: 'Sistemele din afara codului și părțile care rulează separat, legate doar acolo unde codul arată o legătură.',
                 depends: 'Modulele cu cele mai multe legături, numite după rolul lor, și ce fac legăturile dintre ele. Pentru cine vrea detaliile codului.',

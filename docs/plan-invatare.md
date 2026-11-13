@@ -721,6 +721,13 @@ Planul complet al licenței e în [licenta.md](licenta.md). Acesta e drumul pas 
   - Verificat cu Playwright: același element, `paused === false` și `currentTime` continuu la fiecare schimbare de pagină, la 1440 și la 390 px. Serverul `artisan serve` are un singur proces și bloca navigarea cât se descărca video-ul; la verificare am folosit `php -S` cu mai multe procese.
 
 ---
+- 2026-11-12 — Pașii de lângă diagrame citează linia care chiar face ce spune săgeata. Decizii și motivele lor:
+  - Înainte, săgeata era susținută de „orice legătură între cele două părți", iar pasul arăta prima găsită: uneori o condiție (`if (! Schema::hasTable(...))`), alteori clasa altui modul sau driverul neselectat. Adevărul săgeții rămânea, dar dovada părea aleatorie și scădea încrederea.
+  - `StepEvidence` ordonează legăturile după: direcție (pornește într-un modul al părții-sursă și ajunge în al părții-țintă), felul verbului („salvează" cere o scriere într-un store, „citește" o citire, „cere" un dispatch sau un apel), drumul pașilor dinainte, modulul după care e numită partea, apoi o ordine fixă. Liniile de condiție, declarațiile, liniile `use` și fișierele de test, benchmark sau seeder nu se citează niciodată.
+  - Când configurația alege un driver (`claude-code` sau `claude`), se citează clasa selectată, cu mențiunea că celălalt driver face același lucru; dacă dovada numește doar un driver, îl adaug pe cel selectat.
+  - O săgeată fără nicio linie citabilă cade din imagine, iar drumul principal se renumerotează; la fluxuri, un mesaj fără linie rămâne fără citare, nu primește una străină. Răspunsurile citează linia cererii lor.
+  - Răspunsurile salvate se re-citează fără niciun apel la model (aceeași validare, aceeași hartă); un modul necuprins, numit după parte (`app/Documentation`), se adaugă la partea lui.
+  - Imaginea de ansamblu se potrivește pe lățime și își crește înălțimea până la 80 % din ecran; etichetele rămân de cel puțin 12 px (pe telefon desenul se deplasează). Lista pașilor trece sub desen, ca desenul să aibă toată lățimea.
 
 ## Start: Faza 0
 

@@ -150,6 +150,7 @@ final class FlowDiagramWriter
         private TextGenerator $generator,
         private CodeOverview $overview,
         private SystemFacts $collector,
+        private StepEvidence $evidence,
     ) {}
 
     /**
@@ -174,6 +175,8 @@ final class FlowDiagramWriter
 
         if ($savedFlows->isNotEmpty() && $savedFlows->every(fn (Diagram $flow): bool => ($flow->meta['input_hash'] ?? null) === $inputHash && ($flow->meta['source'] ?? 'ai') === 'ai')) {
             // Drawn again from the saved sequence, so a change of the drawing reaches the saved flows without a call.
+            $this->citeSaved($repository, $savedFlows, $this->collector->collect($repository));
+
             foreach ($savedFlows as $flow) {
                 $flow->update(['source_sha' => $repository->last_sha, 'mermaid' => isset($flow->meta['sequence']) ? FlowSequence::mermaid($flow->meta['sequence']) : $flow->mermaid]);
             }
@@ -204,11 +207,15 @@ final class FlowDiagramWriter
         }
 
         if ($flows === [] && $this->keepsAiFlowsOfThisCommit($repository, $savedFlows)) {
+            $this->citeSaved($repository, $savedFlows, $facts);
+
             return ['origin' => 'kept', 'reason' => $reason, 'stats' => $stats, 'result' => $result];
         }
 
         $source = $flows === [] ? 'fallback' : 'ai';
         $flows = $flows !== [] ? $flows : $this->fallback($repository, $facts);
+
+        $flows = array_map(fn (array $flow): array => $this->evidence->citeFlow($repository, $flow, $facts), $flows);
 
         DB::transaction(function () use ($repository, $flows, $result, $inputHash, $source, $reason, $stats): void {
             $this->deleteFlows($repository);
@@ -223,14 +230,7 @@ final class FlowDiagramWriter
                         'explanation' => $flow['explanation'],
                         'main' => $flow['main'],
                         'participants' => array_map(fn (array $participant): array => [...$participant, 'id' => FlowSequence::participantId($participant['id'])], $flow['participants']),
-                        'steps' => array_map(fn (array $message): array => [
-                            'from' => FlowSequence::participantId($message['from']),
-                            'to' => FlowSequence::participantId($message['to']),
-                            'text' => $message['text'],
-                            'type' => $message['type'],
-                            'does' => $message['does'],
-                            'code' => $message['code'],
-                        ], $flow['messages']),
+                        'steps' => self::steps($flow['messages']),
                         'sources' => $flow['sources'],
                         // The checked sequence itself, to draw it again without asking again.
                         'sequence' => array_intersect_key($flow, array_flip(['participants', 'messages', 'notes', 'groups'])),
@@ -250,6 +250,42 @@ final class FlowDiagramWriter
         });
 
         return ['origin' => $flows === [] ? 'none' : $source, 'reason' => $reason, 'stats' => $stats, 'result' => $result];
+    }
+
+    /**
+     * The steps of a flow as saved: its messages with the participants' ids as the diagram draws them.
+     *
+     * @param  list<array<string, mixed>>  $messages
+     * @return list<array<string, mixed>>
+     */
+    private static function steps(array $messages): array
+    {
+        return array_map(fn (array $message): array => [
+            'from' => FlowSequence::participantId($message['from']),
+            'to' => FlowSequence::participantId($message['to']),
+            'text' => $message['text'],
+            'type' => $message['type'],
+            'does' => $message['does'],
+            'code' => $message['code'],
+        ], $messages);
+    }
+
+    /**
+     * Cite the saved flows again from the facts (no call): the best backed line for each step.
+     *
+     * @param  Collection<int, Diagram>  $savedFlows
+     * @param  array<string, mixed>  $facts
+     */
+    private function citeSaved(Repository $repository, Collection $savedFlows, array $facts): void
+    {
+        foreach ($savedFlows as $flow) {
+            if (! isset($flow->meta['sequence'])) {
+                continue;
+            }
+
+            $sequence = $this->evidence->citeFlow($repository, $flow->meta['sequence'], $facts);
+            $flow->update(['meta' => [...$flow->meta, 'sequence' => $sequence, 'steps' => self::steps($sequence['messages'])]]);
+        }
     }
 
     /**

@@ -493,7 +493,7 @@ const en = {
                 depends: 'Which modules depend on which?',
             },
             hints: {
-                how: 'Start at arrow 1 and follow the numbers: they are the main path, from the first request to the result. Each box is a part named by what it does; the list beside it gives the code behind every arrow.',
+                how: 'Start at arrow 1 and follow the numbers: they are the main path, from the first request to the result. Each box is a part named by what it does; the list below it gives the code behind every arrow.',
                 what: 'Read from top to bottom: solid arrows are requests, dashed arrows are the answers, and each number matches a step in the list, with the lines of code that do it.',
                 talks: 'The systems outside the code and the parts that run separately, connected only where the code shows a connection.',
                 depends: 'The modules with the most links, named by their role, and what the links between them do. For readers who want the details of the code.',

@@ -21,6 +21,8 @@ type Props = {
     onNodeActive?: (nodeId: string | null) => void;
     /** What to light in the picture (boxes, arrows, sequence messages). */
     highlight?: DiagramHighlight;
+    /** Fit to the width and let the canvas grow in height (the big picture). */
+    fitWidth?: boolean;
 };
 
 type RenderState = { status: 'loading' } | { status: 'ready'; svg: string } | { status: 'error' };
@@ -61,7 +63,7 @@ function useIsNearScreen(ref: RefObject<HTMLElement | null>, isGated: boolean): 
  * DiagramViewer (zoom, deplasare, ecran complet, export). Dacă desenul nu reușește, spune asta pe scurt
  * și arată codul. Varianta „compact” e doar o previzualizare micșorată, fără unelte.
  */
-export default function MermaidDiagram({ code, title, compact = false, modules = NO_MODULES, docsBase = null, onNodeActive, highlight }: Props) {
+export default function MermaidDiagram({ code, title, compact = false, modules = NO_MODULES, docsBase = null, onNodeActive, highlight, fitWidth = false }: Props) {
     const { t } = useI18n();
     const theme = useDiagramTheme();
     const [state, setState] = useState<RenderState>({ status: 'loading' });
@@ -148,7 +150,7 @@ export default function MermaidDiagram({ code, title, compact = false, modules =
 
     return (
         <>
-            <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onFullScreen={() => setIsFullScreen(true)} onNodeActive={onNodeActive} highlight={highlight} />
+            <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onFullScreen={() => setIsFullScreen(true)} onNodeActive={onNodeActive} highlight={highlight} fitWidth={fitWidth} />
 
             {isFullScreen && (
                 <dialog

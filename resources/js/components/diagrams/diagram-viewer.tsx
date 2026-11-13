@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { CloseIcon } from '@/components/icons';
 import { CopyCodeIcon, DownloadIcon, FitIcon, FullScreenIcon, ImageIcon, ZoomInIcon, ZoomOutIcon } from '@/components/diagrams/diagram-icons';
@@ -22,6 +22,8 @@ type Props = {
     /** Set in the page; the full-screen dialog passes `onClose` instead. */
     onFullScreen?: () => void;
     onClose?: () => void;
+    /** Fit to the width and grow the canvas in height (up to 80 % of the screen) instead of shrinking the drawing to a fixed box. */
+    fitWidth?: boolean;
     /** Told which box (by node id) the pointer or the keyboard focus is on, or null when none; changes no click. */
     onNodeActive?: (nodeId: string | null) => void;
     /** What the page wants lit in the picture: boxes by node id, arrows by [from, to], sequence messages by number. */
@@ -49,15 +51,42 @@ function nodeIdOf(element: Element): string | null {
  * One diagram as a small tool: a toolbar (zoom, fit, full screen, copy code, download) over a canvas that
  * can be panned and zoomed. Boxes that stand for a module with a documentation page are links.
  */
-export default function DiagramViewer({ svg, code, title, modules, docsBase, onFullScreen, onClose, onNodeActive, highlight }: Props) {
+export default function DiagramViewer({ svg, code, title, modules, docsBase, onFullScreen, onClose, onNodeActive, highlight, fitWidth = false }: Props) {
     const { t } = useI18n();
     const canvasRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState<{ width: number; height: number } | null>(null);
     const [tooltip, setTooltip] = useState<Tooltip | null>(null);
     const [message, setMessage] = useState('');
-    const pan = usePanZoom(canvasRef, size);
     const isFullScreen = onClose !== undefined;
+    const pan = usePanZoom(canvasRef, size, fitWidth);
+    const [canvasWidth, setCanvasWidth] = useState(0);
+    const [viewportHeight, setViewportHeight] = useState(() => (typeof window === 'undefined' ? 800 : window.innerHeight));
+    const growsWithDrawing = fitWidth && !isFullScreen && size !== null && canvasWidth > 0;
+    const grownHeight = growsWithDrawing ? Math.round(Math.min(viewportHeight * 0.8, Math.max(288, size.height * Math.min(Math.max((canvasWidth - 32) / size.width, 12 / 14), 1) + 32))) : undefined;
+
+    // The canvas width and the screen height decide how tall the canvas of a drawing fitted to the width is.
+    useEffect(() => {
+        const canvas = canvasRef.current;
+
+        if (!fitWidth || !canvas) {
+            return;
+        }
+
+        const measure = () => {
+            setCanvasWidth(canvas.clientWidth);
+            setViewportHeight(window.innerHeight);
+        };
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(canvas);
+        window.addEventListener('resize', measure);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', measure);
+        };
+    }, [fitWidth]);
 
     // Give the SVG its natural pixel size (Mermaid writes width="100%"), and make the linked boxes reachable.
     useLayoutEffect(() => {
@@ -280,8 +309,9 @@ export default function DiagramViewer({ svg, code, title, modules, docsBase, onF
                     setTooltip(null);
                     onNodeActive?.(null);
                 }}
+                style={grownHeight === undefined ? undefined : { height: grownHeight }}
                 className={`relative overflow-hidden bg-canvas select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-                    isFullScreen ? 'min-h-0 flex-1' : 'h-[min(78dvh,44rem)]'
+                    isFullScreen ? 'min-h-0 flex-1' : growsWithDrawing ? '' : 'h-[min(78dvh,44rem)]'
                 } ${pan.isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-pan-y`}
             >
                 <div className="motion-safe:animate-fade-in">

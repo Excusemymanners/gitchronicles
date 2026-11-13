@@ -8,6 +8,8 @@ export const MIN_SCALE = 0.3;
 export const MAX_SCALE = 4;
 /** Space left around the diagram when it is fitted to the canvas. */
 const FIT_MARGIN = 16;
+/** The smallest scale of a drawing fitted to the width: Mermaid's 14 px labels stay at 12 px (wider drawings are panned). */
+const READABLE_SCALE = 12 / 14;
 /** One click on + or − multiplies the scale by this. */
 const ZOOM_STEP = 1.25;
 /** A pointer that moved less than this many pixels between press and release was a click, not a drag. */
@@ -24,8 +26,10 @@ type Size = { width: number; height: number };
  * - `animated` is true only for changes made by a button or key, so dragging and wheel zoom stay instant.
  *
  * `contentSize` is the natural size of the diagram in pixels; `null` until the SVG is in the page.
+ * With `fitWidth` the diagram is fitted to the canvas width only and starts at the top: what does not fit in
+ * the height is reached by scrolling the wheel inside the canvas (the page scrolls on when the end is reached).
  */
-export function usePanZoom(canvasRef: RefObject<HTMLElement | null>, contentSize: Size | null) {
+export function usePanZoom(canvasRef: RefObject<HTMLElement | null>, contentSize: Size | null, fitWidth = false) {
     const [view, setView] = useState<PanZoom>({ scale: 1, x: 0, y: 0 });
     const [animated, setAnimated] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -50,18 +54,19 @@ export function usePanZoom(canvasRef: RefObject<HTMLElement | null>, contentSize
             }
 
             // A very tall diagram may need less than MIN_SCALE to fit: "fit" always wins over the zoom limits.
-            const scale = Math.min((canvas.clientWidth - FIT_MARGIN * 2) / contentSize.width, (canvas.clientHeight - FIT_MARGIN * 2) / contentSize.height, 1);
+            const widthScale = (canvas.clientWidth - FIT_MARGIN * 2) / contentSize.width;
+            const scale = fitWidth ? Math.min(Math.max(widthScale, READABLE_SCALE), 1) : Math.min(widthScale, (canvas.clientHeight - FIT_MARGIN * 2) / contentSize.height, 1);
 
             apply(
                 {
                     scale,
-                    x: (canvas.clientWidth - contentSize.width * scale) / 2,
-                    y: (canvas.clientHeight - contentSize.height * scale) / 2,
+                    x: Math.max((canvas.clientWidth - contentSize.width * scale) / 2, fitWidth ? FIT_MARGIN : Number.NEGATIVE_INFINITY),
+                    y: fitWidth ? FIT_MARGIN : (canvas.clientHeight - contentSize.height * scale) / 2,
                 },
                 withTransition,
             );
         },
-        [apply, canvasRef, contentSize],
+        [apply, canvasRef, contentSize, fitWidth],
     );
 
     /** Zoom by `factor`, keeping the point (px, py) of the canvas where it is; default: the canvas center. */
@@ -131,6 +136,8 @@ export function usePanZoom(canvasRef: RefObject<HTMLElement | null>, contentSize
 
         const onWheel = (event: WheelEvent) => {
             if (!event.ctrlKey) {
+                scrollInside(event);
+
                 return;
             }
 
@@ -139,10 +146,27 @@ export function usePanZoom(canvasRef: RefObject<HTMLElement | null>, contentSize
             zoomBy(Math.exp(-event.deltaY * 0.0025), false, event.clientX - box.left, event.clientY - box.top);
         };
 
+        // A diagram fitted to the width and taller than its canvas scrolls inside it until its end, then the page goes on.
+        const scrollInside = (event: WheelEvent) => {
+            const current = viewRef.current;
+
+            if (!fitWidth || !contentSize) {
+                return;
+            }
+
+            const lowest = Math.min(FIT_MARGIN, canvas.clientHeight - contentSize.height * current.scale - FIT_MARGIN);
+            const y = Math.min(FIT_MARGIN, Math.max(lowest, current.y - event.deltaY));
+
+            if (y !== current.y) {
+                event.preventDefault();
+                apply({ ...current, y }, false);
+            }
+        };
+
         canvas.addEventListener('wheel', onWheel, { passive: false });
 
         return () => canvas.removeEventListener('wheel', onWheel);
-    }, [canvasRef, zoomBy]);
+    }, [canvasRef, zoomBy, apply, contentSize, fitWidth]);
 
     const onPointerDown = (event: PointerEvent<HTMLElement>) => {
         if (event.button !== 0) {
