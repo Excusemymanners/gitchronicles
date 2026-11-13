@@ -4,7 +4,9 @@ namespace Tests\Feature\Diagrams;
 
 use App\Ai\AiException;
 use App\Ai\TextGenerator;
+use App\Diagrams\ArchitectureReader;
 use App\Diagrams\ArchitectureRefresher;
+use App\Enums\DiagramType;
 use App\Models\Repository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsSmallProject;
@@ -80,6 +82,23 @@ class ArchitectureReaderTest extends TestCase
         $this->assertSame('cache', $outcome['origin']);
         $this->assertNull($outcome['result']);
         $this->assertSame('ai', $repository->diagrams()->firstWhere('type', 'layers')->meta['interpretation']['source']);
+    }
+
+    public function test_a_saved_reading_of_a_view_no_longer_drawn_is_not_reused_for_a_new_view(): void
+    {
+        $repository = $this->repository();
+        $this->app->instance(TextGenerator::class, $fake = new FakeTextGenerator([$this->answer(), $this->answer()]));
+        app(ArchitectureRefresher::class)->refresh($repository);
+
+        // The next build draws only a view that was never drawn before and has no findings (as when a
+        // repository's components map is dropped and a context diagram appears instead).
+        $diagrams = [['type' => DiagramType::Context, 'key' => '', 'mermaid' => 'flowchart LR', 'meta' => ['title' => 'Context', 'caption' => 'Who uses it.']]];
+
+        $outcome = app(ArchitectureReader::class)->read($repository, $diagrams);
+
+        $this->assertNotSame('cache', $outcome['origin']);
+        $this->assertCount(1, $outcome['diagrams']);
+        $this->assertSame(DiagramType::Context, $outcome['diagrams'][0]['type']);
     }
 
     public function test_a_reading_with_an_unknown_module_is_rejected_and_that_diagram_gets_the_composed_reading(): void

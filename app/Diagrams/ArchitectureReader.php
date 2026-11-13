@@ -102,8 +102,14 @@ final class ArchitectureReader
             ->mapWithKeys(fn (Diagram $diagram): array => [$diagram->type->value => $diagram->meta['interpretation'] ?? null]);
 
         if ($this->canReuse($diagrams, $saved->all(), $inputHash)) {
+            // A diagram type drawn for the first time (for example a context diagram that now has an external
+            // system to show) had no saved reading; it needs none when it has no findings, so it gets none here.
             foreach ($diagrams as &$diagram) {
-                $diagram['meta']['interpretation'] = $saved[$diagram['type']->value];
+                $reading = $saved->get($diagram['type']->value);
+
+                if ($reading !== null) {
+                    $diagram['meta']['interpretation'] = $reading;
+                }
             }
 
             return ['diagrams' => $diagrams, 'origin' => 'cache', 'result' => null];
@@ -159,6 +165,8 @@ final class ArchitectureReader
      */
     private function canReuse(array $diagrams, array $saved, string $inputHash): bool
     {
+        $reused = 0;
+
         foreach ($diagrams as $diagram) {
             $interpretation = $saved[$diagram['type']->value] ?? null;
             $needsOne = isset($diagram['meta']['findings']);
@@ -175,9 +183,13 @@ final class ArchitectureReader
             if (($interpretation['input_hash'] ?? null) !== $inputHash || in_array($interpretation['reason'] ?? null, ['disabled', 'failed'], true)) {
                 return false;
             }
+
+            $reused++;
         }
 
-        return array_filter($saved, fn (?array $interpretation): bool => $interpretation !== null) !== [];
+        // Only readings of the diagrams drawn NOW count: a saved reading of a view that is no longer drawn
+        // (for example a components map dropped because none of its boxes had an arrow) says nothing.
+        return $reused > 0;
     }
 
     /**
