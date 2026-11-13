@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import DiagramViewer from '@/components/diagrams/diagram-viewer';
+import type { DiagramHighlight } from '@/components/diagrams/diagram-viewer';
 import type { DiagramModules } from '@/components/diagrams/types';
 import { useI18n } from '@/hooks/use-i18n';
 import { renderDiagram, useDiagramTheme } from '@/lib/mermaid';
@@ -18,6 +19,8 @@ type Props = {
     docsBase?: string | null;
     /** Told which box the pointer or the focus is on (node id), or null. */
     onNodeActive?: (nodeId: string | null) => void;
+    /** What to light in the picture (boxes, arrows, sequence messages). */
+    highlight?: DiagramHighlight;
 };
 
 type RenderState = { status: 'loading' } | { status: 'ready'; svg: string } | { status: 'error' };
@@ -58,7 +61,7 @@ function useIsNearScreen(ref: RefObject<HTMLElement | null>, isGated: boolean): 
  * DiagramViewer (zoom, deplasare, ecran complet, export). Dacă desenul nu reușește, spune asta pe scurt
  * și arată codul. Varianta „compact” e doar o previzualizare micșorată, fără unelte.
  */
-export default function MermaidDiagram({ code, title, compact = false, modules = NO_MODULES, docsBase = null, onNodeActive }: Props) {
+export default function MermaidDiagram({ code, title, compact = false, modules = NO_MODULES, docsBase = null, onNodeActive, highlight }: Props) {
     const { t } = useI18n();
     const theme = useDiagramTheme();
     const [state, setState] = useState<RenderState>({ status: 'loading' });
@@ -145,7 +148,7 @@ export default function MermaidDiagram({ code, title, compact = false, modules =
 
     return (
         <>
-            <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onFullScreen={() => setIsFullScreen(true)} onNodeActive={onNodeActive} />
+            <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onFullScreen={() => setIsFullScreen(true)} onNodeActive={onNodeActive} highlight={highlight} />
 
             {isFullScreen && (
                 <dialog
@@ -154,7 +157,7 @@ export default function MermaidDiagram({ code, title, compact = false, modules =
                     onClose={() => setIsFullScreen(false)}
                     className="m-auto h-[calc(100dvh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none overflow-hidden rounded-lg border border-line bg-surface-raised p-0 text-ink shadow-float backdrop:bg-canvas/80 backdrop:backdrop-blur-sm"
                 >
-                    <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onClose={() => dialogRef.current?.close()} onNodeActive={onNodeActive} />
+                    <DiagramViewer svg={state.svg} code={code} title={title} modules={modules} docsBase={docsBase} onClose={() => dialogRef.current?.close()} onNodeActive={onNodeActive} highlight={highlight} />
                 </dialog>
             )}
         </>

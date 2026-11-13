@@ -5,18 +5,11 @@ namespace App\Diagrams;
 use Illuminate\Support\Str;
 
 /**
- * Reads Claude's answer for „Cum funcționează” and keeps only the flows that are safe to draw.
- *
- * The answer must be JSON: {"flows": [{"title", "explanation", "mermaid", "sources": [{"path",
- * "start_line", "end_line"}]}]}. Claude's text is never trusted, so a flow is dropped when:
- *
- * - a field is missing, empty or too long, or the diagram is not a "flowchart TD" / "flowchart TB";
- * - its Mermaid code has anything that can run code, open links, load files or change the page:
- *   click statements (links and callbacks), href, javascript:, HTML tags, %%{init}%% directives,
- *   a front matter block, @{ } shapes (images, icons) or styles (style, classDef, linkStyle);
- * - none of its sources points to real lines of a file that was in the context.
- *
- * The browser draws the code with Mermaid's "strict" security level as a second barrier.
+ * Reads the flows the text generator wrote (strict JSON, see FlowDiagramWriter) and keeps the valid ones,
+ * checked by FlowSequence against the facts of the code. The main flow (the end-to-end path of what the
+ * project exists to do) always comes first. Each kept flow gets a unique key made from its title, its
+ * Mermaid sequence diagram (written by us, never taken from the answer) and the code references of its
+ * steps as "sources".
  */
 final class FlowParser
 {
@@ -26,135 +19,124 @@ final class FlowParser
     public const MAX_FLOWS = 3;
 
     /**
-     * At most this many sources are kept for one flow.
+     * At most this many code references are kept as the "sources" of a flow.
      */
-    public const MAX_SOURCES = 5;
+    public const MAX_SOURCES = 8;
 
     /**
-     * Mermaid code that must never be drawn: reason => pattern.
-     */
-    private const FORBIDDEN = [
-        'click' => '/^\s*click\b/im',
-        'href' => '/\bhref\b/i',
-        'callback' => '/\bcall\s+[\w$.]+\s*\(/i',
-        'javascript' => '/javascript\s*:/i',
-        'init' => '/%%\s*\{/',
-        'front matter' => '/^\s*---\s*$/m',
-        'html' => '/<\s*\/?\s*[a-z!]/i',
-        'shape' => '/@\{/',
-        'style' => '/^\s*(style|classDef|linkStyle)\b/im',
-    ];
-
-    /**
-     * Parse the answer and keep the valid flows, with a unique key each (from the title).
+     * Parse the answer and keep the valid flows, the main one first.
      *
      * @param  array<string, int>  $fileLines  path => number of lines, for the files the context showed
-     * @return array{flows: list<array{key: string, title: string, explanation: string, mermaid: string, sources: list<array{path: string, start_line: int, end_line: int}>}>, rejected: list<string>}
+     * @param  array<string, mixed>  $facts  SystemFacts
+     * @return array{flows: list<array<string, mixed>>, rejected: list<string>, stats: array{proposed: int, dropped: int}}
      */
-    public static function parse(string $answer, array $fileLines): array
+    public static function parse(string $answer, array $fileLines, array $facts): array
     {
         $data = json_decode(self::jsonPart($answer), true);
+        $stats = ['proposed' => 0, 'dropped' => 0];
 
-        if (! is_array($data) || ! is_array($data['flows'] ?? null)) {
-            return ['flows' => [], 'rejected' => ['the answer is not JSON with a "flows" list']];
+        // Claude sometimes closes the list too early ({"flows":[{…}]},{…}): then the flows are read one by one.
+        if (! is_array($data)) {
+            $data = ['flows' => self::flowObjects($answer)];
+        }
+
+        if (! is_array($data) || ! is_array($data['flows'] ?? null) || $data['flows'] === []) {
+            return ['flows' => [], 'rejected' => ['the answer is not JSON with a "flows" list'], 'stats' => $stats];
         }
 
         $flows = [];
         $rejected = [];
-        $usedKeys = [];
 
-        foreach (array_slice($data['flows'], 0, self::MAX_FLOWS) as $index => $flow) {
-            $reason = is_array($flow) ? self::rejectionReason($flow) : 'not an object';
-            $sources = is_array($flow) && $reason === null ? self::validSources($flow['sources'] ?? null, $fileLines) : [];
+        foreach (array_slice($data['flows'], 0, self::MAX_FLOWS) as $index => $proposed) {
+            $checked = is_array($proposed) ? FlowSequence::validate($proposed, $facts, $fileLines) : ['flow' => null, 'reason' => 'not an object', 'stats' => ['proposed' => 0, 'dropped' => 0]];
+            $stats['proposed'] += $checked['stats']['proposed'];
+            $stats['dropped'] += $checked['stats']['dropped'];
 
-            if ($reason === null && $sources === []) {
-                $reason = 'no valid source lines';
-            }
-
-            if ($reason !== null) {
-                $rejected[] = 'flow '.($index + 1).": {$reason}";
+            if ($checked['flow'] === null) {
+                $rejected[] = 'flow '.($index + 1).": {$checked['reason']}";
 
                 continue;
             }
 
-            $title = trim($flow['title']);
-            $key = self::uniqueKey($title, $index + 1, $usedKeys);
-            $usedKeys[] = $key;
-
-            $flows[] = [
-                'key' => $key,
-                'title' => $title,
-                'explanation' => trim($flow['explanation']),
-                'mermaid' => trim($flow['mermaid'])."\n",
-                'sources' => $sources,
-            ];
+            $flows[] = $checked['flow'];
         }
 
-        return ['flows' => $flows, 'rejected' => $rejected];
+        // The main flow first (the one marked "main", else the first one); only one flow is the main one.
+        $main = array_key_first(array_filter($flows, fn (array $flow): bool => $flow['main'])) ?? 0;
+        $flows = $flows === [] ? [] : [$flows[$main], ...array_values(array_diff_key($flows, [$main => true]))];
+
+        foreach ($flows as $position => &$flow) {
+            $flow['main'] = $position === 0;
+        }
+
+        unset($flow);
+
+        return ['flows' => self::finish($flows), 'rejected' => $rejected, 'stats' => $stats];
     }
 
     /**
-     * Why a flow cannot be kept, or null when its text fields and its Mermaid code are fine.
+     * Give each flow its key, its Mermaid code and its sources (the code references of its steps).
      *
-     * @param  array<mixed>  $flow
+     * @param  list<array<string, mixed>>  $flows
+     * @return list<array<string, mixed>>
      */
-    private static function rejectionReason(array $flow): ?string
+    public static function finish(array $flows): array
     {
-        foreach (['title' => 100, 'explanation' => 1500, 'mermaid' => 4000] as $field => $maxLength) {
-            if (! is_string($flow[$field] ?? null) || trim($flow[$field]) === '') {
-                return "missing {$field}";
-            }
+        $usedKeys = [];
 
-            if (mb_strlen($flow[$field]) > $maxLength) {
-                return "{$field} too long";
-            }
+        foreach ($flows as $position => &$flow) {
+            $flow['key'] = self::uniqueKey($flow['title'], $position + 1, $usedKeys);
+            $usedKeys[] = $flow['key'];
+            $flow['mermaid'] = FlowSequence::mermaid($flow);
+            $flow['sources'] = array_slice(array_values(array_unique(array_filter(array_column($flow['messages'], 'code')), SORT_REGULAR)), 0, self::MAX_SOURCES);
         }
 
-        $mermaid = trim($flow['mermaid']);
+        unset($flow);
 
-        if (preg_match('/\Aflowchart\s+(TD|TB)\s*(\n|\z)/', $mermaid) !== 1) {
-            return 'not a "flowchart TD" diagram';
-        }
-
-        if (substr_count($mermaid, "\n") > 60) {
-            return 'diagram too long';
-        }
-
-        foreach (self::FORBIDDEN as $reason => $pattern) {
-            if (preg_match($pattern, $mermaid) === 1) {
-                return "forbidden Mermaid syntax ({$reason})";
-            }
-        }
-
-        return null;
+        return $flows;
     }
 
     /**
-     * The sources that point to real lines of a file the context showed.
+     * Every JSON object of the answer that starts with a "title" (a flow), read on its own.
      *
-     * @param  array<string, int>  $fileLines
-     * @return list<array{path: string, start_line: int, end_line: int}>
+     * @return list<array<mixed>>
      */
-    private static function validSources(mixed $sources, array $fileLines): array
+    private static function flowObjects(string $answer): array
     {
-        if (! is_array($sources)) {
-            return [];
-        }
+        $flows = [];
+        $offset = 0;
 
-        $valid = [];
+        while (($start = strpos($answer, '{"title"', $offset)) !== false) {
+            $depth = 0;
+            $inString = false;
 
-        foreach ($sources as $source) {
-            $path = $source['path'] ?? null;
-            $start = $source['start_line'] ?? null;
-            $end = $source['end_line'] ?? null;
+            for ($i = $start; $i < strlen($answer); $i++) {
+                $character = $answer[$i];
 
-            if (is_string($path) && isset($fileLines[$path]) && is_int($start) && is_int($end)
-                && $start >= 1 && $end >= $start && $end <= $fileLines[$path]) {
-                $valid[] = ['path' => $path, 'start_line' => $start, 'end_line' => $end];
+                if ($inString) {
+                    $i += $character === '\\' ? 1 : 0;
+                    $inString = $character !== '"';
+                } elseif ($character === '"') {
+                    $inString = true;
+                } elseif ($character === '{' || $character === '}') {
+                    $depth += $character === '{' ? 1 : -1;
+
+                    if ($depth === 0) {
+                        break;
+                    }
+                }
             }
+
+            $flow = json_decode(substr($answer, $start, $i - $start + 1), true);
+
+            if (is_array($flow)) {
+                $flows[] = $flow;
+            }
+
+            $offset = $i + 1;
         }
 
-        return array_slice($valid, 0, self::MAX_SOURCES);
+        return $flows;
     }
 
     /**
@@ -169,14 +151,14 @@ final class FlowParser
     }
 
     /**
-     * A key for the flow from its title ("Adăugarea unui repository" → "adaugarea-unui-repository"),
-     * unique among the flows of the answer.
+     * A key for the flow from its title ("What happens when someone adds a repository" →
+     * "what-happens-when-someone-adds-a-repository"), unique among the flows of the answer.
      *
      * @param  list<string>  $usedKeys
      */
     private static function uniqueKey(string $title, int $position, array $usedKeys): string
     {
-        $key = rtrim(Str::limit(Str::slug($title), 80, ''), '-') ?: "flux-{$position}";
+        $key = rtrim(Str::limit(Str::slug($title), 80, ''), '-') ?: "flow-{$position}";
 
         return in_array($key, $usedKeys, true) ? "{$key}-{$position}" : $key;
     }

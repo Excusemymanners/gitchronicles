@@ -301,7 +301,7 @@ final class ArchitectureFacts
      * @param  list<string>  $wantedPairs  "from module id:to module id"
      * @return array<string, list<array{from: string, to: string}>>
      */
-    private function examples(Repository $repository, array $wantedPairs): array
+    public function examples(Repository $repository, array $wantedPairs): array
     {
         if ($wantedPairs === []) {
             return [];

@@ -1,5 +1,5 @@
 /** Felul unei diagrame (App\Enums\DiagramType). */
-export type DiagramType = 'context' | 'container' | 'component' | 'layers' | 'flow';
+export type DiagramType = 'overview' | 'context' | 'container' | 'component' | 'layers' | 'flow';
 
 /** Liniile de cod pe care se sprijină un flux, cu legătura spre ele pe GitHub (null fără commit). */
 export type DiagramSource = {
@@ -50,8 +50,34 @@ export type DiagramFindings = {
     unit?: 'files';
 };
 
-/** One example behind an arrow: the importing file, the file it imports, and their links on GitHub. */
-export type EvidenceExample = { from: string; to: string; url: string | null; target_url: string | null };
+/** One example behind an arrow: the file (and line) that links, what it links to, and their links on GitHub. */
+export type EvidenceExample = { from: string; to: string | null; line?: number | null; excerpt?: string | null; url: string | null; target_url: string | null };
+
+/** A place in the code behind a step, linked to GitHub at its line. */
+export type StepCode = { path: string; line: number | null; excerpt: string | null; url: string | null };
+
+/** One numbered step of a flow, or one arrow of the big picture (numbered when it is on the main path). */
+export type DiagramStep = {
+    /** Node or participant ids, as in the Mermaid code. */
+    from: string;
+    to: string;
+    from_label: string;
+    to_label: string;
+    text: string;
+    step: number | null;
+    type?: 'request' | 'response';
+    code: StepCode[];
+};
+
+/** A part of the big picture: what it is, what it does and the modules (or the systems outside the code) it stands for. */
+export type DiagramPart = {
+    id: string;
+    label: string;
+    does: string | null;
+    kind: 'interface' | 'service' | 'worker' | 'data' | 'external' | 'tool';
+    modules: { path: string; slug: string | null }[];
+    outside: string[];
+};
 
 /** One arrow of the diagram with the imports that stand behind it. */
 export type DiagramEvidence = {
@@ -96,10 +122,25 @@ export type Diagram = {
     findings: DiagramFindings | null;
     evidence: DiagramEvidence[];
     interpretation: DiagramInterpretation | null;
+    /** The big picture's two sentences on how to read it. */
+    reading: string | null;
+    /** Where the big picture or a flow came from: 'ai' (checked against the code) or 'fallback' (without AI). */
+    source: string | null;
+    /** How many proposed arrows or messages were dropped because nothing in the code backs them. */
+    dropped: number;
+    /** The main flow (the end-to-end path of what the project does). */
+    main: boolean;
+    /** The shapes the big picture uses, for its legend. */
+    legend: string[];
+    /** What was left out because nothing connects it. */
+    unconnected: string[];
+    parts: DiagramPart[];
+    steps: DiagramStep[];
 };
 
 /** Toate diagramele unui repository, grupate pentru pagină; null = vederea nu are date. */
 export type DiagramSet = {
+    overview: Diagram | null;
     flows: Diagram[];
     layers: Diagram | null;
     container: Diagram | null;

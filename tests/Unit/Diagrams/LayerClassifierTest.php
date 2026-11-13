@@ -48,6 +48,7 @@ class LayerClassifierTest extends TestCase
             'configuration' => ['config', 'config'],
             'GitHub workflows' => ['.github/workflows', 'config'],
             'documentation' => ['docs', 'docs'],
+            'a code namespace named like documentation' => ['app/Documentation', null],
             'translations' => ['lang/ro', 'lang'],
             'runtime files' => ['storage/framework', 'storage'],
             'application code' => ['app/Http', null],

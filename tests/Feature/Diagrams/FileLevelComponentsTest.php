@@ -62,14 +62,12 @@ class FileLevelComponentsTest extends TestCase
         $diagram = $this->componentsOfATwoFolderRepository();
 
         $this->assertSame('files', $diagram['meta']['level']);
-        $this->assertSame(['f1' => 'lib/format.py', 'f2' => 'lib/orphan.py', 'f3' => 'run', 'f4' => 'src/main.py', 'f5' => 'src/store.py'], $diagram['meta']['nodes']);
-        $this->assertStringContainsString('code files', $diagram['mermaid']);
-        $this->assertStringContainsString('f4[', $diagram['mermaid']);
-        $this->assertStringContainsString('main.py', $diagram['mermaid']);
-        $this->assertStringContainsString('run_app', $diagram['mermaid']);
-        $this->assertStringContainsString('Store', $diagram['mermaid']);
+        $this->assertSame(['f1' => 'lib/format.py', 'f2' => 'src/main.py', 'f3' => 'src/store.py'], $diagram['meta']['nodes']);
+        $this->assertSame(['lib/orphan.py', 'run'], $diagram['meta']['unconnected']);
+        $this->assertStringContainsString('f2["<b>main.py</b><br>src"]', $diagram['mermaid']);
+        $this->assertStringContainsString('f2 -->|"uses · 2"| f3', $diagram['mermaid']);
+        $this->assertStringNotContainsString('orphan', $diagram['mermaid']);
         $this->assertStringNotContainsString('test_main', $diagram['mermaid']);
-        $this->assertSame(['f4' => ['run_app'], 'f5' => ['Store']], $diagram['meta']['classes']);
     }
 
     public function test_the_findings_are_computed_over_files(): void
@@ -80,9 +78,8 @@ class FileLevelComponentsTest extends TestCase
         $this->assertSame(['module' => 'src/store.py', 'modules' => 2, 'imports' => 3], $findings['core'][0]);
         $this->assertSame(['module' => 'src/main.py', 'modules' => 2, 'imports' => 3], $findings['coordinators'][0]);
         $this->assertSame([['modules' => ['lib/format.py', 'src/store.py'], 'size' => 2]], $findings['cycles']);
-        $this->assertSame(['lib/orphan.py', 'run'], $findings['isolated']);
         $this->assertSame([['module' => 'src/store.py', 'commits' => 1]], $findings['busiest']);
-        $this->assertSame(['shown_modules' => 5, 'total_modules' => 5, 'shown_lines' => 215, 'total_lines' => 215, 'total_imports' => 5, 'undrawn_imports' => 0], $findings['coverage']);
+        $this->assertSame(['shown_modules' => 3, 'total_modules' => 5, 'shown_lines' => 190, 'total_lines' => 215, 'total_imports' => 5, 'undrawn_imports' => 0], $findings['coverage']);
     }
 
     public function test_every_arrow_has_its_import_count_and_the_pair_of_files_as_evidence(): void
@@ -92,7 +89,7 @@ class FileLevelComponentsTest extends TestCase
         $this->assertCount(4, $evidence);
         $this->assertSame(2, $evidence['src/main.py>src/store.py']['imports']);
         $this->assertSame([['from' => 'src/main.py', 'to' => 'src/store.py']], $evidence['src/main.py>src/store.py']['examples']);
-        $this->assertSame(['f4', 'f5'], $evidence['src/main.py>src/store.py']['nodes']);
+        $this->assertSame(['f2', 'f3'], $evidence['src/main.py>src/store.py']['nodes']);
     }
 
     public function test_a_repository_with_three_modules_keeps_the_components_diagram_of_modules(): void

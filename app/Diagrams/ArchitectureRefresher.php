@@ -24,7 +24,7 @@ final class ArchitectureRefresher
 
     /**
      * Replace the architecture diagrams with the new ones; a view that has no data any more is deleted.
-     * The flows are not touched here: FlowDiagramWriter owns them.
+     * The flows and the big picture are not touched here: FlowDiagramWriter and SystemMapWriter own them.
      *
      * Returns the types of the diagrams saved, where their reading came from ("ai", "cache", "fallback"
      * or "none") and Claude's answer when it was asked.
@@ -38,7 +38,7 @@ final class ArchitectureRefresher
 
         DB::transaction(function () use ($repository, $diagrams): void {
             $repository->diagrams()
-                ->where('type', '!=', DiagramType::Flow)
+                ->whereNotIn('type', [DiagramType::Flow, DiagramType::Overview])
                 ->whereNotIn('type', array_map(fn (array $diagram): string => $diagram['type']->value, $diagrams))
                 ->delete();
 

@@ -5,6 +5,7 @@ namespace Tests\Feature\Diagrams;
 use App\Ai\AiException;
 use App\Ai\TextGenerator;
 use App\Diagrams\FlowDiagramWriter;
+use App\Models\CodeLink;
 use App\Models\Diagram;
 use App\Models\Module;
 use App\Models\Repository;
@@ -39,8 +40,10 @@ class FlowDiagramWriterTest extends TestCase
         $this->assertStringContainsString("<file path=\"routes/web.php\">\n1| <?php\n2| \n3| use App\\Http\\Controllers\\HomeController;", $context);
         $this->assertStringContainsString('<file path="app/Http/Controllers/HomeController.php">', $context);
         $this->assertStringContainsString('- app/Http: 1 file, 12 lines', $context);
-        $this->assertStringContainsString('flowchart TD', $generator->requests[0]['system']);
-        $this->assertStringContainsString('title: short, in English. explanation: 2–4 sentences in English', $generator->requests[0]['system']);
+        $this->assertStringContainsString('routes → app/Http: route 1', $context);
+        $this->assertStringContainsString('sequence diagrams of requests and responses', $generator->requests[0]['system']);
+        $this->assertStringContainsString('Flow 1 is the MAIN flow', $generator->requests[0]['system']);
+        $this->assertStringContainsString('Write in English.', $generator->requests[0]['system']);
     }
 
     public function test_a_hostile_file_cannot_close_its_tag_nor_forge_a_heading(): void
@@ -66,13 +69,14 @@ class FlowDiagramWriterTest extends TestCase
 
         $result = app(FlowDiagramWriter::class)->refresh($repository);
 
-        $this->assertSame(100, $result->inputTokens);
+        $this->assertSame(['ai', 100], [$result['origin'], $result['result']->inputTokens]);
         $flow = $repository->diagrams()->sole();
         $this->assertSame('flow', $flow->type->value);
-        $this->assertSame('the-home-page', $flow->key);
+        $this->assertSame('what-happens-when-someone-opens-the-home-page', $flow->key);
         $this->assertSame($repository->last_sha, $flow->source_sha);
-        $this->assertSame("flowchart TD\n  A[\"GET /\"] --> B[\"HomeController\"]\n", $flow->mermaid);
-        $this->assertSame('The home page', $flow->meta['title']);
+        $this->assertStringStartsWith("sequenceDiagram\n  autonumber\n  actor p_visitor as Visitor\n  participant p_routes as Address book\n", $flow->mermaid);
+        $this->assertStringContainsString("  p_routes->>+p_pages: passes the request on\n  p_pages-->>-p_routes: the home page\n", $flow->mermaid);
+        $this->assertSame([true, 'ai', 4], [$flow->meta['main'], $flow->meta['source'], count($flow->meta['steps'])]);
         $this->assertSame([['path' => 'routes/web.php', 'start_line' => 5, 'end_line' => 5]], $flow->meta['sources']);
         $this->assertSame(['claude-opus-5-5', 100, 50], [$flow->meta['model'], $flow->meta['input_tokens'], $flow->meta['output_tokens']]);
     }
@@ -86,22 +90,23 @@ class FlowDiagramWriterTest extends TestCase
 
         $result = app(FlowDiagramWriter::class)->refresh($repository);
 
-        $this->assertNull($result);
+        $this->assertSame('cache', $result['origin']);
         $generator->assertSentCount(1);
         $this->assertSame(str_repeat('b', 40), $repository->diagrams()->sole()->source_sha);
     }
 
-    public function test_drops_an_unsafe_answer_and_logs_why(): void
+    public function test_drops_a_flow_the_code_does_not_back_and_logs_why(): void
     {
         $repository = $this->repositoryWithCode();
-        $unsafe = $this->answer("flowchart TD\n  A[\"GET /\"]\n  click A \"https://example.com\"");
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator([$unsafe]));
+        $unbacked = $this->answer(backwards: true);
+        $this->app->instance(TextGenerator::class, new FakeTextGenerator([$unbacked]));
         Log::spy();
 
-        app(FlowDiagramWriter::class)->refresh($repository);
+        $result = app(FlowDiagramWriter::class)->refresh($repository);
 
+        $this->assertSame(['none', 'rejected'], [$result['origin'], $result['reason']]);
         $this->assertSame(0, $repository->diagrams()->count());
-        Log::shouldHaveReceived('warning')->with('Some flows written by Claude were rejected.', ['repository_id' => $repository->id, 'reasons' => ['flow 1: forbidden Mermaid syntax (click)']]);
+        Log::shouldHaveReceived('warning')->with('Some flows written by Claude were rejected.', ['repository_id' => $repository->id, 'reasons' => ['flow 1: fewer than 3 messages are backed by the code']]);
     }
 
     public function test_without_ai_the_flows_of_an_older_commit_are_deleted(): void
@@ -111,7 +116,7 @@ class FlowDiagramWriterTest extends TestCase
 
         $result = app(FlowDiagramWriter::class)->refresh($repository);
 
-        $this->assertNull($result);
+        $this->assertSame(['none', 'disabled'], [$result['origin'], $result['reason']]);
         $this->assertModelMissing($olderFlow);
     }
 
@@ -123,7 +128,7 @@ class FlowDiagramWriterTest extends TestCase
 
         $result = app(FlowDiagramWriter::class)->refresh($repository);
 
-        $this->assertNull($result);
+        $this->assertSame('none', $result['origin']);
         $this->assertModelMissing($romanianFlow);
     }
 
@@ -135,7 +140,7 @@ class FlowDiagramWriterTest extends TestCase
 
         $result = app(FlowDiagramWriter::class)->refresh($repository);
 
-        $this->assertNull($result);
+        $this->assertSame(['kept', 'failed'], [$result['origin'], $result['reason']]);
         $this->assertModelExists($currentFlow);
     }
 
@@ -163,22 +168,37 @@ class FlowDiagramWriterTest extends TestCase
         foreach ([[$routes, 'routes/web.php', self::ROUTES], [$http, 'app/Http/Controllers/HomeController.php', self::CONTROLLER]] as [$module, $path, $contents]) {
             File::ensureDirectoryExists(dirname("{$repository->clonePath()}/{$path}"));
             File::put("{$repository->clonePath()}/{$path}", $contents);
-            RepositoryFile::factory()->for($repository)->for($module)->create(['path' => $path, 'lines' => substr_count($contents, "\n")]);
+            $files[] = RepositoryFile::factory()->for($repository)->for($module)->create(['path' => $path, 'lines' => substr_count($contents, "\n")]);
         }
+
+        // The route the analysis found: routes/web.php sends "/" to the controller.
+        CodeLink::factory()->create(['repository_file_id' => $files[0]->id, 'line' => 5, 'kind' => 'route', 'target_file_id' => $files[1]->id, 'target' => null, 'excerpt' => "Route::get('/', HomeController::class);"]);
 
         return $repository;
     }
 
     /**
-     * Claude's answer with one flow about the home page.
+     * Claude's answer with one flow about the home page; "backwards" sends the request against the route.
      */
-    private function answer(string $mermaid = "flowchart TD\n  A[\"GET /\"] --> B[\"HomeController\"]"): string
+    private function answer(bool $backwards = false): string
     {
+        [$from, $to] = $backwards ? ['pages', 'routes'] : ['routes', 'pages'];
+
         return json_encode(['flows' => [[
-            'title' => 'The home page',
-            'explanation' => 'The / route sends the request to HomeController, which returns the home view.',
-            'mermaid' => $mermaid,
-            'sources' => [['path' => 'routes/web.php', 'start_line' => 5, 'end_line' => 5]],
+            'title' => 'What happens when someone opens the home page',
+            'explanation' => 'The route sends the request to the page controller, which returns the home page.',
+            'main' => true,
+            'participants' => [
+                ['id' => 'visitor', 'label' => 'Visitor', 'kind' => 'person'],
+                ['id' => 'routes', 'label' => 'Address book', 'kind' => 'interface', 'modules' => ['routes']],
+                ['id' => 'pages', 'label' => 'Page controller', 'kind' => 'interface', 'modules' => ['app/Http']],
+            ],
+            'messages' => [
+                ['from' => 'visitor', 'to' => $from, 'text' => 'opens the home page', 'type' => 'request', 'code' => ['path' => 'routes/web.php', 'start_line' => 5, 'end_line' => 5]],
+                ['from' => $from, 'to' => $to, 'text' => 'passes the request on', 'type' => 'request'],
+                ['from' => $to, 'to' => $from, 'text' => 'the home page', 'type' => 'response'],
+                ['from' => $from, 'to' => 'visitor', 'text' => 'the home page', 'type' => 'response'],
+            ],
         ]]], JSON_UNESCAPED_UNICODE);
     }
 }

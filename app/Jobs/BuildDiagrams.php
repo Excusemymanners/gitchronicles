@@ -6,6 +6,7 @@ use App\Ai\AiResult;
 use App\Diagrams\ArchitectureRefresher;
 use App\Diagrams\DiagramHistory;
 use App\Diagrams\FlowDiagramWriter;
+use App\Diagrams\SystemMapWriter;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,9 +18,12 @@ use Illuminate\Foundation\Queue\Queueable;
  * 1. the architecture diagrams (layers, C4 containers, components, context) are drawn from the
  *    code analysis and the clone's manifests, with their findings, evidence and interpretation
  *    (ArchitectureRefresher), and replace the previous ones, in one transaction;
- * 2. Claude writes the „Cum funcționează” flows, best effort: without AI, or when Claude fails,
- *    the step still succeeds and the page shows no flows. Its tokens and their cost are added to the run;
- * 3. what changed in the diagrams is saved as new versions (DiagramHistory), for the time travel.
+ * 2. the big picture, "How <name> works" (SystemMapWriter): proposed by Claude and checked arrow by
+ *    arrow against the links and the evidence found in the code, or drawn without AI;
+ * 3. the flows, "What happens when someone …?" (FlowDiagramWriter), as sequence diagrams, the main
+ *    flow first, checked the same way, or the deterministic main flow without AI. The tokens of
+ *    every call and their cost are added to the run; a failed call never fails the step;
+ * 4. what changed in the diagrams is saved as new versions (DiagramHistory), for the time travel.
  *
  * At an update (Faza 9) nothing special is needed here: the architecture views are drawn again from
  * the analysis in milliseconds, and Claude is asked for the flows only when the code it sees changed
@@ -60,10 +64,12 @@ class BuildDiagrams implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(ArchitectureRefresher $refresher, FlowDiagramWriter $flowWriter, DiagramHistory $history): void
+    public function handle(ArchitectureRefresher $refresher, SystemMapWriter $mapWriter, FlowDiagramWriter $flowWriter, DiagramHistory $history): void
     {
+        // The big picture first: the dependency maps name the modules by the parts it found.
+        $this->addUsage($mapWriter->refresh($this->repository)['result']);
         $this->addUsage($refresher->refresh($this->repository)['result']);
-        $this->addUsage($flowWriter->refresh($this->repository));
+        $this->addUsage($flowWriter->refresh($this->repository)['result']);
 
         $history->record($this->repository, $this->run);
     }

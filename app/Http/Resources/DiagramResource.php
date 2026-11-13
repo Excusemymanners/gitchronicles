@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\DiagramType;
 use App\Models\Diagram;
 use App\Models\Document;
 use Illuminate\Http\Request;
@@ -43,7 +44,92 @@ class DiagramResource extends JsonResource
             'findings' => $meta['findings'] ?? null,
             'evidence' => $this->evidence($meta['evidence'] ?? []),
             'interpretation' => $this->interpretation($meta['interpretation'] ?? null),
+            'reading' => $meta['reading'] ?? null,
+            'source' => $meta['source'] ?? null,
+            'dropped' => (int) ($meta['stats']['dropped_edges'] ?? $meta['stats']['dropped'] ?? 0),
+            'main' => (bool) ($meta['main'] ?? false),
+            'legend' => $meta['legend'] ?? [],
+            'unconnected' => $meta['unconnected'] ?? [],
+            'parts' => $this->parts($meta['parts'] ?? []),
+            'steps' => $this->type === DiagramType::Overview ? $this->arrows($meta['evidence'] ?? []) : $this->steps($meta),
         ];
+    }
+
+    /**
+     * The parts of the big picture, each with its modules linked to their documentation page (when they have one).
+     *
+     * @param  list<array<string, mixed>>  $parts
+     * @return list<array<string, mixed>>
+     */
+    private function parts(array $parts): array
+    {
+        if ($parts === []) {
+            return [];
+        }
+
+        $slugs = Document::whereBelongsTo($this->repository)->whereNotNull('module_id')
+            ->whereIn('title', array_merge(...array_column($parts, 'modules')))->pluck('slug', 'title');
+
+        return array_map(fn (array $part): array => [
+            'id' => $part['id'],
+            'label' => $part['label'],
+            'does' => $part['does'],
+            'kind' => $part['kind'],
+            'modules' => array_map(fn (string $path): array => ['path' => $path, 'slug' => $slugs[$path] ?? null], $part['modules']),
+            'outside' => $part['outside'] ?? [],
+        ], $parts);
+    }
+
+    /**
+     * The arrows of the big picture in drawing order (the numbered main path first), each with the places in
+     * the code that back it, linked to GitHub at their line.
+     *
+     * @param  list<array<string, mixed>>  $arrows
+     * @return list<array<string, mixed>>
+     */
+    private function arrows(array $arrows): array
+    {
+        return array_map(fn (array $arrow): array => [
+            'from' => $arrow['from'],
+            'to' => $arrow['to'],
+            'from_label' => $arrow['from_label'],
+            'to_label' => $arrow['to_label'],
+            'text' => $arrow['verb'] ?? '',
+            'step' => $arrow['step'] ?? null,
+            'code' => array_map(fn (array $example): array => [
+                'path' => $example['from'],
+                'line' => $example['line'] ?? null,
+                'excerpt' => $example['excerpt'] ?? null,
+                'url' => $this->fileUrl($example['from'], $example['line'] ?? null),
+            ], array_slice($arrow['examples'] ?? [], 0, 1)),
+        ], $arrows);
+    }
+
+    /**
+     * The numbered messages of a flow with the lines of code that do each step, linked to GitHub.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return list<array<string, mixed>>
+     */
+    private function steps(array $meta): array
+    {
+        $labels = array_column($meta['participants'] ?? [], 'label', 'id');
+
+        return array_map(fn (array $step, int $index): array => [
+            'from' => $step['from'],
+            'to' => $step['to'],
+            'from_label' => $labels[$step['from']] ?? '',
+            'to_label' => $labels[$step['to']] ?? '',
+            'text' => $step['text'],
+            'step' => $index + 1,
+            'type' => $step['type'],
+            'code' => $step['code'] === null ? [] : [[
+                'path' => $step['code']['path'],
+                'line' => $step['code']['start_line'],
+                'excerpt' => $step['does'],
+                'url' => $this->sourceUrl($step['code']),
+            ]],
+        ], $meta['steps'] ?? [], array_keys($meta['steps'] ?? []));
     }
 
     /**
@@ -88,8 +174,8 @@ class DiagramResource extends JsonResource
             ...$row,
             'examples' => array_map(fn (array $example): array => [
                 ...$example,
-                'url' => $this->fileUrl($example['from']),
-                'target_url' => $this->fileUrl($example['to']),
+                'url' => $this->fileUrl($example['from'], $example['line'] ?? null),
+                'target_url' => ($example['to'] ?? null) === null ? null : $this->fileUrl($example['to']),
             ], $row['examples']),
         ], $rows);
     }
@@ -107,9 +193,9 @@ class DiagramResource extends JsonResource
     }
 
     /**
-     * The link to a file on GitHub at the diagram's commit.
+     * The link to a file on GitHub at the diagram's commit (at a line, when one is given).
      */
-    private function fileUrl(string $path): ?string
+    private function fileUrl(string $path, ?int $line = null): ?string
     {
         if ($this->source_sha === null) {
             return null;
@@ -117,7 +203,7 @@ class DiagramResource extends JsonResource
 
         $encoded = implode('/', array_map(rawurlencode(...), explode('/', $path)));
 
-        return "https://github.com/{$this->repository->owner}/{$this->repository->name}/blob/{$this->source_sha}/{$encoded}";
+        return "https://github.com/{$this->repository->owner}/{$this->repository->name}/blob/{$this->source_sha}/{$encoded}".($line === null ? '' : "#L{$line}");
     }
 
     /**

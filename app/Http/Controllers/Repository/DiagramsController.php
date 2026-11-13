@@ -62,7 +62,7 @@ class DiagramsController extends Controller
      * then one entry per architecture view (null when that view has no data).
      *
      * @param  Collection<int, Diagram>  $diagrams
-     * @return array{flows: list<array<string, mixed>>, layers: array<string, mixed>|null, container: array<string, mixed>|null, component: array<string, mixed>|null, context: array<string, mixed>|null}
+     * @return array{overview: array<string, mixed>|null, flows: list<array<string, mixed>>, layers: array<string, mixed>|null, container: array<string, mixed>|null, component: array<string, mixed>|null, context: array<string, mixed>|null}
      */
     private function grouped(Collection $diagrams): array
     {
@@ -73,6 +73,7 @@ class DiagramsController extends Controller
         };
 
         return [
+            'overview' => $view(DiagramType::Overview),
             'flows' => DiagramResource::collection($diagrams->where('type', DiagramType::Flow)->values())->resolve(),
             'layers' => $view(DiagramType::Layers),
             'container' => $view(DiagramType::Container),

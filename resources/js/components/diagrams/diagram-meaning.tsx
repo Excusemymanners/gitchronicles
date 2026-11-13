@@ -361,12 +361,17 @@ function EvidenceTable({ evidence, activeNode }: { evidence: DiagramEvidence[]; 
                                     <td className="py-2.5 pl-3">
                                         <ul className="flex flex-col gap-1">
                                             {row.examples.map((example) => (
-                                                <li key={`${example.from}>${example.to}`} className="flex flex-wrap items-baseline gap-x-1.5">
-                                                    <FileLink path={example.from} url={example.url} />
-                                                    <span aria-hidden="true" className="text-ink-subtle">
-                                                        →
-                                                    </span>
-                                                    <FileLink path={example.to} url={example.target_url} />
+                                                <li key={`${example.from}:${example.line ?? ''}>${example.to}`} className="flex flex-wrap items-baseline gap-x-1.5">
+                                                    <FileLink path={example.line ? `${example.from}:${example.line}` : example.from} url={example.url} />
+                                                    {example.to && (
+                                                        <>
+                                                            <span aria-hidden="true" className="text-ink-subtle">
+                                                                →
+                                                            </span>
+                                                            <FileLink path={example.to} url={example.target_url} />
+                                                        </>
+                                                    )}
+                                                    {example.excerpt && <code className="block w-full truncate font-mono text-xs text-ink-subtle">{example.excerpt}</code>}
                                                 </li>
                                             ))}
                                         </ul>

@@ -2,6 +2,7 @@
 
 namespace App\Diagrams;
 
+use App\Analysis\LinkCatalog;
 use App\Enums\DiagramType;
 use App\Enums\TechnologyRole;
 use App\Models\Module;
@@ -58,7 +59,7 @@ final class ArchitectureDiagramBuilder
     /**
      * The component view shows the biggest this many modules.
      */
-    public const MAX_COMPONENTS = 15;
+    public const MAX_COMPONENTS = 12;
 
     /**
      * A repository with fewer modules with code than this gets its components diagram at file level.
@@ -114,7 +115,24 @@ final class ArchitectureDiagramBuilder
         'externalBox' => 'fill:#e5e7eb,stroke:#9ca3af,color:#111827',
         'more' => 'fill:none,stroke:#9ca3af,stroke-dasharray:4 3,color:#6b7280',
         'boundary' => 'fill:none,stroke:#6b7280,stroke-dasharray:6 4',
+        'tool' => 'fill:none,stroke:#59636e,stroke-dasharray:5 4,color:#1f2328',
     ];
+
+    /**
+     * At most this many services and programs found in the code are drawn in the context and containers
+     * (the most used; a big repository names hundreds of hosts in its code).
+     */
+    public const MAX_SERVICES = 8;
+
+    public const MAX_TOOLS = 5;
+
+    /**
+     * The role of each module in plain words (module path => role), for the dependency maps: the part of
+     * the big picture it belongs to, or the first clause of its documentation page, or its folder name.
+     *
+     * @var array<string, string>
+     */
+    private array $roles = [];
 
     /**
      * Create a new builder.
@@ -123,6 +141,7 @@ final class ArchitectureDiagramBuilder
         private TechnologyDetector $detector,
         private CodeOverview $overview,
         private ArchitectureFacts $facts,
+        private SystemFacts $systemFacts,
     ) {}
 
     /**
@@ -133,24 +152,28 @@ final class ArchitectureDiagramBuilder
     public function build(Repository $repository): array
     {
         [$modules, $excluded] = $this->overview->applicationModules($repository);
-        $dependencies = $this->overview->dependenciesBetween($repository, $modules);
+        // Every kind of link, not only the imports: routes, dispatched jobs, rendered pages, scripts started, ...
+        $dependencies = $this->overview->linksBetween($repository, $modules);
         $report = $this->detector->detect($repository);
+        $this->roles = $this->moduleRoles($repository, $modules);
+
+        $facts = $this->systemFacts->collect($repository);
 
         return array_values(array_filter([
             $this->layersView($repository, $modules, $dependencies, $excluded),
-            $this->containerView($repository, $report),
+            $this->containerView($repository, $report, $facts),
             $this->componentsDiagram($repository, $modules, $dependencies),
-            $this->contextView($repository, $report),
+            $this->contextView($repository, $report, $facts),
         ]));
     }
 
     /**
-     * "Layered architecture": one group per layer, from the entry points down to the data, with the
-     * biggest modules of each layer as a grid of boxes, and one arrow from a layer to another when
-     * modules of the first import code from the second (no numbers: the details are in "Components").
+     * "Layers": one box per layer that has code (entry points, interface, web, logic, data), with the number
+     * of its modules, and one arrow from a layer to another when its modules link to the other's, labelled
+     * with what the links do and how many there are. A layer without any arrow is not drawn but listed.
      *
      * @param  Collection<int, Module>  $modules
-     * @param  list<array{from: int, to: int, weight: int}>  $dependencies
+     * @param  list<array{from: int, to: int, weight: int, kinds?: array<string, int>}>  $dependencies
      * @param  list<array{label: string, paths: list<string>}>  $excluded
      * @return array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}|null
      */
@@ -162,15 +185,10 @@ final class ArchitectureDiagramBuilder
 
         $layerOf = $modules->mapWithKeys(fn (Module $module): array => [$module->id => LayerClassifier::layerOf($module->path)]);
         $modulesByLayer = $modules->groupBy(fn (Module $module): string => $layerOf[$module->id]);
-
-        // The biggest modules of each layer, then the biggest of those overall.
-        $shown = $this->biggest(
-            $modulesByLayer->flatMap(fn (Collection $inLayer): Collection => $this->biggest($inLayer, self::MAX_MODULES_PER_LAYER)),
-            self::MAX_LAYER_MODULES,
-        );
-        $ids = $this->nodeIds($shown, 'm');
+        $layerArrows = $this->layerDependencies($dependencies, $layerOf->all());
+        $connected = array_unique(array_merge([], ...array_map(fn (array $arrow): array => [$arrow[0], $arrow[1]], $layerArrows)));
         $chart = new Flowchart('TB', self::LAYERED_ELK_OPTIONS);
-        $drawnLayers = [];
+        $unconnected = [];
 
         foreach (LayerClassifier::LAYERS as $layer => $title) {
             $inLayer = $modulesByLayer->get($layer, collect());
@@ -179,63 +197,41 @@ final class ArchitectureDiagramBuilder
                 continue;
             }
 
-            $chart->startGroup("layer_{$layer}", MermaidText::escape($title));
-            $nodeIds = [];
+            if (! in_array($layer, $connected, true)) {
+                array_push($unconnected, ...$inLayer->pluck('path')->all());
 
-            foreach ($shown->filter(fn (Module $module): bool => $layerOf[$module->id] === $layer) as $module) {
-                $chart->node($ids[$module->id], MermaidText::escape($module->path), "layer_{$layer}");
-                $nodeIds[] = $ids[$module->id];
+                continue;
             }
 
-            $hiddenCount = $inLayer->count() - count($nodeIds);
-
-            if ($hiddenCount > 0) {
-                $chart->node("more_{$layer}", MermaidText::escape('+ '.$this->countLabel($hiddenCount, 'more module', 'more modules')), 'more');
-                $nodeIds[] = "more_{$layer}";
-            }
-
-            $this->gridLinks($chart, $nodeIds);
-
-            $chart->endGroup();
-            $drawnLayers[] = $layer;
+            $chart->node("layer_{$layer}", MermaidText::label($title, [$this->countLabel($inLayer->count(), 'module', 'modules')]), "layer_{$layer}");
         }
 
-        // Real arrows can point upwards or be missing between two layers,
-        // so links that are not drawn keep the layers in order, from the top down.
-        foreach (array_slice($drawnLayers, 1) as $index => $layer) {
-            $chart->invisibleLink("layer_{$drawnLayers[$index]}", "layer_{$layer}");
-        }
-
-        $layerArrows = $this->layerDependencies($dependencies, $layerOf->all());
-
-        foreach ($layerArrows as [$fromLayer, $toLayer]) {
-            $chart->edge("layer_{$fromLayer}", "layer_{$toLayer}");
+        foreach ($layerArrows as [$fromLayer, $toLayer, $kinds]) {
+            $chart->edge("layer_{$fromLayer}", "layer_{$toLayer}", MermaidText::escape($this->arrowWords($kinds)));
         }
 
         foreach (self::LAYER_STYLES as $layer => $style) {
             $chart->classDef("layer_{$layer}", $style);
         }
 
-        $chart->classDef('more', self::C4_STYLES['more']);
-
-        // An arrow between layers stands for all the imports between their modules; imports inside a layer are not drawn.
         $drawnImports = array_sum(array_map(
             fn (array $dependency): int => $layerOf[$dependency['from']] === $layerOf[$dependency['to']] ? 0 : $dependency['weight'],
             $dependencies,
         ));
 
-        $caption = ($shown->count() < $modules->count()
-            ? "The {$shown->count()} biggest of the {$modules->count()} modules with code, grouped into layers by folder name"
-            : 'The modules with code ('.$this->countLabel($modules->count(), 'module', 'modules').'), grouped into layers by folder name')
-            .'; an arrow means that modules of one layer import code from the other layer.';
+        if ($layerArrows === []) {
+            return null;
+        }
 
         return $this->diagram(DiagramType::Layers, $chart, [
-            'title' => 'Layered architecture',
-            'caption' => $caption,
+            'title' => 'Layers',
+            'caption' => 'The code grouped into layers by folder name; an arrow means that modules of one layer use the other, with what the links do and how many there are.',
             'excluded' => $excluded,
-            'nodes' => $this->nodePaths($shown, $ids),
-            'findings' => $this->facts->findings($repository, $modules, $shown, $dependencies, $drawnImports, $layerOf->all()),
-            'evidence' => $this->facts->layerEvidence($repository, $dependencies, $layerArrows, $layerOf->all(), $ids),
+            'unconnected' => $unconnected,
+            'layers' => $modulesByLayer->map(fn (Collection $inLayer): array => $inLayer->pluck('path')->all())->all(),
+            'nodes' => [],
+            'findings' => $this->facts->findings($repository, $modules, $modules, $dependencies, $drawnImports, $layerOf->all()),
+            'evidence' => $this->facts->layerEvidence($repository, $dependencies, array_map(fn (array $arrow): array => [$arrow[0], $arrow[1]], $layerArrows), $layerOf->all(), []),
         ]);
     }
 
@@ -247,9 +243,10 @@ final class ArchitectureDiagramBuilder
      * Laravel jobs, and the databases, caches and external services of its manifest and .env.example.
      * An arrow is drawn only when the project's own files connect the two ends.
      *
+     * @param  array<string, mixed>  $facts  SystemFacts
      * @return array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}|null
      */
-    private function containerView(Repository $repository, TechnologyReport $report): ?array
+    private function containerView(Repository $repository, TechnologyReport $report, array $facts): ?array
     {
         $projects = $this->drawnProjects($report);
 
@@ -261,9 +258,10 @@ final class ArchitectureDiagramBuilder
         $edges = [];
         $stores = [];
         $externals = [];
+        $pending = [];
+        $mainOf = [];
+        $workerOf = [];
         $hasPeople = false;
-
-        $chart->startGroup('system', '<b>'.MermaidText::escape($repository->name).'</b>', 'boundary');
 
         foreach ($projects as $index => $project) {
             $prefix = 'p'.($index + 1);
@@ -285,14 +283,14 @@ final class ArchitectureDiagramBuilder
                     $pages === null => $this->toolsLine($project),
                     default => null,
                 };
-                $this->container($chart, $serverId, $server ?? $serverLanguages[0] ?? null, $title, array_filter([$details, $description]));
+                $pending[$serverId] = [$server ?? $serverLanguages[0] ?? null, $title, array_filter([$details, $description]), false];
             }
 
             if ($pages !== null) {
                 $pagesId = "{$prefix}_ui";
                 $title = $this->projectTitle($repository, $project, 'Web interface', $serverId !== null ? 'interface' : null);
                 $details = $this->joinNames([$pages, $this->pagesLanguage($project)]);
-                $this->container($chart, $pagesId, $pages, $title, [$details, 'Pages in the browser']);
+                $pending[$pagesId] = [$pages, $title, [$details, 'Pages in the browser'], false];
 
                 if ($serverId !== null) {
                     $edges[] = [$pagesId, $serverId, $project->uses('inertia') ? 'Inertia requests · HTTP' : 'HTTP requests'];
@@ -300,6 +298,7 @@ final class ArchitectureDiagramBuilder
             }
 
             $mainId = $serverId ?? $pagesId;
+            $mainOf[$project->folder] = $mainId;
 
             if ($server !== null || $pages !== null) {
                 // Only the first arrow from the user is labeled: the others would repeat the same words.
@@ -307,29 +306,31 @@ final class ArchitectureDiagramBuilder
                 $hasPeople = true;
             }
 
-            $workerId = null;
-
             if ($project->hasQueueJobs && $project->uses('laravel')) {
-                $workerId = "{$prefix}_worker";
-                $this->container($chart, $workerId, $project->first(TechnologyRole::Backend), 'Queue worker', ['Laravel · queue:work', 'Runs the jobs in the background']);
+                $workerOf[$project->folder] = "{$prefix}_worker";
+                $pending["{$prefix}_worker"] = [$project->first(TechnologyRole::Backend), 'Queue worker', ['Laravel · queue:work', 'Runs the jobs in the background'], false];
             }
 
             foreach ([...$project->withRole(TechnologyRole::Database), ...$project->withRole(TechnologyRole::Cache)] as $store) {
                 $stores[$store->key] ??= $store;
                 $edges[] = [$mainId, "store_{$store->key}", $store->role === TechnologyRole::Database ? 'Reads and writes' : $this->cacheUsage($project, $store)];
 
-                if ($workerId !== null && $this->queueStore($project) === $store->key) {
-                    $edges[] = [$workerId, "store_{$store->key}", 'Takes the jobs'];
+                if (isset($workerOf[$project->folder]) && $this->queueStore($project) === $store->key) {
+                    $edges[] = [$mainId, "store_{$store->key}", 'Queues jobs'];
+                    $edges[] = ["store_{$store->key}", $workerOf[$project->folder], 'Hands out the jobs'];
+                    $edges[] = [$workerOf[$project->folder], "store_{$store->key}", 'Reads and writes'];
                 }
             }
 
             foreach ($project->withRole(TechnologyRole::External) as $external) {
-                $externals[$external->key] ??= $external;
-                $edges[] = [$mainId, "ext_{$external->key}", $external->key === 'smtp' ? 'Sends email · SMTP' : 'API · HTTPS'];
+                $externals[$this->externalKey($external->key)] ??= ['name' => $external->name, 'icon' => $external->icon, 'tool' => false];
+                $edges[] = [$mainId, 'ext_'.$this->externalKey($external->key), $external->key === 'smtp' ? 'Sends email · SMTP' : 'API · HTTPS'];
             }
         }
 
-        // Servers started by docker-compose or Kubernetes next to the code, even without an arrow.
+        array_push($edges, ...$this->evidenceEdges($projects, $facts, $mainOf, $workerOf, $externals));
+
+        // Servers started by docker-compose or Kubernetes next to the code, only when something uses them.
         foreach ($report->shared as $technology) {
             if (in_array($technology->role, [TechnologyRole::Database, TechnologyRole::Cache], true)) {
                 $stores[$technology->key] ??= $technology;
@@ -338,14 +339,20 @@ final class ArchitectureDiagramBuilder
 
         foreach ($stores as $key => $store) {
             $title = $store->role === TechnologyRole::Database ? 'Database' : $store->name;
-            $details = $store->role === TechnologyRole::Database ? [$store->name] : [];
-            $this->container($chart, "store_{$key}", $store, $title, $details, cylinder: $store->role === TechnologyRole::Database);
+            $pending["store_{$key}"] = [$store, $title, $store->role === TechnologyRole::Database ? [$store->name] : [], $store->role === TechnologyRole::Database];
         }
 
-        $hiddenProjects = count($report->projects) - count($projects);
+        $edges = $this->uniqueEdges(array_map(fn (array $edge): array => [$edge[0], $edge[1], $edge[2]], $edges));
+        $connected = array_flip(array_merge(array_column($edges, 0), array_column($edges, 1)));
+        $unconnected = [];
+        $chart->startGroup('system', '<b>'.MermaidText::escape($repository->name).'</b>', 'boundary');
 
-        if ($hiddenProjects > 0) {
-            $chart->node('more', MermaidText::escape('+ '.$this->countLabel($hiddenProjects, 'more package', 'more packages')), 'more');
+        foreach ($pending as $id => [$technology, $title, $details, $cylinder]) {
+            if (isset($connected[$id])) {
+                $this->container($chart, $id, $technology, $title, array_values($details), $cylinder);
+            } else {
+                $unconnected[] = $title;
+            }
         }
 
         $chart->endGroup();
@@ -355,10 +362,10 @@ final class ArchitectureDiagramBuilder
         }
 
         foreach ($externals as $key => $external) {
-            $this->external($chart, "ext_{$key}", $external);
+            $this->outsideNode($chart, ($external['tool'] ? 'tool_' : 'ext_').$key, $external);
         }
 
-        foreach ($this->uniqueEdges($edges) as [$from, $to, $label]) {
+        foreach ($edges as [$from, $to, $label]) {
             $chart->edge($from, $to, $label === '' ? null : MermaidText::escape($label));
         }
 
@@ -366,10 +373,136 @@ final class ArchitectureDiagramBuilder
 
         return $this->diagram(DiagramType::Container, $chart, [
             'title' => 'Containers',
-            'caption' => 'The parts that run separately and their technologies, found in '.$this->sourcesSentence($report).'; an arrow points from the caller to what it calls.',
+            'caption' => 'The parts that run separately, connected by what the code shows: the technologies found in '.$this->sourcesSentence($report).', the programs the code starts and the services it calls; an arrow points from the caller to what it calls.',
             'technologies' => array_map(fn (Technology $technology): array => $technology->toArray(), $report->all()),
-            'hidden_projects' => $hiddenProjects,
+            'hidden_projects' => count($report->projects) - count($projects),
+            'unconnected' => $unconnected,
         ]);
+    }
+
+    /**
+     * The arrows the evidence of the code adds to the containers: a project that starts a script of another
+     * project ("Runs"), and the programs and services the code uses — drawn from the queue worker when the
+     * code that uses them runs in the background jobs (the jobs and the modules they call), else from the
+     * project's main container.
+     *
+     * @param  list<DetectedProject>  $projects
+     * @param  array<string, mixed>  $facts
+     * @param  array<string, string>  $mainOf  project folder => container id
+     * @param  array<string, string>  $workerOf  project folder => worker container id
+     * @param  array<string, array{name: string, icon: string|null, tool: bool}>  $externals
+     * @return list<array{string, string, string}>
+     */
+    private function evidenceEdges(array $projects, array $facts, array $mainOf, array $workerOf, array &$externals): array
+    {
+        $projectOf = function (string $modulePath) use ($projects): ?string {
+            $best = null;
+
+            foreach ($projects as $project) {
+                if (($project->folder === '' || $modulePath === $project->folder || str_starts_with($modulePath, $project->folder.'/')) && strlen($project->folder) >= strlen($best ?? '')) {
+                    $best = $project->folder;
+                }
+            }
+
+            return $best;
+        };
+
+        // The code that runs in the background: the dispatched jobs and what they call, two steps deep.
+        $background = array_flip(array_column(array_filter($facts['links'], fn (array $link): bool => isset($link['kinds']['dispatch'])), 'to'));
+
+        for ($step = 0; $step < 2; $step++) {
+            foreach ($facts['links'] as $link) {
+                if (isset($background[$link['from']])) {
+                    $background[$link['to']] = true;
+                }
+            }
+        }
+
+        $caller = function (string $module) use ($projectOf, $mainOf, $workerOf, $background): ?string {
+            $project = $projectOf($module);
+
+            return $project === null ? null : (isset($background[$module]) && isset($workerOf[$project]) ? $workerOf[$project] : ($mainOf[$project] ?? null));
+        };
+
+        $edges = [];
+
+        foreach ($facts['links'] as $link) {
+            $from = $projectOf($link['from']);
+            $to = $projectOf($link['to']);
+
+            if (isset($link['kinds']['runs']) && $from !== null && $to !== null && $from !== $to && isset($mainOf[$to]) && ($start = $caller($link['from'])) !== null) {
+                $edges[] = [$start, $mainOf[$to], 'Runs'];
+            }
+        }
+
+        $drawn = $this->drawnTargets($facts);
+
+        foreach ($facts['externals'] as $row) {
+            [$type, $key] = explode(':', $row['target'], 2);
+            $start = $caller($row['module']);
+
+            if ($start === null || ! isset($drawn[$row['target']]) || $key === 'mail') {
+                continue;
+            }
+
+            $key = $this->externalKey($key);
+            $externals[$key] ??= [
+                'name' => LinkCatalog::name($row['target']),
+                'icon' => $key === 'github' ? 'logos:github-icon' : (TechnologyCatalog::TECHNOLOGIES[$key][2] ?? null),
+                'tool' => $type === 'tool',
+            ];
+            $edges[] = [$start, ($externals[$key]['tool'] ? 'tool_' : 'ext_').$key, $type === 'tool' ? 'Runs' : 'Calls · HTTPS'];
+        }
+
+        return $edges;
+    }
+
+    /**
+     * The services and programs found in the code that the diagrams draw: the most used of each type.
+     *
+     * @param  array<string, mixed>  $facts
+     * @return array<string, true>
+     */
+    private function drawnTargets(array $facts): array
+    {
+        $counts = ['service' => 0, 'tool' => 0];
+        $drawn = [];
+
+        foreach ($facts['targets'] as $target => $info) {
+            $type = explode(':', $target, 2)[0];
+
+            if (isset($counts[$type]) && $counts[$type] < ($type === 'tool' ? self::MAX_TOOLS : self::MAX_SERVICES)) {
+                $counts[$type]++;
+                $drawn[$target] = true;
+            }
+        }
+
+        return $drawn;
+    }
+
+    /**
+     * One key for the same external system, whether it was found in a manifest or in the code.
+     */
+    private function externalKey(string $key): string
+    {
+        return $key === 'github-api' ? 'github' : (string) preg_replace('/[^A-Za-z0-9_]/', '_', $key);
+    }
+
+    /**
+     * Draw something outside the system: an external system (its logo when it has one, an outlined box
+     * otherwise) or a program the code starts (a dashed box).
+     *
+     * @param  array{name: string, icon: string|null, tool: bool}  $outside
+     */
+    private function outsideNode(Flowchart $chart, string $id, array $outside): void
+    {
+        $label = MermaidText::label($outside['name'], [$outside['tool'] ? 'Program the code starts' : 'External system']);
+
+        if ($outside['icon'] !== null && ! $outside['tool']) {
+            $chart->iconNode($id, $outside['icon'], $label, 'external');
+        } else {
+            $chart->node($id, $label, $outside['tool'] ? 'tool' : 'externalBox');
+        }
     }
 
     /**
@@ -411,83 +544,67 @@ final class ArchitectureDiagramBuilder
         }
 
         $dependencies = $this->overview->dependenciesBetweenFiles($repository, $files);
-        $shown = $this->biggest($files, self::MAX_COMPONENT_FILES);
-        $ids = $this->nodeIds($shown, 'f');
-        $symbolNames = $this->overview->mainSymbolNames($shown, self::MAX_CLASS_NAMES);
-        $omitted = $files->count() - $shown->count();
-
-        // A file is called by its name; when two get the same name, by their whole path.
-        $names = $shown->mapWithKeys(fn (Module $file): array => [$file->id => basename($file->path)]);
-        $repeatedNames = $names->duplicates()->all();
-
-        $chart = new Flowchart('TB');
-        $chart->startGroup('system', '<b>'.MermaidText::escape($repository->name).'</b> · code files', 'boundary');
-
-        foreach ($shown as $file) {
-            $shortName = in_array($names[$file->id], $repeatedNames, true) ? $file->path : $names[$file->id];
-            $folder = dirname($file->path);
-            $details = array_values(array_filter([
-                $shortName === $file->path || $folder === '.' ? null : $folder,
-                ...($symbolNames[$file->id] ?? []),
-            ]));
-
-            $chart->node($ids[$file->id], MermaidText::label($shortName, $details), 'component');
-        }
-
-        if ($omitted > 0) {
-            $chart->node('more', MermaidText::escape('+ '.$this->countLabel($omitted, 'more file', 'more files')), 'more');
-        }
-
-        $drawnEdges = $this->drawDependencies($chart, $dependencies, $ids, self::MAX_COMPONENT_EDGES);
-
-        $connected = array_unique(array_merge([], ...$drawnEdges));
-        $unconnected = array_values(array_diff([...array_values($ids), ...($omitted > 0 ? ['more'] : [])], $connected));
-        $this->gridLinks($chart, $unconnected);
-
-        if ($unconnected !== [] && $drawnEdges !== []) {
-            $chart->invisibleLink($unconnected[array_key_last($unconnected)], $drawnEdges[0][0]);
-        }
-
-        $chart->endGroup();
-        $this->defineC4Styles($chart);
-
-        $nodeToFile = array_flip($ids);
-        $drawnFiles = array_map(fn (array $edge): array => [$nodeToFile[$edge[0]], $nodeToFile[$edge[1]]], $drawnEdges);
-        $weights = [];
+        $importance = [];
 
         foreach ($dependencies as $dependency) {
-            $weights[$dependency['from'].':'.$dependency['to']] = $dependency['weight'];
+            $importance[$dependency['from']] = ($importance[$dependency['from']] ?? 0) + $dependency['weight'];
+            $importance[$dependency['to']] = ($importance[$dependency['to']] ?? 0) + $dependency['weight'];
         }
 
-        $drawnImports = array_sum(array_map(fn (array $edge): int => $weights[$edge[0].':'.$edge[1]], $drawnFiles));
-        $possibleEdges = count(array_filter($dependencies, fn (array $dependency): bool => isset($ids[$dependency['from']], $ids[$dependency['to']])));
+        $shown = $files
+            ->filter(fn (Module $file): bool => isset($importance[$file->id]))
+            ->sortBy([fn (Module $a, Module $b): int => $importance[$b->id] <=> $importance[$a->id], ['path', 'asc']])
+            ->take(self::MAX_COMPONENT_FILES)
+            ->sortBy('path')
+            ->values();
+        $ids = $this->nodeIds($shown, 'f');
+        $drawn = array_slice(array_values(array_filter($dependencies, fn (array $dependency): bool => isset($ids[$dependency['from']], $ids[$dependency['to']]))), 0, self::MAX_COMPONENT_EDGES);
+        $connected = array_flip(array_merge(array_column($drawn, 'from'), array_column($drawn, 'to')));
+        $shown = $shown->filter(fn (Module $file): bool => isset($connected[$file->id]))->values();
 
-        $caption = ($omitted > 0
-            ? "The {$shown->count()} biggest of the {$files->count()} files with code, with their main symbols"
-            : 'The files with code, with their main symbols')
-            .match (true) {
-                $drawnEdges === [] => '; they do not import each other.',
-                count($drawnEdges) < $possibleEdges => ', and the '.(count($drawnEdges) === 1 ? 'strongest dependency' : count($drawnEdges).' strongest dependencies').'; an arrow points from the importing file to the imported one.',
-                default => '; an arrow means that a file imports code from another.',
-            };
+        if ($shown->count() < 2) {
+            return null;
+        }
+
+        $chart = new Flowchart('TB');
+
+        foreach ($shown as $file) {
+            $folder = dirname($file->path);
+            $chart->node($ids[$file->id], MermaidText::label(basename($file->path), $folder === '.' ? [] : [$folder]), 'component');
+        }
+
+        foreach ($drawn as $dependency) {
+            $chart->edge($ids[$dependency['from']], $ids[$dependency['to']], MermaidText::escape("uses · {$dependency['weight']}"));
+        }
+
+        $this->defineC4Styles($chart);
+
+        $drawnFiles = array_map(fn (array $dependency): array => [$dependency['from'], $dependency['to']], $drawn);
+        $unconnected = $files->filter(fn (Module $file): bool => ! isset($importance[$file->id]))->pluck('path')->values()->all();
+        $leftOut = $files->count() - $shown->count() - count($unconnected);
 
         return $this->diagram(DiagramType::Component, $chart, [
-            'title' => 'Components',
-            'caption' => $caption,
+            'title' => 'Dependency map',
+            'caption' => 'The '.$this->countLabel($shown->count(), 'file', 'files').' with the most imports'
+                .($leftOut > 0 ? ' ('.$this->countLabel($leftOut, 'other linked file is', 'other linked files are').' left out)' : '')
+                .'; an arrow points from the importing file to the imported one, with the number of imports.',
             'level' => 'files',
-            'omitted_modules' => $omitted,
+            'omitted_modules' => $leftOut,
+            'unconnected' => $unconnected,
             'nodes' => $this->nodePaths($shown, $ids),
-            'classes' => $this->classesByNode($symbolNames, $ids),
-            'findings' => $this->facts->findings($repository, $files, $shown, $dependencies, $drawnImports, null, true),
+            'findings' => $this->facts->findings($repository, $files, $shown, $dependencies, array_sum(array_column($drawn, 'weight')), null, true),
             'evidence' => $this->facts->edgeEvidence($repository, $files, $dependencies, $drawnFiles, $ids, true),
         ]);
     }
 
     /**
-     * "Components" (C4 level 3): the biggest modules with their main classes, inside the system boundary.
+     * The dependency map of modules: the most important modules (the most links in and out, not the
+     * biggest), each named by its role with its path underneath, and the links between them, each arrow
+     * labelled with what the links do and how many there are. A module without an arrow is not drawn: it is
+     * listed under the map instead.
      *
      * @param  Collection<int, Module>  $modules
-     * @param  list<array{from: int, to: int, weight: int}>  $dependencies
+     * @param  list<array{from: int, to: int, weight: int, kinds?: array<string, int>}>  $dependencies
      * @return array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}|null
      */
     private function componentView(Repository $repository, Collection $modules, array $dependencies): ?array
@@ -496,72 +613,53 @@ final class ArchitectureDiagramBuilder
             return null;
         }
 
-        $shown = $this->biggest($modules, self::MAX_COMPONENTS);
-        $ids = $this->nodeIds($shown, 'c');
-        $classNames = $this->overview->mainClassNames($shown, self::MAX_CLASS_NAMES);
-        $omitted = $modules->count() - $shown->count();
-
-        $chart = new Flowchart('TB');
-        $chart->startGroup('system', '<b>'.MermaidText::escape($repository->name).'</b> · code components', 'boundary');
-
-        // A component is called by its folder name; when two get the same name, by their whole path.
-        $names = $shown->mapWithKeys(fn (Module $module): array => [$module->id => $this->componentName($module->path)]);
-        $repeatedNames = $names->duplicates()->all();
-
-        foreach ($shown as $module) {
-            $shortName = in_array($names[$module->id], $repeatedNames, true) ? $module->path : $names[$module->id];
-            $details = array_values(array_filter([
-                $shortName === $module->path ? null : $module->path,
-                ...($classNames[$module->id] ?? []),
-            ]));
-
-            $chart->node($ids[$module->id], MermaidText::label($shortName, $details), 'component');
-        }
-
-        if ($omitted > 0) {
-            $chart->node('more', MermaidText::escape('+ '.$this->countLabel($omitted, 'more module', 'more modules')), 'more');
-        }
-
-        $drawnEdges = $this->drawDependencies($chart, $dependencies, $ids, self::MAX_COMPONENT_EDGES);
-
-        // The modules without arrows go in a grid above the others, instead of one very wide row.
-        $connected = array_unique(array_merge([], ...$drawnEdges));
-        $unconnected = array_values(array_diff([...array_values($ids), ...($omitted > 0 ? ['more'] : [])], $connected));
-        $this->gridLinks($chart, $unconnected);
-
-        if ($unconnected !== [] && $drawnEdges !== []) {
-            $chart->invisibleLink($unconnected[array_key_last($unconnected)], $drawnEdges[0][0]);
-        }
-
-        $chart->endGroup();
-        $this->defineC4Styles($chart);
-
-        $nodeToModule = array_flip($ids);
-        $drawnModules = array_map(fn (array $edge): array => [$nodeToModule[$edge[0]], $nodeToModule[$edge[1]]], $drawnEdges);
-        $moduleWeights = [];
+        $importance = [];
 
         foreach ($dependencies as $dependency) {
-            $moduleWeights[$dependency['from'].':'.$dependency['to']] = $dependency['weight'];
+            $importance[$dependency['from']] = ($importance[$dependency['from']] ?? 0) + $dependency['weight'];
+            $importance[$dependency['to']] = ($importance[$dependency['to']] ?? 0) + $dependency['weight'];
         }
 
-        $drawnImports = array_sum(array_map(fn (array $edge): int => $moduleWeights[$edge[0].':'.$edge[1]], $drawnModules));
-        $possibleEdges = count(array_filter($dependencies, fn (array $dependency): bool => isset($ids[$dependency['from']], $ids[$dependency['to']])));
+        $shown = $modules
+            ->filter(fn (Module $module): bool => isset($importance[$module->id]))
+            ->sortBy([fn (Module $a, Module $b): int => $importance[$b->id] <=> $importance[$a->id], ['path', 'asc']])
+            ->take(self::MAX_COMPONENTS)
+            ->sortBy('path')
+            ->values();
+        $ids = $this->nodeIds($shown, 'c');
+        $drawn = array_slice(array_values(array_filter($dependencies, fn (array $dependency): bool => isset($ids[$dependency['from']], $ids[$dependency['to']]))), 0, self::MAX_COMPONENT_EDGES);
+        $connected = array_flip(array_merge(array_column($drawn, 'from'), array_column($drawn, 'to')));
+        $shown = $shown->filter(fn (Module $module): bool => isset($connected[$module->id]))->values();
 
-        $caption = ($omitted > 0
-            ? "The {$shown->count()} biggest of the {$modules->count()} modules with code, with their main classes"
-            : 'The modules with code, with their main classes')
-            .match (true) {
-                $drawnEdges === [] => '; they do not import each other.',
-                count($drawnEdges) < $possibleEdges => ', and the '.(count($drawnEdges) === 1 ? 'strongest dependency' : count($drawnEdges).' strongest dependencies').'; an arrow points from the importing module to the imported one.',
-                default => '; an arrow means that a module imports code from another.',
-            };
+        if ($shown->count() < 2) {
+            return null;
+        }
+
+        $chart = new Flowchart('TB');
+
+        foreach ($shown as $module) {
+            $chart->node($ids[$module->id], MermaidText::label($this->roleOf($module->path), [$module->path]), 'component');
+        }
+
+        foreach ($drawn as $dependency) {
+            $chart->edge($ids[$dependency['from']], $ids[$dependency['to']], MermaidText::escape($this->arrowWords($dependency['kinds'] ?? ['import' => $dependency['weight']])));
+        }
+
+        $this->defineC4Styles($chart);
+
+        $drawnModules = array_map(fn (array $dependency): array => [$dependency['from'], $dependency['to']], $drawn);
+        $drawnImports = array_sum(array_column($drawn, 'weight'));
+        $unconnected = $modules->filter(fn (Module $module): bool => ! isset($importance[$module->id]))->pluck('path')->values()->all();
+        $leftOut = $modules->count() - $shown->count() - count($unconnected);
 
         return $this->diagram(DiagramType::Component, $chart, [
-            'title' => 'Components',
-            'caption' => $caption,
-            'omitted_modules' => $omitted,
+            'title' => 'Dependency map',
+            'caption' => 'The '.$this->countLabel($shown->count(), 'module', 'modules').' with the most links, named by their role'
+                .($leftOut > 0 ? ' ('.$this->countLabel($leftOut, 'other linked module is', 'other linked modules are').' left out)' : '')
+                .'; an arrow points from the module that uses to the module used, with what the links do and how many there are.',
+            'omitted_modules' => $leftOut,
+            'unconnected' => $unconnected,
             'nodes' => $this->nodePaths($shown, $ids),
-            'classes' => $this->classesByNode($classNames, $ids),
             'findings' => $this->facts->findings($repository, $modules, $shown, $dependencies, $drawnImports, null),
             'evidence' => $this->facts->edgeEvidence($repository, $modules, $dependencies, $drawnModules, $ids),
         ]);
@@ -570,17 +668,39 @@ final class ArchitectureDiagramBuilder
     /**
      * "Context" (C4 level 1), small: the user, the system and the external systems it calls.
      *
+     * @param  array<string, mixed>  $facts  SystemFacts
      * @return array{type: DiagramType, key: string, mermaid: string, meta: array<string, mixed>}|null
      */
-    private function contextView(Repository $repository, TechnologyReport $report): ?array
+    private function contextView(Repository $repository, TechnologyReport $report, array $facts): ?array
     {
         $projects = $this->drawnProjects($report);
         $hasPeople = collect($projects)->contains(fn (DetectedProject $project): bool => $project->first(TechnologyRole::Backend) !== null
             || $project->first(TechnologyRole::Fullstack) !== null
             || $project->first(TechnologyRole::Ui) !== null);
-        $externals = array_values(array_filter($report->all(), fn (Technology $technology): bool => $technology->role === TechnologyRole::External));
+        $outside = [];
 
-        if (! $hasPeople && $externals === []) {
+        foreach ($report->all() as $technology) {
+            if ($technology->role === TechnologyRole::External) {
+                $outside['ext_'.$this->externalKey($technology->key)] = ['name' => $technology->name, 'icon' => $technology->icon, 'tool' => false, 'verb' => $technology->key === 'smtp' ? 'Sends email' : 'Calls'];
+            }
+        }
+
+        // What the code itself shows it calls or starts (URL hosts, SDKs, process calls).
+        foreach (array_intersect_key($facts['targets'], $this->drawnTargets($facts)) as $target => $info) {
+            [$type, $key] = explode(':', $target, 2);
+
+            if ($key !== 'mail') {
+                $id = ($type === 'tool' ? 'tool_' : 'ext_').$this->externalKey($key);
+                $outside[$id] ??= [
+                    'name' => $info['name'],
+                    'icon' => $type === 'tool' ? null : ($key === 'github' ? 'logos:github-icon' : (TechnologyCatalog::TECHNOLOGIES[$key][2] ?? null)),
+                    'tool' => $type === 'tool',
+                    'verb' => $type === 'tool' ? 'Runs' : 'Calls',
+                ];
+            }
+        }
+
+        if (! $hasPeople && $outside === []) {
             return null;
         }
 
@@ -592,20 +712,21 @@ final class ArchitectureDiagramBuilder
             $chart->edge('user', 'system', MermaidText::escape('Uses'));
         }
 
-        foreach ($externals as $external) {
-            $this->external($chart, "ext_{$external->key}", $external);
-            $chart->edge('system', "ext_{$external->key}", MermaidText::escape($external->key === 'smtp' ? 'Sends email' : 'Sends requests'));
+        foreach ($outside as $id => $thing) {
+            $this->outsideNode($chart, $id, $thing);
+            $chart->edge('system', $id, MermaidText::escape($thing['verb']));
         }
 
         $this->defineC4Styles($chart);
+        $externals = array_values(array_filter($outside, fn (array $thing): bool => ! $thing['tool']));
 
         return $this->diagram(DiagramType::Context, $chart, [
             'title' => 'Context',
             // The external systems drawn, so the reading of the diagram may name them (the page does not list them).
-            'externals' => array_map(fn (Technology $technology): array => $technology->toArray(), $externals),
-            'caption' => $externals === []
-                ? 'Who uses the system; the project files show no external systems called by the code.'
-                : 'Who uses the system and which external systems the code calls (from the libraries and settings found).',
+            'externals' => array_map(fn (array $thing): array => ['name' => $thing['name'], 'icon' => $thing['icon']], array_values($outside)),
+            'caption' => $outside === []
+                ? 'Who uses the system; neither the project files nor the code show external systems or programs it calls.'
+                : 'Who uses the system, the external systems it calls'.(count($externals) < count($outside) ? ' and the programs it starts' : '').', from the libraries, settings and code found.',
         ]);
     }
 
@@ -642,20 +763,6 @@ final class ArchitectureDiagramBuilder
             $chart->iconNode($id, $technology->icon, $label, 'container');
         } else {
             $chart->node($id, $label, 'containerBox', $cylinder ? 'cylinder' : 'rect');
-        }
-    }
-
-    /**
-     * Draw an external system: its logo when it has one, a grey box otherwise.
-     */
-    private function external(Flowchart $chart, string $id, Technology $technology): void
-    {
-        $label = MermaidText::label($technology->name, ['External system']);
-
-        if ($technology->icon !== null) {
-            $chart->iconNode($id, $technology->icon, $label, 'external');
-        } else {
-            $chart->node($id, $label, 'externalBox');
         }
     }
 
@@ -792,12 +899,12 @@ final class ArchitectureDiagramBuilder
     }
 
     /**
-     * The pairs of different layers whose modules import each other, in the order of LAYERS:
-     * [from layer, to layer]. Every dependency counts, also those of modules that are not drawn.
+     * The pairs of different layers whose modules are linked, in the order of LAYERS:
+     * [from layer, to layer, kind => count]. Every link counts, also those of modules that are not drawn.
      *
-     * @param  list<array{from: int, to: int, weight: int}>  $dependencies
+     * @param  list<array{from: int, to: int, weight: int, kinds?: array<string, int>}>  $dependencies
      * @param  array<int, string>  $layerOf  module id => layer key
-     * @return list<array{string, string}>
+     * @return list<array{string, string, array<string, int>}>
      */
     private function layerDependencies(array $dependencies, array $layerOf): array
     {
@@ -808,14 +915,81 @@ final class ArchitectureDiagramBuilder
             $from = $layerOf[$dependency['from']];
             $to = $layerOf[$dependency['to']];
 
-            if ($from !== $to) {
-                $pairs["{$from}→{$to}"] = [$from, $to];
+            if ($from === $to) {
+                continue;
+            }
+
+            $pairs["{$from}→{$to}"] ??= [$from, $to, []];
+
+            foreach ($dependency['kinds'] ?? ['import' => $dependency['weight']] as $kind => $count) {
+                $pairs["{$from}→{$to}"][2][$kind] = ($pairs["{$from}→{$to}"][2][$kind] ?? 0) + $count;
             }
         }
 
         usort($pairs, fn (array $a, array $b): int => [$order[$a[0]], $order[$a[1]]] <=> [$order[$b[0]], $order[$b[1]]]);
 
         return $pairs;
+    }
+
+    /**
+     * The words on an arrow of a dependency map: what the links mostly do ("dispatches", "routes to",
+     * "renders", "runs"; "uses" for imports and same-namespace classes) and how many links there are.
+     *
+     * @param  array<string, int>  $kinds
+     */
+    private function arrowWords(array $kinds): string
+    {
+        $total = array_sum($kinds);
+
+        foreach (['route', 'dispatch', 'render', 'runs', 'event', 'schedule', 'loads'] as $kind) {
+            if (isset($kinds[$kind])) {
+                return SystemFacts::verb($kind)." · {$total}";
+            }
+        }
+
+        return "uses · {$total}";
+    }
+
+    /**
+     * The role of a module in plain words.
+     */
+    private function roleOf(string $path): string
+    {
+        return $this->roles[$path] ?? $this->componentName($path);
+    }
+
+    /**
+     * The roles of the modules: the label of the big-picture part that holds the module, else the first
+     * clause of its documentation page when it says what the module does (at most six words, no code
+     * names), else nothing (the folder name is used).
+     *
+     * @param  Collection<int, Module>  $modules
+     * @return array<string, string>
+     */
+    private function moduleRoles(Repository $repository, Collection $modules): array
+    {
+        $roles = [];
+
+        foreach (ArchitectureReader::moduleSentences($repository, $modules->pluck('path')->all()) as $path => $sentence) {
+            $clause = trim((string) preg_split('/[,;:(—–]| - /u', (string) preg_replace('/^(the|this)\s+(module|folder|package)\s+(\S+\s+)?/i', '', $sentence))[0], ' .');
+            $words = preg_split('/\s+/', $clause) ?: [];
+
+            if ($clause !== '' && count($words) <= 6 && ! SystemMapValidator::namesCode($clause) && preg_match('/\b(files?|lines?|fișier|linii)\b/iu', $clause) !== 1) {
+                $roles[$path] = mb_strtoupper(mb_substr($clause, 0, 1)).mb_substr($clause, 1);
+            }
+        }
+
+        // Only a big picture written (and checked) by AI names roles; the fallback's parts are the layers.
+        $overview = $repository->diagrams()->where('type', DiagramType::Overview)->first();
+        $parts = ($overview?->meta['source'] ?? null) === 'ai' ? $overview->meta['parts'] ?? [] : [];
+
+        foreach ($parts as $part) {
+            foreach ($part['modules'] ?? [] as $path) {
+                $roles[$path] = $part['label'];
+            }
+        }
+
+        return $roles;
     }
 
     /**
@@ -925,8 +1099,9 @@ final class ArchitectureDiagramBuilder
     {
         $unique = [];
 
+        // One arrow per pair, with the first label given (a pair can be found both in a manifest and in the code).
         foreach ($edges as $edge) {
-            $unique[implode('→', $edge)] = $edge;
+            $unique["{$edge[0]}→{$edge[1]}"] ??= $edge;
         }
 
         return array_values($unique);

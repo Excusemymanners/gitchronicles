@@ -188,10 +188,10 @@ final class ArchitectureReader
     private function context(Repository $repository, array $diagrams): string
     {
         $paths = array_merge(...array_map(fn (array $diagram): array => array_values($diagram['meta']['nodes'] ?? []), $diagrams));
-        $sentences = $this->moduleSentences($repository, $paths);
+        $sentences = self::moduleSentences($repository, $paths);
         $sections = [
             "Repository: {$repository->owner}/{$repository->name}",
-            'The problem the project solves, in its own words: '.$this->problem($repository),
+            'The problem the project solves, in its own words: '.self::problem($repository),
         ];
 
         foreach ($diagrams as $diagram) {
@@ -235,7 +235,7 @@ final class ArchitectureReader
     /**
      * What the project says it solves: the first section of the overview page, or the repository's description.
      */
-    private function problem(Repository $repository): string
+    public static function problem(Repository $repository): string
     {
         $overview = Document::whereBelongsTo($repository)->where('slug', Document::OVERVIEW)->value('markdown');
         $text = '';
@@ -256,7 +256,7 @@ final class ArchitectureReader
      * @param  list<string>  $paths
      * @return array<string, string>
      */
-    private function moduleSentences(Repository $repository, array $paths): array
+    public static function moduleSentences(Repository $repository, array $paths): array
     {
         $pages = Document::whereBelongsTo($repository)->whereNotNull('module_id')->whereIn('title', $paths)->pluck('markdown', 'title');
         $sentences = [];

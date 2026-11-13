@@ -75,7 +75,8 @@ final class ReadingParser
     {
         $names = [$repositoryName, 'User'];
 
-        foreach (array_values($diagram['meta']['nodes'] ?? []) as $path) {
+        // The layers map draws layers, not modules: the modules of each layer may be named too.
+        foreach ([...array_values($diagram['meta']['nodes'] ?? []), ...array_merge([], ...array_values($diagram['meta']['layers'] ?? []))] as $path) {
             $names[] = $path;
             $names[] = basename($path);
         }

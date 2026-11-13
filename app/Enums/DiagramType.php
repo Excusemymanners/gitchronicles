@@ -9,6 +9,9 @@ namespace App\Enums;
  */
 enum DiagramType: string
 {
+    /** The big picture, "How <name> works": the parts by role, what they use and the main path (SystemMapWriter). */
+    case Overview = 'overview';
+
     /** C4 level 1: who uses the system and which external systems it talks to. */
     case Context = 'context';
 

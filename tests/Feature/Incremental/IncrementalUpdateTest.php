@@ -108,9 +108,9 @@ class IncrementalUpdateTest extends TestCase
         $this->assertStringContainsString('Module: src/Support', $newRequests[0]['user']);
         $this->assertSame(1, $run->documents_regenerated);
         $this->assertSame(10, $run->documents_kept);
-        // One call for the page, one for the reading of the architecture diagrams and one for the flows of the
-        // diagrams step: the module's page and its list of symbols changed, so both inputs are new.
-        $this->assertSame(300, $run->input_tokens);
+        // 100 tokens per call: the page written again, and in the diagrams step the reading of the architecture
+        // diagrams, the big picture and the flows (the module's page and its list of symbols changed, so their inputs are new).
+        $this->assertSame(400, $run->input_tokens);
         $this->assertGreaterThan(0, $run->context_characters);
         $this->assertLessThan($firstRun->fresh()->context_characters, $run->context_characters);
         // The pages that were not written keep the commit they describe.

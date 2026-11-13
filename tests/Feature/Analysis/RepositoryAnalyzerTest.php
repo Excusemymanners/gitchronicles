@@ -104,6 +104,22 @@ class RepositoryAnalyzerTest extends TestCase
         ], $this->importsOf($repository, 'tools/cli/main.py'));
     }
 
+    public function test_saves_the_links_the_imports_do_not_show_with_their_file_line_and_kind(): void
+    {
+        $repository = Repository::factory()->ready()->create();
+        $clonePath = $this->copyFixtureProject($repository);
+        File::put("{$clonePath}/src/Models/Catalog.php", "<?php\n\nnamespace Shop\\Models;\n\nclass Catalog\n{\n    public function first(): Product\n    {\n        return new Product(100);\n    }\n}\n");
+        $this->commitEverything($clonePath);
+
+        app(RepositoryAnalyzer::class)->analyze($repository);
+
+        $catalog = $repository->files()->firstWhere('path', 'src/Models/Catalog.php');
+        $product = $repository->files()->firstWhere('path', 'src/Models/Product.php');
+
+        $this->assertDatabaseHas('code_links', ['repository_file_id' => $catalog->id, 'line' => 7, 'kind' => 'reference', 'target_file_id' => $product->id, 'target' => null]);
+        $this->assertDatabaseHas('code_links', ['repository_file_id' => $catalog->id, 'line' => 9, 'kind' => 'reference', 'excerpt' => 'return new Product(100);']);
+    }
+
     public function test_groups_the_files_into_modules_and_weighs_the_dependencies_between_them(): void
     {
         $repository = Repository::factory()->ready()->create(['name' => 'magazin']);

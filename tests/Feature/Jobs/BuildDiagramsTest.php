@@ -6,6 +6,7 @@ use App\Ai\TextGenerator;
 use App\Diagrams\ArchitectureRefresher;
 use App\Diagrams\DiagramHistory;
 use App\Diagrams\FlowDiagramWriter;
+use App\Diagrams\SystemMapWriter;
 use App\Enums\ProcessingTrigger;
 use App\Jobs\AnalyzeRepository;
 use App\Jobs\BuildDiagrams;
@@ -17,6 +18,7 @@ use App\Jobs\IndexCode;
 use App\Jobs\ProcessRepository;
 use App\Models\Diagram;
 use App\Models\Module;
+use App\Models\ModuleDependency;
 use App\Models\ProcessingRun;
 use App\Models\Repository;
 use App\Models\RepositoryFile;
@@ -51,7 +53,7 @@ class BuildDiagramsTest extends TestCase
 
         $this->handle(new BuildDiagrams($repository, $run));
 
-        $this->assertSame(['component', 'layers'], $repository->diagrams()->orderBy('type')->pluck('type')->map->value->all());
+        $this->assertSame(['component', 'layers', 'overview'], $repository->diagrams()->orderBy('type')->pluck('type')->map->value->all());
         $this->assertSame([$repository->last_sha], $repository->diagrams()->distinct()->pluck('source_sha')->all());
         $this->assertSame(['input_tokens' => 0, 'output_tokens' => 0], $run->fresh()->only(['input_tokens', 'output_tokens']));
     }
@@ -66,26 +68,30 @@ class BuildDiagramsTest extends TestCase
 
         $this->handle(new BuildDiagrams($repository, $run));
 
-        $this->assertSame(['flow', 'layers'], $repository->diagrams()->orderBy('type')->pluck('type')->map->value->all());
-        $this->assertStringNotContainsString('app/Models', $repository->diagrams()->firstWhere('type', 'layers')->mermaid);
+        $this->assertSame(['flow'], $repository->diagrams()->orderBy('type')->pluck('type')->map->value->all());
         $this->assertModelExists($flow);
     }
 
-    public function test_adds_the_tokens_of_the_reading_and_of_the_flows_to_the_processing_run(): void
+    public function test_adds_the_tokens_of_the_big_picture_and_the_flows_to_the_processing_run(): void
     {
         $repository = $this->analyzedRepository(['routes']);
         $run = ProcessingRun::factory()->for($repository)->create(['input_tokens' => 1000, 'output_tokens' => 200]);
-        $this->app->instance(TextGenerator::class, new FakeTextGenerator(['{"diagrams":{}}', json_encode(['flows' => [[
-            'title' => 'Rutele',
-            'explanation' => 'Fișierul de rute descrie paginile aplicației.',
-            'mermaid' => "flowchart TD\n  A[\"routes/File.php\"]",
-            'sources' => [['path' => 'routes/File.php', 'start_line' => 1, 'end_line' => 1]],
+        // In order: the big picture (not a map: drawn without AI) and the flows; one module draws no map to read.
+        $this->app->instance(TextGenerator::class, new FakeTextGenerator(['not a map', json_encode(['flows' => [[
+            'title' => 'What happens when someone opens a page',
+            'explanation' => 'The routes file describes the pages of the application.',
+            'participants' => [['id' => 'visitor', 'label' => 'Visitor', 'kind' => 'person'], ['id' => 'routes', 'label' => 'Routes', 'kind' => 'interface', 'modules' => ['routes']]],
+            'messages' => [
+                ['from' => 'visitor', 'to' => 'routes', 'text' => 'opens a page', 'type' => 'request', 'code' => ['path' => 'routes/File.php', 'start_line' => 1, 'end_line' => 1]],
+                ['from' => 'routes', 'to' => 'visitor', 'text' => 'the page', 'type' => 'response'],
+                ['from' => 'visitor', 'to' => 'routes', 'text' => 'sends the form', 'type' => 'request'],
+            ],
         ]]])]));
 
         $this->handle(new BuildDiagrams($repository, $run));
 
         $this->assertSame(['input_tokens' => 1200, 'output_tokens' => 300], $run->fresh()->only(['input_tokens', 'output_tokens']));
-        $this->assertDatabaseHas('diagrams', ['repository_id' => $repository->id, 'type' => 'flow', 'key' => 'rutele']);
+        $this->assertDatabaseHas('diagrams', ['repository_id' => $repository->id, 'type' => 'flow', 'key' => 'what-happens-when-someone-opens-a-page']);
     }
 
     /**
@@ -93,7 +99,7 @@ class BuildDiagramsTest extends TestCase
      */
     private function handle(BuildDiagrams $job): void
     {
-        $job->handle(app(ArchitectureRefresher::class), app(FlowDiagramWriter::class), app(DiagramHistory::class));
+        $job->handle(app(ArchitectureRefresher::class), app(SystemMapWriter::class), app(FlowDiagramWriter::class), app(DiagramHistory::class));
     }
 
     /**
@@ -110,6 +116,13 @@ class BuildDiagramsTest extends TestCase
             RepositoryFile::factory()->for($repository)->for($module)->create(['path' => "{$path}/File.php", 'lines' => 3]);
             File::ensureDirectoryExists("{$repository->clonePath()}/{$path}");
             File::put("{$repository->clonePath()}/{$path}/File.php", "<?php\n\n// {$path}\n");
+        }
+
+        // Each module uses the next one, so the maps have arrows (a map without arrows is not drawn).
+        $modules = $repository->modules()->orderBy('id')->get();
+
+        foreach ($modules->slice(1)->values() as $index => $next) {
+            ModuleDependency::factory()->create(['repository_id' => $repository->id, 'from_module_id' => $modules[$index]->id, 'to_module_id' => $next->id, 'weight' => 1]);
         }
 
         return $repository;

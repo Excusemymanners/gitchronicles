@@ -79,7 +79,9 @@ final class LayerClassifier
         $folders = self::folders($modulePath);
 
         foreach (self::EXCLUDED_FOLDERS as $reason => $names) {
-            if (array_intersect($folders, $names) !== []) {
+            // A documentation folder is one at the top (docs/); deeper, "Documentation" is a code namespace
+            // (app/Documentation), not pages to read.
+            if (array_intersect($reason === 'docs' ? [$folders[0]] : $folders, $names) !== []) {
                 return $reason;
             }
         }

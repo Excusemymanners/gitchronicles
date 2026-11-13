@@ -23,7 +23,7 @@ type Props = RepositoryPageProps & {
  */
 export default function RepositoriesDiagrams({ repository, completeness, diagrams, time_travel }: Props) {
     const { t } = useI18n();
-    const hasNoDiagram = diagrams.flows.length === 0 && !diagrams.layers && !diagrams.container && !diagrams.component && !diagrams.context;
+    const hasNoDiagram = !diagrams.overview && diagrams.flows.length === 0 && !diagrams.layers && !diagrams.container && !diagrams.component && !diagrams.context;
 
     if (hasNoDiagram && time_travel.selected === null && repository.status === 'ready') {
         return (

@@ -77,6 +77,13 @@ export const DARK_CLASS_STYLES: Record<string, string> = {
     externalBox: 'fill:#151b23,stroke:#3d444d,color:#9198a1',
     more: 'fill:none,stroke:#3d444d,stroke-dasharray:4 3,color:#9198a1',
     boundary: 'fill:none,stroke:#8b949e,stroke-dasharray:6 4',
+    tool: 'fill:none,stroke:#9198a1,stroke-dasharray:5 4,color:#f0f6fc',
+    mapPart: 'fill:#212830,stroke:#656c76,color:#f0f6fc',
+    mapInterface: 'fill:#212830,stroke:#656c76,color:#f0f6fc',
+    mapWorker: 'fill:#212830,stroke:#656c76,color:#f0f6fc',
+    mapData: 'fill:#1c2128,stroke:#656c76,color:#f0f6fc',
+    mapExternal: 'fill:none,stroke:#9198a1,stroke-width:1.5px,color:#f0f6fc',
+    mapTool: 'fill:none,stroke:#9198a1,stroke-dasharray:5 4,color:#f0f6fc',
 };
 
 /** The same classes on the light page. */
@@ -90,6 +97,19 @@ export const LIGHT_CLASS_STYLES: Record<string, string> = {
     externalBox: 'fill:#eff2f5,stroke:#d1d9e0,color:#59636e',
     more: 'fill:none,stroke:#afb8c1,stroke-dasharray:4 3,color:#59636e',
     boundary: 'fill:none,stroke:#656d76,stroke-dasharray:6 4',
+    tool: 'fill:none,stroke:#59636e,stroke-dasharray:5 4,color:#1f2328',
+    mapPart: 'fill:#ffffff,stroke:#818b98,color:#1f2328',
+    mapInterface: 'fill:#ffffff,stroke:#818b98,color:#1f2328',
+    mapWorker: 'fill:#ffffff,stroke:#818b98,color:#1f2328',
+    mapData: 'fill:#f6f8fa,stroke:#818b98,color:#1f2328',
+    mapExternal: 'fill:none,stroke:#59636e,stroke-width:1.5px,color:#1f2328',
+    mapTool: 'fill:none,stroke:#59636e,stroke-dasharray:5 4,color:#1f2328',
+};
+
+/** The main path of the big picture: the accent, thicker (the server writes the light one). */
+export const MAIN_PATH_STYLES: Record<DiagramTheme, string> = {
+    light: 'stroke:#0969da,stroke-width:2.5px,color:#0969da',
+    dark: 'stroke:#4493f8,stroke-width:2.5px,color:#4493f8',
 };
 
 /** Tema afișată acum: clasa „dark” de pe <html>. */
@@ -166,10 +186,21 @@ function configure(mermaid: Mermaid, theme: DiagramTheme): void {
             clusterBkg: color('canvas'),
             clusterBorder: color('line'),
             edgeLabelBackground: color('surface'),
+            noteBkgColor: color('surface-2'),
+            noteTextColor: color('ink'),
+            noteBorderColor: color('line-strong'),
+            actorBkg: color('surface-raised'),
+            actorBorder: color('line-strong'),
+            actorTextColor: color('ink'),
+            signalColor: color('ink-muted'),
+            signalTextColor: color('ink'),
+            sequenceNumberColor: color('canvas'),
             // Mermaid 12 draws its "neo" nodes with a light grey shadow (meant for a white page); here the shadow
             // is the page's own (a soft dark one in both themes), so boxes lift a little instead of glowing.
             dropShadow: `drop-shadow(0 1px 2px ${color('shadow')})`,
         },
+        // Sequences (the flows): bigger text and no second row of participants at the bottom, so they read at page size.
+        sequence: { actorFontSize: 15, messageFontSize: 15, noteFontSize: 14, actorMargin: 40, width: 140, boxMargin: 8, mirrorActors: false },
     });
 }
 
@@ -180,9 +211,11 @@ function configure(mermaid: Mermaid, theme: DiagramTheme): void {
 export function codeForTheme(code: string, theme: DiagramTheme): string {
     const styles = theme === 'dark' ? DARK_CLASS_STYLES : LIGHT_CLASS_STYLES;
 
-    return code.replace(/^(\s*classDef\s+)([\w-]+)(\s+).*$/gm, (line, start: string, name: string, space: string) =>
-        name in styles ? `${start}${name}${space}${styles[name]}` : line,
-    );
+    return code
+        .replace(/^(\s*classDef\s+)([\w-]+)(\s+).*$/gm, (line, start: string, name: string, space: string) =>
+            name in styles ? `${start}${name}${space}${styles[name]}` : line,
+        )
+        .replace(/^(\s*linkStyle\s+[\d,]+\s+).*$/gm, (_line, start: string) => `${start}${MAIN_PATH_STYLES[theme]}`);
 }
 
 let renderCount = 0;

@@ -5,6 +5,7 @@ namespace App\Analysis;
 use App\Documentation\CloneFiles;
 use App\Exceptions\RepositoryProcessingException;
 use App\Git\Git;
+use App\Models\CodeLink;
 use App\Models\CodeSymbol;
 use App\Models\FileImport;
 use App\Models\Module;
@@ -34,7 +35,8 @@ use Illuminate\Support\Str;
  *    (Faza 9); the imports are resolved again every time, so the answer is always complete;
  * 3. save(): in one database transaction, the previous analysis of the repository is brought in line
  *    with the new one: files, symbols, imports (with the file each one points to), modules
- *    (ModuleGrouper) and the dependencies between modules; the repository gets analyzed_at
+ *    (ModuleGrouper), the dependencies between modules and the connections the imports do not show
+ *    (LinkScanner: routes, dispatched jobs, rendered pages, programs started, ...); the repository gets analyzed_at
  *    and a short description from its README.
  *
  * A file or a module that is still there keeps its database row (and its id): the rows are matched by
@@ -276,6 +278,7 @@ final class RepositoryAnalyzer
 
         ModuleDependency::whereBelongsTo($repository)->delete();
         FileImport::whereBelongsTo($repository)->delete();
+        CodeLink::whereBelongsTo($repository)->delete();
 
         $moduleIds = $this->saveModules($repository, $analyzedFiles, $moduleOfFile);
         [$fileIds, $changedPaths] = $this->saveFiles($repository, $filesToAnalyze, $analyzedFiles, $moduleOfFile, $moduleIds);
@@ -284,6 +287,7 @@ final class RepositoryAnalyzer
         $this->saveSymbols($repository, $analyzedFiles, $fileIds, $replaceEverySymbol ? null : $changedPaths);
         $this->saveImports($repository, $analyzedFiles, $fileIds);
         $this->saveModuleDependencies($repository, $analyzedFiles, $moduleOfFile, $moduleIds);
+        $this->saveCodeLinks($repository, $analyzedFiles, $fileIds);
 
         $repository->update([
             'analyzed_at' => now(),
@@ -491,6 +495,59 @@ final class RepositoryAnalyzer
         }
 
         $this->insertInChunks(ModuleDependency::class, $rows);
+    }
+
+    /**
+     * Find the connections the imports do not show again, from the saved analysis (files and imports) and
+     * the clone, without running the analyzer: for repositories analyzed before the links existed, or after
+     * the scan learned something new (`php artisan repositories:diagrams`). Returns how many were saved.
+     */
+    public function rescanLinks(Repository $repository): int
+    {
+        $files = $repository->files()->with('imports.targetFile:id,path')->get(['id', 'path', 'language']);
+        $analyzedFiles = $files->map(fn (RepositoryFile $file): array => [
+            'path' => $file->path,
+            'language' => $file->language,
+            'imports' => $file->imports->map(fn (FileImport $import): array => ['raw' => $import->target, 'resolved_path' => $import->targetFile?->path, 'external' => $import->is_external])->all(),
+        ])->all();
+
+        return DB::transaction(function () use ($repository, $analyzedFiles, $files): int {
+            CodeLink::whereBelongsTo($repository)->delete();
+            $this->saveCodeLinks($repository, $analyzedFiles, $files->pluck('id', 'path')->all());
+
+            return $repository->codeLinks()->count();
+        });
+    }
+
+    /**
+     * Save the connections the imports do not show (LinkScanner): routes, dispatched jobs, rendered pages,
+     * same-namespace classes, programs started, services called, stores. Like the imports, they are all
+     * written again at every analysis (save() deleted the old ones), because they cross files.
+     *
+     * @param  list<array{path: string, language: string|null, imports: list<array{raw: string, resolved_path: string|null, external: bool}>}>  $analyzedFiles
+     * @param  array<string, int>  $fileIds
+     */
+    private function saveCodeLinks(Repository $repository, array $analyzedFiles, array $fileIds): void
+    {
+        $rows = [];
+
+        foreach ((new LinkScanner)->scan($repository->clonePath(), $analyzedFiles) as $link) {
+            if (! isset($fileIds[$link['from']]) || ($link['to'] !== null && ! isset($fileIds[$link['to']]))) {
+                continue;
+            }
+
+            $rows[] = [
+                'repository_id' => $repository->id,
+                'repository_file_id' => $fileIds[$link['from']],
+                'line' => $link['line'],
+                'kind' => $link['kind'],
+                'target_file_id' => $link['to'] === null ? null : $fileIds[$link['to']],
+                'target' => $link['target'] === null ? null : mb_substr($link['target'], 0, 120),
+                'excerpt' => mb_substr($link['excerpt'], 0, 160),
+            ];
+        }
+
+        $this->insertInChunks(CodeLink::class, $rows);
     }
 
     /**

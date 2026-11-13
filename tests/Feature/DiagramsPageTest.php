@@ -100,6 +100,45 @@ class DiagramsPageTest extends TestCase
         );
     }
 
+    public function test_the_big_picture_comes_with_its_parts_and_its_numbered_steps_linked_to_the_code(): void
+    {
+        $repository = Repository::factory()->ready()->create(['owner' => 'acme', 'name' => 'shop', 'last_sha' => str_repeat('a', 40)]);
+        $module = Module::factory()->for($repository)->create(['path' => 'app/Http']);
+        Document::factory()->for($repository)->create(['module_id' => $module->id, 'slug' => 'app-http', 'title' => 'app/Http']);
+        Diagram::factory()->for($repository)->create([
+            'type' => DiagramType::Overview,
+            'key' => '',
+            'mermaid' => "flowchart TB\n  n_web(\"Web app\") -->|\"1 · starts a job\"| n_jobs[\"Background jobs\"]\n",
+            'source_sha' => str_repeat('a', 40),
+            'meta' => [
+                'title' => 'How shop works',
+                'reading' => 'Start at the web app.',
+                'source' => 'ai',
+                'stats' => ['proposed_edges' => 2, 'dropped_edges' => 1],
+                'legend' => ['interface', 'main'],
+                'parts' => [['id' => 'n_web', 'label' => 'Web app', 'does' => 'Takes the requests', 'kind' => 'interface', 'modules' => ['app/Http'], 'outside' => []]],
+                'nodes' => ['n_web' => 'app/Http'],
+                'evidence' => [[
+                    'from' => 'n_web', 'to' => 'n_jobs', 'from_label' => 'Web app', 'to_label' => 'Background jobs', 'verb' => 'starts a job', 'step' => 1, 'imports' => 2, 'kinds' => ['dispatch' => 2],
+                    'examples' => [['from' => 'app/Http/Controllers/RepositoryController.php', 'to' => 'app/Jobs/ProcessRepository.php', 'line' => 42, 'excerpt' => 'ProcessRepository::dispatch($repository);']],
+                    'nodes' => ['n_web', 'n_jobs'],
+                ]],
+            ],
+        ]);
+
+        $this->get("/repositories/{$repository->id}/diagrams")->assertInertia(fn (Assert $page) => $page
+            ->where('diagrams.overview.reading', 'Start at the web app.')
+            ->where('diagrams.overview.source', 'ai')
+            ->where('diagrams.overview.dropped', 1)
+            ->where('diagrams.overview.parts.0.modules', [['path' => 'app/Http', 'slug' => 'app-http']])
+            ->where('diagrams.overview.steps.0', [
+                'from' => 'n_web', 'to' => 'n_jobs', 'from_label' => 'Web app', 'to_label' => 'Background jobs', 'text' => 'starts a job', 'step' => 1,
+                'code' => [['path' => 'app/Http/Controllers/RepositoryController.php', 'line' => 42, 'excerpt' => 'ProcessRepository::dispatch($repository);', 'url' => 'https://github.com/acme/shop/blob/'.str_repeat('a', 40).'/app/Http/Controllers/RepositoryController.php#L42']],
+            ])
+            ->where('diagrams.overview.evidence.0.examples.0.url', 'https://github.com/acme/shop/blob/'.str_repeat('a', 40).'/app/Http/Controllers/RepositoryController.php#L42'),
+        );
+    }
+
     public function test_a_repository_without_diagrams_gets_an_empty_set(): void
     {
         $repository = Repository::factory()->ready()->create();
@@ -107,7 +146,7 @@ class DiagramsPageTest extends TestCase
         $response = $this->get("/repositories/{$repository->id}/diagrams");
 
         $response->assertInertia(fn (Assert $page) => $page
-            ->where('diagrams', ['flows' => [], 'layers' => null, 'container' => null, 'component' => null, 'context' => null])
+            ->where('diagrams', ['overview' => null, 'flows' => [], 'layers' => null, 'container' => null, 'component' => null, 'context' => null])
         );
     }
 

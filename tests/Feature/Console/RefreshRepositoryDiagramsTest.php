@@ -33,19 +33,23 @@ class RefreshRepositoryDiagramsTest extends TestCase
         ]]);
     }
 
-    public function test_rebuilds_the_diagrams_and_says_where_the_interpretation_came_from(): void
+    public function test_rebuilds_the_diagrams_and_says_where_each_one_came_from(): void
     {
         $repository = $this->repository();
-        $this->app->instance(TextGenerator::class, $fake = new FakeTextGenerator([$this->answer(), 'not flows']));
+        // In order: the big picture (rejected: not JSON), the reading of the architecture views, the flows.
+        $this->app->instance(TextGenerator::class, $fake = new FakeTextGenerator(['not a map', $this->answer(), 'not flows']));
 
         $this->artisan('repositories:diagrams', ['repository' => $repository->id])
-            ->expectsOutput("#{$repository->id} acme/shop: rebuilt layers, component; interpretation: written by Claude.")
+            ->expectsOutput("#{$repository->id} acme/shop:")
+            ->expectsOutput('  big picture: drawn without AI (the answer is not JSON)')
+            ->expectsOutput('  architecture: rebuilt layers, component; interpretation: written by Claude.')
             ->assertSuccessful();
         $this->artisan('repositories:diagrams', ['repository' => $repository->id])
-            ->expectsOutput("#{$repository->id} acme/shop: rebuilt layers, component; interpretation: from the cache, nothing sent to Claude.")
+            ->expectsOutput('  architecture: rebuilt layers, component; interpretation: from the cache, nothing sent to Claude.')
             ->assertSuccessful();
 
         $this->assertSame('ai', $repository->diagrams()->firstWhere('type', 'layers')->meta['interpretation']['source']);
+        $this->assertSame('fallback', $repository->diagrams()->firstWhere('type', 'overview')->meta['source']);
     }
 
     public function test_without_ai_it_uses_the_fallback_and_all_refreshes_every_analyzed_repository(): void
@@ -56,9 +60,14 @@ class RefreshRepositoryDiagramsTest extends TestCase
         Repository::factory()->ready()->create(['owner' => 'acme', 'name' => 'raw']);
 
         $this->artisan('repositories:diagrams', ['--all' => true])
-            ->expectsOutput("#{$first->id} acme/shop: rebuilt layers, component; interpretation: composed from the findings, without AI.")
-            ->expectsOutput("#{$second->id} acme/blog: rebuilt layers, component; interpretation: composed from the findings, without AI.")
+            ->expectsOutput("#{$first->id} acme/shop:")
+            ->expectsOutput("#{$second->id} acme/blog:")
             ->assertSuccessful();
+
+        foreach ([$first, $second] as $repository) {
+            $this->assertSame('composed', $repository->diagrams()->firstWhere('type', 'layers')->meta['interpretation']['source']);
+            $this->assertSame('fallback', $repository->diagrams()->firstWhere('type', 'overview')->meta['source']);
+        }
     }
 
     public function test_needs_a_repository_or_all(): void

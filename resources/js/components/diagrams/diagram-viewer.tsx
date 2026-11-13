@@ -24,9 +24,18 @@ type Props = {
     onClose?: () => void;
     /** Told which box (by node id) the pointer or the keyboard focus is on, or null when none; changes no click. */
     onNodeActive?: (nodeId: string | null) => void;
+    /** What the page wants lit in the picture: boxes by node id, arrows by [from, to], sequence messages by number. */
+    highlight?: DiagramHighlight;
 };
 
+/** What to light in a drawn diagram (see DiagramViewer's `highlight`). */
+export type DiagramHighlight = { nodes?: string[]; edges?: [string, string][]; messages?: number[] };
+
 type Tooltip = { path: string; left: number; top: number };
+
+/** How a lit box, arrow or message looks: the accent, thicker (important: Mermaid writes its own inline styles). */
+const LIT =
+    '[&_g[data-active]_rect]:stroke-accent! [&_g[data-active]_rect]:[stroke-width:3px]! [&_g[data-active]_path]:stroke-accent! [&_path[data-active]]:stroke-accent! [&_path[data-active]]:[stroke-width:3.5px]! [&_line[data-active]]:stroke-accent! [&_line[data-active]]:[stroke-width:3px]! [&_text[data-active]]:fill-accent! [&_[data-active]]:font-semibold';
 
 const iconButton =
     'pressable inline-flex size-8 items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent disabled:opacity-50';
@@ -40,7 +49,7 @@ function nodeIdOf(element: Element): string | null {
  * One diagram as a small tool: a toolbar (zoom, fit, full screen, copy code, download) over a canvas that
  * can be panned and zoomed. Boxes that stand for a module with a documentation page are links.
  */
-export default function DiagramViewer({ svg, code, title, modules, docsBase, onFullScreen, onClose, onNodeActive }: Props) {
+export default function DiagramViewer({ svg, code, title, modules, docsBase, onFullScreen, onClose, onNodeActive, highlight }: Props) {
     const { t } = useI18n();
     const canvasRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -81,6 +90,32 @@ export default function DiagramViewer({ svg, code, title, modules, docsBase, onF
         setSize({ width: box.width, height: box.height });
     }, [svg, modules, docsBase, t]);
 
+    // Light what the page asks for: the boxes, the arrows (path and label) and the sequence messages (line and text).
+    useLayoutEffect(() => {
+        const element = contentRef.current?.querySelector('svg');
+
+        if (!element) {
+            return;
+        }
+
+        element.querySelectorAll('[data-active]').forEach((lit) => lit.removeAttribute('data-active'));
+        element.querySelectorAll('g.node').forEach((node) => {
+            if (highlight?.nodes?.includes(nodeIdOf(node) ?? '')) {
+                node.setAttribute('data-active', 'true');
+            }
+        });
+        highlight?.edges?.forEach(([from, to]) =>
+            element.querySelectorAll(`[data-id^="L_${from}_${to}_"]`).forEach((edge) => edge.setAttribute('data-active', 'true')),
+        );
+
+        const texts = element.querySelectorAll('text.messageText');
+        const lines = element.querySelectorAll('.messageLine0, .messageLine1');
+        highlight?.messages?.forEach((number) => {
+            texts[number - 1]?.setAttribute('data-active', 'true');
+            lines[number - 1]?.setAttribute('data-active', 'true');
+        });
+    }, [svg, highlight]);
+
     function moduleOf(target: EventTarget | null) {
         const node = (target as Element | null)?.closest?.('[data-module-node]');
         const module = node ? modules[node.getAttribute('data-module-node') ?? ''] : undefined;
@@ -108,7 +143,16 @@ export default function DiagramViewer({ svg, code, title, modules, docsBase, onF
     }
 
     function reportNode(target: EventTarget | null) {
-        const node = (target as Element | null)?.closest?.('g.node');
+        const element = target as Element | null;
+        const node = element?.closest?.('g.node');
+        const message = element?.closest?.('text.messageText');
+
+        if (message) {
+            const index = Array.from(contentRef.current?.querySelectorAll('text.messageText') ?? []).indexOf(message);
+            onNodeActive?.(index >= 0 ? `message:${index + 1}` : null);
+
+            return;
+        }
 
         onNodeActive?.(node ? nodeIdOf(node) : null);
     }
@@ -245,7 +289,7 @@ export default function DiagramViewer({ svg, code, title, modules, docsBase, onF
                         ref={contentRef}
                         data-testid="diagram-content"
                         style={{ transform: `translate(${pan.view.x}px, ${pan.view.y}px) scale(${pan.view.scale})`, transformOrigin: '0 0' }}
-                        className={`absolute top-0 left-0 will-change-transform ${pan.animated ? 'transition-transform duration-(--motion-base) ease-(--ease-out)' : ''} [&_[data-module-node]]:cursor-pointer [&_[data-module-node]:focus-visible]:outline-2 [&_[data-module-node]:focus-visible]:outline-accent`}
+                        className={`absolute top-0 left-0 will-change-transform ${pan.animated ? 'transition-transform duration-(--motion-base) ease-(--ease-out)' : ''} ${LIT} [&_[data-module-node]]:cursor-pointer [&_[data-module-node]:focus-visible]:outline-2 [&_[data-module-node]:focus-visible]:outline-accent`}
                         dangerouslySetInnerHTML={{ __html: svg }}
                     />
                 </div>

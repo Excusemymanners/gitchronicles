@@ -121,6 +121,17 @@ class Repository extends Model
     }
 
     /**
+     * The connections the import lines do not show (routes, dispatched jobs, rendered pages, programs started,
+     * services called, ...), found by App\Analysis\LinkScanner at every analysis.
+     *
+     * @return HasMany<CodeLink, $this>
+     */
+    public function codeLinks(): HasMany
+    {
+        return $this->hasMany(CodeLink::class);
+    }
+
+    /**
      * The commits imported from the clone's git history (ImportCommits).
      *
      * @return HasMany<Commit, $this>

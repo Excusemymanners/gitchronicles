@@ -54,7 +54,7 @@ class GeneratedContentLanguageTest extends TestCase
             'starter questions' => implode("\n", $starters),
         ];
 
-        $this->assertSame(['component', 'container', 'context', 'layers'], Diagram::whereBelongsTo($repository)->orderBy('type')->pluck('type')->map->value->all());
+        $this->assertSame(['component', 'container', 'context', 'layers', 'overview'], Diagram::whereBelongsTo($repository)->orderBy('type')->pluck('type')->map->value->all());
         $this->assertCount(3, $starters);
         $repositoryWords = $this->repositoryWords();
 

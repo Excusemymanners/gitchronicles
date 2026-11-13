@@ -35,9 +35,10 @@ final class DocumentVisuals
     public const MAX_NEIGHBOURS = 6;
 
     /**
-     * The architecture diagram shown inside the text: the first type that exists, in this order.
+     * The architecture diagram shown inside the text: the first type that exists, in this order (the big
+     * picture, "How <name> works", first).
      */
-    private const ARCHITECTURE_TYPES = [DiagramType::Component, DiagramType::Layers, DiagramType::Container, DiagramType::Context];
+    private const ARCHITECTURE_TYPES = [DiagramType::Overview, DiagramType::Component, DiagramType::Layers, DiagramType::Container, DiagramType::Context];
 
     /**
      * The mini timeline shows this many of the latest updates.

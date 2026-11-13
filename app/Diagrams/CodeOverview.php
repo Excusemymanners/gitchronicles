@@ -9,6 +9,7 @@ use App\Models\ModuleDependency;
 use App\Models\Repository;
 use App\Models\RepositoryFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The parts of the code analysis that the diagrams (ArchitectureDiagramBuilder) and the
@@ -90,6 +91,139 @@ final class CodeOverview
                 <=> [$a['weight'], $paths[$b['from']], $paths[$b['to']]])
             ->values()
             ->all();
+    }
+
+    /**
+     * Every connection between the given modules, strongest first: the imports (module_dependencies) and the
+     * links the imports do not show (code_links: same-namespace classes, routes, dispatched jobs, rendered
+     * pages, scripts started, ...), added up per pair of modules, with how many of each kind.
+     *
+     * @param  Collection<int, Module>  $modules
+     * @return list<array{from: int, to: int, weight: int, kinds: array<string, int>}>
+     */
+    public function linksBetween(Repository $repository, Collection $modules): array
+    {
+        $paths = $modules->pluck('path', 'id');
+        $pairs = [];
+
+        foreach ($this->dependenciesBetween($repository, $modules) as $dependency) {
+            $pairs[$dependency['from'].':'.$dependency['to']] = [...$dependency, 'kinds' => ['import' => $dependency['weight']]];
+        }
+
+        $links = DB::table('code_links')
+            ->join('repository_files as source', 'source.id', '=', 'code_links.repository_file_id')
+            ->join('repository_files as target', 'target.id', '=', 'code_links.target_file_id')
+            ->where('code_links.repository_id', $repository->id)
+            ->whereIn('source.module_id', $paths->keys())
+            ->whereIn('target.module_id', $paths->keys())
+            ->whereColumn('source.module_id', '!=', 'target.module_id')
+            ->groupBy('source.module_id', 'target.module_id', 'code_links.kind')
+            ->selectRaw('source.module_id as from_module, target.module_id as to_module, code_links.kind, count(*) as links')
+            ->get();
+
+        foreach ($links as $link) {
+            $key = $link->from_module.':'.$link->to_module;
+            $pairs[$key] ??= ['from' => (int) $link->from_module, 'to' => (int) $link->to_module, 'weight' => 0, 'kinds' => []];
+            $pairs[$key]['weight'] += (int) $link->links;
+            $pairs[$key]['kinds'][$link->kind] = ($pairs[$key]['kinds'][$link->kind] ?? 0) + (int) $link->links;
+        }
+
+        $sorted = array_values($pairs);
+        usort($sorted, fn (array $a, array $b): int => [$b['weight'], $paths[$a['from']], $paths[$a['to']]] <=> [$a['weight'], $paths[$b['from']], $paths[$b['to']]]);
+
+        return $sorted;
+    }
+
+    /**
+     * What the given modules use outside the code (code_links with a target): programs they start, services
+     * they call, stores they read or queue work on — one row per module, target and kind, with the count.
+     *
+     * @param  Collection<int, Module>  $modules
+     * @return list<array{module: int, target: string, kind: string, count: int}>
+     */
+    public function externalLinks(Repository $repository, Collection $modules): array
+    {
+        return DB::table('code_links')
+            ->join('repository_files', 'repository_files.id', '=', 'code_links.repository_file_id')
+            ->where('code_links.repository_id', $repository->id)
+            ->whereNotNull('code_links.target')
+            ->whereIn('repository_files.module_id', $modules->pluck('id'))
+            ->groupBy('repository_files.module_id', 'code_links.target', 'code_links.kind')
+            ->orderBy('code_links.target')
+            ->selectRaw('repository_files.module_id as module, code_links.target, code_links.kind, count(*) as links')
+            ->get()
+            ->map(fn (object $row): array => ['module' => (int) $row->module, 'target' => (string) $row->target, 'kind' => (string) $row->kind, 'count' => (int) $row->links])
+            ->all();
+    }
+
+    /**
+     * Up to $perPair places in the code behind each wanted pair of modules ("from id:to id"): the file and the
+     * line of a link of that kind (or of any kind), with its excerpt, test files last.
+     *
+     * @param  list<string>  $pairs
+     * @return array<string, list<array{from: string, to: string, line: int, kind: string, excerpt: string}>>
+     */
+    public function linkExamples(Repository $repository, array $pairs, int $perPair = 3): array
+    {
+        if ($pairs === []) {
+            return [];
+        }
+
+        $wanted = array_flip($pairs);
+        $fromIds = array_unique(array_map(fn (string $pair): int => (int) explode(':', $pair)[0], $pairs));
+        $examples = [];
+
+        $rows = DB::table('code_links')
+            ->join('repository_files as source', 'source.id', '=', 'code_links.repository_file_id')
+            ->join('repository_files as target', 'target.id', '=', 'code_links.target_file_id')
+            ->where('code_links.repository_id', $repository->id)
+            ->whereIn('source.module_id', $fromIds)
+            ->orderBy('source.path')
+            ->orderBy('code_links.line')
+            ->select('source.module_id as from_module', 'target.module_id as to_module', 'source.path as from_path', 'target.path as to_path', 'code_links.line', 'code_links.kind', 'code_links.excerpt')
+            ->cursor();
+
+        foreach ($rows as $row) {
+            $pair = $row->from_module.':'.$row->to_module;
+
+            if (isset($wanted[$pair]) && count($examples[$pair] ?? []) < $perPair) {
+                $examples[$pair][] = ['from' => $row->from_path, 'to' => $row->to_path, 'line' => (int) $row->line, 'kind' => $row->kind, 'excerpt' => $row->excerpt];
+            }
+        }
+
+        return $examples;
+    }
+
+    /**
+     * Up to $perTarget places in the code where each of the given modules uses something outside the code
+     * (a program, a service, a store): "module id|target" => list of {from, line, kind, excerpt, module}.
+     *
+     * @param  list<int>  $moduleIds
+     * @return array<string, list<array{from: string, line: int, kind: string, excerpt: string, module: int}>>
+     */
+    public function externalExamples(Repository $repository, array $moduleIds, int $perTarget = 3): array
+    {
+        $examples = [];
+
+        $rows = DB::table('code_links')
+            ->join('repository_files', 'repository_files.id', '=', 'code_links.repository_file_id')
+            ->where('code_links.repository_id', $repository->id)
+            ->whereNotNull('code_links.target')
+            ->whereIn('repository_files.module_id', $moduleIds)
+            ->orderBy('repository_files.path')
+            ->orderBy('code_links.line')
+            ->select('repository_files.module_id as module', 'code_links.target', 'repository_files.path', 'code_links.line', 'code_links.kind', 'code_links.excerpt')
+            ->cursor();
+
+        foreach ($rows as $row) {
+            $key = $row->module.'|'.$row->target;
+
+            if (count($examples[$key] ?? []) < $perTarget) {
+                $examples[$key][] = ['from' => $row->path, 'line' => (int) $row->line, 'kind' => $row->kind, 'excerpt' => $row->excerpt, 'module' => (int) $row->module];
+            }
+        }
+
+        return $examples;
     }
 
     /**

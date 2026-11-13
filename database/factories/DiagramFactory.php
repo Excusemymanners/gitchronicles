@@ -42,6 +42,9 @@ class DiagramFactory extends Factory
                 'title' => 'Adding a repository',
                 'explanation' => 'The user sends the address, and the controller creates the repository.',
                 'content_language' => 'en',
+                'source' => 'ai',
+                'main' => true,
+                'steps' => [],
                 'sources' => [['path' => 'app/Http/Controllers/RepositoryController.php', 'start_line' => 10, 'end_line' => 20]],
             ],
         ]);

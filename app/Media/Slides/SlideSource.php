@@ -91,7 +91,8 @@ final class SlideSource
         $all = $repository->diagrams()->get();
         $architecture = [];
 
-        foreach ([DiagramType::Context, DiagramType::Container, DiagramType::Component] as $type) {
+        // The big picture first ("how it is built"), then the C4 views.
+        foreach ([DiagramType::Overview, DiagramType::Context, DiagramType::Container, DiagramType::Component] as $type) {
             $diagram = $all->firstWhere('type', $type);
 
             if ($diagram !== null) {
@@ -103,7 +104,8 @@ final class SlideSource
             $architecture[] = $all->firstWhere('type', DiagramType::Layers);
         }
 
-        $flows = $all->where('type', DiagramType::Flow)->sortBy('key')->take(self::MAX_FLOWS);
+        // The flows in the order they were written: the main flow first.
+        $flows = $all->where('type', DiagramType::Flow)->sortBy('id')->take(self::MAX_FLOWS);
 
         return $all->isEmpty() ? [] : collect([...$architecture, ...$flows])->map(fn ($diagram): array => [
             'kind' => $diagram->type === DiagramType::Flow ? 'flow' : 'architecture',
