@@ -14,7 +14,7 @@ use Illuminate\Foundation\Queue\Queueable;
  * and the run is closed as succeeded, with its duration.
  *
  * After that it queues the presentation video and the slides (GenerateMedia) and the „Consultanță” report
- * (GenerateConsultingReport) on the separate "media" queue. They are not part of the pipeline: the repository is already "ready", and whatever happens
+ * (GenerateConsultingReport) and the README's own pictures (CollectReadmePictures) on the separate "media" queue. They are not part of the pipeline: the repository is already "ready", and whatever happens
  * to them (even a failure to queue the job) cannot change that.
  */
 class FinishProcessing implements ShouldQueue
@@ -56,6 +56,8 @@ class FinishProcessing implements ShouldQueue
         if (config('gitchronicle.media.auto_generate')) {
             rescue(fn () => GenerateMedia::dispatch($this->repository));
         }
+
+        rescue(fn () => CollectReadmePictures::dispatch($this->repository));
 
         if (config('gitchronicle.consulting.auto_run')) {
             rescue(fn () => GenerateConsultingReport::queueFor($this->repository));

@@ -109,12 +109,37 @@ function fenceLabel(codeProps: { className?: string }, meta: unknown): string | 
     return [language, title].filter(Boolean).join('  ') || null;
 }
 
+/** A picture the app itself stored for the repository ("/repositories/1/docs/pictures/readme-2?v=abc1234#800x600"). */
+const STORED_PICTURE = /^\/repositories\/\d+\/docs\/pictures\/[a-z0-9-]+(\?v=[0-9a-f]+)?(#\d+x\d+)?$/;
+
+/**
+ * Shows a stored README picture, lazily, with the size from the "#WxH" end of its address so the space is reserved.
+ * Pictures of any other address are never loaded (see the img element below).
+ */
+function StoredPicture({ src, alt }: { src: string; alt: string }) {
+    const size = /#(\d+)x(\d+)$/.exec(src);
+    const url = src.replace(/#.*$/, '');
+
+    return (
+        <img
+            src={url}
+            alt={alt}
+            width={size ? Number(size[1]) : undefined}
+            height={size ? Number(size[2]) : undefined}
+            loading="lazy"
+            decoding="async"
+            className="mt-5 h-auto max-h-96 w-auto max-w-full rounded-lg border border-line bg-surface-2"
+        />
+    );
+}
+
 /**
  * How each Markdown element looks. No typography plugin is installed, so the style is given here,
  * element by element, on the 760 px reading column. Links:
  * - to a page of the app ("/repositories/...") are Inertia links, with no page reload;
  * - to another site (GitHub) open in a new tab without access to our page (rel="noopener noreferrer").
- * Images are not loaded (they would come from other sites): only a link to them appears.
+ * Images are not loaded (they would come from other sites): only a link to them appears, except the README pictures
+ * the app stored itself (StoredPicture).
  */
 const components: Components = {
     h1: ({ node, ...props }) => <h1 className="mt-0 font-display text-title break-words text-ink" {...props} />,
@@ -186,7 +211,9 @@ const components: Components = {
     td: ({ node, ...props }) => <td className="border-t border-line-subtle px-3 py-2 align-top text-ink-muted first:text-ink" {...props} />,
     hr: () => <hr className="my-10 border-line" />,
     img: ({ src, alt }) =>
-        typeof src === 'string' ? (
+        typeof src === 'string' && STORED_PICTURE.test(src) ? (
+            <StoredPicture src={src} alt={alt ?? ''} />
+        ) : typeof src === 'string' ? (
             <a href={src} target="_blank" rel="noopener noreferrer" className={linkClasses}>
                 {alt ? translate('docs.imageNamed', { alt }) : translate('docs.image')}<span className="sr-only"> {translate('common.opensInNewTab')}</span>
             </a>

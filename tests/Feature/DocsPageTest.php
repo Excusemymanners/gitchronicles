@@ -110,6 +110,7 @@ class DocsPageTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->where('document.kind', 'readme')
             ->where('document.download_url', "/repositories/{$repository->id}/docs/readme.md")
+            ->where('document.download_zip_url', "/repositories/{$repository->id}/docs/readme.zip")
         );
     }
 
@@ -161,11 +162,17 @@ class DocsPageTest extends TestCase
         Document::factory()->for($big)->overview()->create();
         Document::factory()->count(60)->for($big)->sequence(fn ($sequence) => ['slug' => 'module-'.$sequence->index, 'title' => 'folder/module-'.$sequence->index])->create();
 
+        // The overview draws three things from the database (languages, the architecture diagram, the updates),
+        // kept in the cache per commit (DocumentVisuals): the first visit of a commit costs three more queries.
         $smallQueries = $this->countQueries(fn () => $this->get("/repositories/{$small->id}/docs/overview")->assertOk());
-        $bigQueries = $this->countQueries(fn () => $this->get("/repositories/{$big->id}/docs/module-7")->assertOk());
+        $bigQueries = $this->countQueries(fn () => $this->get("/repositories/{$big->id}/docs/overview")->assertOk());
+        $bigModuleQueries = $this->countQueries(fn () => $this->get("/repositories/{$big->id}/docs/module-7")->assertOk());
+        $bigAgainQueries = $this->countQueries(fn () => $this->get("/repositories/{$big->id}/docs/overview")->assertOk());
 
         $this->assertSame($smallQueries, $bigQueries);
-        $this->assertLessThanOrEqual(26, $bigQueries, 'A documentation page should not run more queries than this.');
+        $this->assertLessThanOrEqual(27, $bigQueries, 'The first visit of an overview should not run more queries than this.');
+        $this->assertLessThanOrEqual(26, $bigModuleQueries, 'A documentation page should not run more queries than this.');
+        $this->assertLessThanOrEqual(24, $bigAgainQueries, 'A second visit is answered from the cache of the pictures.');
     }
 
     public function test_moving_between_pages_does_not_send_the_workspace_and_the_chapter_list_again(): void

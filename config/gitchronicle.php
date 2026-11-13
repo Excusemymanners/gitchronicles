@@ -71,6 +71,15 @@ return [
     'docs' => [
         'module_context_characters' => 60000,
         'max_module_pages' => (int) env('DOCS_MAX_MODULE_PAGES', 40),
+        // The README's own pictures (App\Documentation\ReadmeShowcase): copied once per processed commit and
+        // served from this app, never linked. Only https addresses of these hosts are downloaded; a picture
+        // larger than max_bytes, smaller than min_pixels on both sides, or beyond max_pictures is left out.
+        'pictures' => [
+            'hosts' => ['github.com', 'raw.githubusercontent.com', '*.githubusercontent.com', '*.github.io', 'github-production-user-asset-6210df.s3.amazonaws.com'],
+            'max_bytes' => 3_000_000,
+            'max_pictures' => 12,
+            'min_pixels' => 120,
+        ],
     ],
 
     /*
@@ -133,6 +142,8 @@ return [
 
     'media' => [
         'auto_generate' => (bool) env('MEDIA_AUTO_GENERATE', true),
+        // Hosts the logo of the README may be downloaded from (SafeDownload).
+        'image_hosts' => ['github.com', 'raw.githubusercontent.com', 'avatars.githubusercontent.com', '*.githubusercontent.com'],
         'queue' => env('MEDIA_QUEUE', 'media'),
         'renderers_path' => base_path('renderers'),
         'node_bin' => env('MEDIA_NODE_BIN', 'node'),

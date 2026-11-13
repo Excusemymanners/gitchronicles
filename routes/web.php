@@ -10,7 +10,9 @@ use App\Http\Controllers\Repository\AssistantQuestionController;
 use App\Http\Controllers\Repository\ConsultingController;
 use App\Http\Controllers\Repository\DiagramsController;
 use App\Http\Controllers\Repository\DocsController;
+use App\Http\Controllers\Repository\DocsPictureController;
 use App\Http\Controllers\Repository\DownloadConsultingReportController;
+use App\Http\Controllers\Repository\DownloadReadmeArchiveController;
 use App\Http\Controllers\Repository\DownloadReadmeController;
 use App\Http\Controllers\Repository\GenerateMediaController;
 use App\Http\Controllers\Repository\MediaController;
@@ -41,6 +43,9 @@ Route::prefix('repositories/{repository}')->name('repositories.')->group(functio
     // „Documentație”: the overview, the generated README and one page per module (Faza 6),
     // plus the generated README as a file. A slug has no dot, so "readme.md" never reaches DocsController.
     Route::get('docs/readme.md', DownloadReadmeController::class)->name('docs.readme');
+    Route::get('docs/readme.zip', DownloadReadmeArchiveController::class)->name('docs.readme.zip');
+    // The pictures of the pages (the README's own, the GitHub capture), served from the app's own origin.
+    Route::get('docs/pictures/{picture}', DocsPictureController::class)->where('picture', '[a-z0-9-]+')->name('docs.picture');
     Route::get('docs/{slug?}', DocsController::class)->where('slug', '[a-z0-9-]+')->name('docs');
 
     // „Diagrame”: the C4 architecture diagrams (Faza 7).

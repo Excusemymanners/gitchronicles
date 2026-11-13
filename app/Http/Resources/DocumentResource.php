@@ -19,7 +19,7 @@ class DocumentResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * "download_url" exists only for the generated README (GET /repositories/{id}/docs/readme.md).
+     * "download_url" and "download_zip_url" exist only for the generated README (GET /repositories/{id}/docs/readme.md and readme.zip, the README with its pictures).
      *
      * @return array<string, mixed>
      */
@@ -39,6 +39,9 @@ class DocumentResource extends JsonResource
             'stale_reason' => $this->stale_reason,
             'download_url' => $this->slug === Document::README
                 ? route('repositories.docs.readme', $this->repository, absolute: false)
+                : null,
+            'download_zip_url' => $this->slug === Document::README
+                ? route('repositories.docs.readme.zip', $this->repository, absolute: false)
                 : null,
         ];
     }

@@ -10,7 +10,7 @@ import RepositoryLayout from '@/layouts/repository-layout';
 import { shortSha } from '@/lib/format';
 import { formatDay } from '@/lib/history-format';
 import type { Completeness, RepositoryItem, RepositoryPageProps } from '@/types';
-import type { DocumentLink, DocumentPage } from '@/types/docs';
+import type { DocumentLink, DocumentPage, DocumentVisuals } from '@/types/docs';
 import type { DocumentTimeTravel } from '@/types/history';
 
 type Props = RepositoryPageProps & {
@@ -18,6 +18,8 @@ type Props = RepositoryPageProps & {
     navigation: DocumentLink[];
     /** Pagina deschisă: cea din adresă sau, fără slug, „Despre proiect”; `null` cât nu există. */
     document: DocumentPage | null;
+    /** Pozele din jurul textului (din README, diagrame, cifre); `null` în călătoria în timp. */
+    visuals: DocumentVisuals | null;
     /** Commit-urile procesate și, când în adresă e `?sha=`, textul paginii de la acel commit. */
     time_travel: DocumentTimeTravel;
 };
@@ -29,9 +31,9 @@ type Props = RepositoryPageProps & {
  * Cât timp repository-ul se procesează, pagina se reîmprospătează singură, ca textele să apară pe măsură ce sunt scrise.
  * Cu „Călătorie în timp” alegi un commit procesat și vezi textul paginii de atunci.
  */
-export default function RepositoriesDocs({ repository, completeness, navigation, document, time_travel }: Props) {
+export default function RepositoriesDocs({ repository, completeness, navigation, document, visuals, time_travel }: Props) {
     const { t } = useI18n();
-    const { start, stop } = usePoll(4000, { only: ['navigation', 'document', 'time_travel'] }, { autoStart: false });
+    const { start, stop } = usePoll(4000, { only: ['navigation', 'document', 'visuals', 'time_travel'] }, { autoStart: false });
 
     useEffect(() => {
         if (repository.is_processing) {
@@ -54,7 +56,7 @@ export default function RepositoriesDocs({ repository, completeness, navigation,
                     <>
                         <TimeTravelBar commits={time_travel.commits} selected={time_travel.selected} />
                         {time_travel.selected === null ? (
-                            <DocsContent document={document} repositoryFullName={repository.full_name} />
+                            <DocsContent document={document} repositoryFullName={repository.full_name} visuals={visuals} />
                         ) : (
                             <OldVersion document={document} timeTravel={time_travel} />
                         )}

@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ClockIcon } from '@/components/docs/docs-icons';
+import { ArchitectureFigure, FactsStrip, OpeningPicture, ProjectDescription, ReadmeGallery, UpdateTimeline } from '@/components/docs/docs-visuals';
 import Markdown from '@/components/docs/markdown';
+import NeighbourhoodDiagram from '@/components/docs/neighbourhood-diagram';
 import OnThisPage, { useActiveHeading, usePageHeadings } from '@/components/docs/on-this-page';
 import { ExternalLinkIcon } from '@/components/icons';
 import { useI18n } from '@/hooks/use-i18n';
 import { shortSha } from '@/lib/format';
 import { formatDay, formatUsd } from '@/lib/history-format';
-import type { DocumentPage } from '@/types/docs';
+import type { DocumentPage, DocumentVisuals } from '@/types/docs';
 
 type Props = {
     document: DocumentPage;
     /** "owner/name", for the links to the commit the page was written from. */
     repositoryFullName: string;
+    /** The pictures around the text (App\Documentation\DocumentVisuals); `null` or absent shows the text alone. */
+    visuals?: DocumentVisuals | null;
 };
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
@@ -27,6 +31,38 @@ function splitTitle(markdown: string): { title: string | null; body: string } {
     const match = /^\s*#\s+(.+?)\s*#*\s*(?:\r?\n|$)/.exec(markdown);
 
     return match ? { title: match[1], body: markdown.slice(match[0].length) } : { title: null, body: markdown };
+}
+
+/**
+ * Cuts the Markdown after the "## How it solves it" section (where the text talks about structure), or after the first
+ * "## " section when there is none, so the architecture diagram can sit between the two halves. The text is only
+ * split, never changed. Headings inside code blocks do not count. `null` when there is no second section to cut at.
+ */
+function splitForDiagram(markdown: string): [string, string] | null {
+    const lines = markdown.split('\n');
+    const starts: { index: number; heading: string }[] = [];
+    let inCode = false;
+
+    lines.forEach((line, index) => {
+        if (/^\s{0,3}(```|~~~)/.test(line)) {
+            inCode = !inCode;
+        }
+
+        const heading = inCode ? null : /^##\s+(.+?)\s*#*\s*$/.exec(line);
+
+        if (heading) {
+            starts.push({ index, heading: heading[1] });
+        }
+    });
+
+    if (starts.length === 0) {
+        return null;
+    }
+
+    const target = Math.max(0, starts.findIndex((start) => /how it solves it/i.test(start.heading)));
+    const cut = starts[target + 1]?.index ?? lines.length;
+
+    return [lines.slice(0, cut).join('\n'), lines.slice(cut).join('\n')];
 }
 
 /** A title may hold `code` between backticks (a module path); show it as code instead of showing the backticks. */
@@ -47,12 +83,14 @@ function inlineCode(text: string): ReactNode[] {
  * when the code moved on, the README buttons and the Markdown text. "On this page" lists the sections.
  * The component stands alone so other screens (the repository workspace) can use it too.
  */
-export default function DocsContent({ document, repositoryFullName }: Props) {
+export default function DocsContent({ document, repositoryFullName, visuals = null }: Props) {
     const { t } = useI18n();
     const [article, setArticle] = useState<HTMLElement | null>(null);
     const { title, body } = splitTitle(document.markdown);
     const headings = usePageHeadings(article, body);
     const activeId = useActiveHeading(headings, article);
+    const hasPictures = visuals !== null && (document.kind === 'overview' || document.kind === 'readme');
+    const parts = hasPictures && visuals.architecture !== null ? splitForDiagram(body) : null;
 
     return (
         <article ref={setArticle} className="min-w-0">
@@ -71,12 +109,35 @@ export default function DocsContent({ document, repositoryFullName }: Props) {
                     <a href={document.download_url} download="README.md" className={secondaryButtonClasses}>
                         {t('docs.downloadReadme')}
                     </a>
+                    {document.download_zip_url && (
+                        <a href={document.download_zip_url} className={secondaryButtonClasses}>
+                            {t('docs.downloadReadmeZip')}
+                        </a>
+                    )}
                 </div>
             )}
 
+            {visuals && document.kind === 'module' && visuals.neighbourhood && <NeighbourhoodDiagram neighbourhood={visuals.neighbourhood} commit={visuals.commit} />}
+            {hasPictures && <OpeningPicture visuals={visuals} repositoryFullName={repositoryFullName} />}
+            {hasPictures && document.kind === 'overview' && <FactsStrip visuals={visuals} />}
+
             <div className="mt-8">
-                <Markdown>{body}</Markdown>
+                {parts ? (
+                    <>
+                        <Markdown>{parts[0]}</Markdown>
+                        <ArchitectureFigure visuals={visuals!} />
+                        <div className="mt-8">
+                            <Markdown>{parts[1]}</Markdown>
+                        </div>
+                    </>
+                ) : (
+                    <Markdown>{body}</Markdown>
+                )}
             </div>
+
+            {hasPictures && <ProjectDescription visuals={visuals} collapsed={document.kind === 'overview'} />}
+            {hasPictures && <ReadmeGallery visuals={visuals} />}
+            {hasPictures && document.kind === 'overview' && <UpdateTimeline visuals={visuals} />}
         </article>
     );
 }

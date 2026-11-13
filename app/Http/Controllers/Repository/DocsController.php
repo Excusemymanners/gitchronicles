@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Repository;
 
 use App\Documentation\DocumentNavigation;
+use App\Documentation\DocumentVisuals;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DocumentResource;
 use App\Incremental\ProcessedCommits;
@@ -32,10 +33,10 @@ class DocsController extends Controller
      * Show the tab to anyone: repositories are public.
      *
      * "navigation" is an Inertia once prop (the browser keeps the chapter list while moving from page to page,
-     * and gets it again when WorkspaceVersion changes); "document" and "time_travel" are closures, so the polling of RepositoryLayout (which
+     * and gets it again when WorkspaceVersion changes); "document", "visuals" and "time_travel" are closures, so the polling of RepositoryLayout (which
      * asks only for "repository" and "can_retry") does not run their queries every 2 seconds.
      */
-    public function __invoke(Request $request, Repository $repository, ProcessedCommits $commits, ?string $slug = null): Response
+    public function __invoke(Request $request, Repository $repository, ProcessedCommits $commits, DocumentVisuals $visuals, ?string $slug = null): Response
     {
         $document = Document::whereBelongsTo($repository)
             ->where('slug', $slug ?? Document::OVERVIEW)
@@ -51,6 +52,8 @@ class DocsController extends Controller
         return $this->renderRepositoryPage($request, $repository, 'repositories/docs', [
             'navigation' => Inertia::once(fn () => DocumentNavigation::for($repository))->as('navigation:'.$this->workspaceVersionOf($request, $repository)),
             'document' => fn () => $document === null ? null : DocumentResource::make($document)->resolve(),
+            // The pictures around the text (README pictures, diagrams, facts), cached per page and commit.
+            'visuals' => fn () => $document === null || $chosenRun !== null ? null : $visuals->for($repository, $document),
             'time_travel' => fn () => [
                 'commits' => $commits->of($repository),
                 'selected' => $chosenRun?->to_sha,
